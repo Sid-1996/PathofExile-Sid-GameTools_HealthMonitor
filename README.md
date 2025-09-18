@@ -66,7 +66,6 @@ PathofExile Sid GameTools_HealthMonitor 是一款專為 Path of Exile 玩家設�
 - ⚡ 技能連段系統
 - 🎒 一鍵清包功能
 - 🖱️ 自動連點工具
-- 🔍 環境檢查工具
 - 📊 系統狀態顯示
 - 🔄 版本檢查功能
 
