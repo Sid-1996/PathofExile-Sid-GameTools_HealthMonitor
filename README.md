@@ -50,7 +50,7 @@ PathofExile Sid GameTools_HealthMonitor 是一款專為 Path of Exile 玩家設�
 ## 📖 詳細說明
 
 - **[使用說明](docs/使用說明.md)** - 完整的功能介紹和操作指南
-- **[版本說明](releases/RELEASE_NOTES_v1.0.0.md)** - 版本更新內容和改進
+- **[版本說明](releases/RELEASE_NOTES_v1.0.1.md)** - 版本更新內容和改進
 - **[問題回報](../../issues)** - 回報問題或建議新功能
 
 ## ⚠️ 重要提醒

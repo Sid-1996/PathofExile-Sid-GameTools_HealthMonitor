@@ -15,11 +15,11 @@
 ### 1. 準備發布檔案
 
 #### 完整版發布包
-**檔案名稱**: `GameTools_HealthMonitor_v1.0.0_Complete.zip`
+**檔案名稱**: `GameTools_HealthMonitor_v1.0.1_Complete.zip`
 
 **包含內容**:
 ```
-GameTools_HealthMonitor_v1.0.0_Complete/
+GameTools_HealthMonitor_v1.0.1_Complete/
 ├── HealthMonitor.exe              # 主程式執行檔
 ├── auto_click.ahk.exe             # AutoHotkey 觸發程式
 ├── install_improved.bat           # 環境安裝腳本
@@ -29,11 +29,11 @@ GameTools_HealthMonitor_v1.0.0_Complete/
 ```
 
 #### 開發者參考包
-**檔案名稱**: `GameTools_HealthMonitor_v1.0.0_Developer.zip`
+**檔案名稱**: `GameTools_HealthMonitor_v1.0.1_Developer.zip`
 
 **包含內容**:
 ```
-GameTools_HealthMonitor_v1.0.0_Developer/
+GameTools_HealthMonitor_v1.0.1_Developer/
 ├── docs/
 │   ├── 技術架構.md
 │   ├── API參考.md
@@ -54,17 +54,17 @@ GameTools_HealthMonitor_v1.0.0_Developer/
 
 #### 步驟 2: 設定 Release 資訊
 ```
-Tag version: v1.0.0
-Release title: PathofExile Sid GameTools_HealthMonitor v1.0.0 - 正式發布版
+Tag version: v1.0.1
+Release title: PathofExile Sid GameTools_HealthMonitor v1.0.1 - 正式發布版
 Target: main branch
 ```
 
 #### 步驟 3: 編寫 Release 說明
-複製 `RELEASE_NOTES_v1.0.0.md` 內容到描述欄位
+複製 `RELEASE_NOTES_v1.0.1.md` 內容到描述欄位
 
 #### 步驟 4: 上傳檔案
-- 上傳 `GameTools_HealthMonitor_v1.0.0_Complete.zip`
-- 上傳 `GameTools_HealthMonitor_v1.0.0_Developer.zip`
+- 上傳 `GameTools_HealthMonitor_v1.0.1_Complete.zip`
+- 上傳 `GameTools_HealthMonitor_v1.0.1_Developer.zip`
 
 #### 步驟 5: 發布設定
 - ✅ Set as the latest release
@@ -74,7 +74,7 @@ Target: main branch
 ### 3. Release 描述模板
 
 ```markdown
-## 🎮 PathofExile Sid GameTools_HealthMonitor v1.0.0
+## 🎮 PathofExile Sid GameTools_HealthMonitor v1.0.1
 
 **智能血量魔力監控工具正式發布！**
 
@@ -87,13 +87,13 @@ Target: main branch
 ### 📥 下載選項
 
 #### 🎮 完整版 (一般使用者)
-[📦 下載 GameTools_HealthMonitor_v1.0.0_Complete.zip](link)
+[📦 下載 GameTools_HealthMonitor_v1.0.1_Complete.zip](link)
 - 包含可執行檔和完整使用說明
 - 一鍵安裝環境設定
 - 適合直接使用
 
 #### 💻 開發者版 (技術參考)
-[📦 下載 GameTools_HealthMonitor_v1.0.0_Developer.zip](link)
+[📦 下載 GameTools_HealthMonitor_v1.0.1_Developer.zip](link)
 - 技術文檔和示例代碼
 - API 參考說明
 - 適合學習和研究
@@ -160,10 +160,10 @@ Target: main branch
 ### 6. 版本管理
 
 #### 標籤命名規則
-- 主要版本: `v1.0.0`
+- 主要版本: `v1.0.1`
 - 次要更新: `v1.1.0`
 - 修復版本: `v1.0.1`
-- 測試版本: `v1.0.0-beta.1`
+- 測試版本: `v1.0.1-beta.1`
 
 #### 分支策略
 - `main`: 穩定發布版本

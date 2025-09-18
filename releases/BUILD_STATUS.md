@@ -31,7 +31,7 @@
 
 #### 完整版使用者包
 ```
-GameTools_HealthMonitor_v1.0.0_Complete.zip
+GameTools_HealthMonitor_v1.0.1_Complete.zip
 ├── GameTools_HealthMonitor.exe
 ├── auto_click.exe
 ├── 環境安裝.bat
@@ -42,7 +42,7 @@ GameTools_HealthMonitor_v1.0.0_Complete.zip
 
 #### 開發者技術包
 ```
-GameTools_HealthMonitor_v1.0.0_Developer.zip
+GameTools_HealthMonitor_v1.0.1_Developer.zip
 ├── docs/
 │   ├── 技術架構.md
 │   ├── API參考.md
