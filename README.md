@@ -14,7 +14,6 @@ PathofExile Sid GameTools_HealthMonitor 是一款專為 Path of Exile 玩家設�
 - **⚡ 技能連段系統**：設定按鍵組合，自動釋放技能連段
 - **🎒 一鍵清包功能**：自動清空背包物品，節省整理時間
 - **🖱️ 自動連點工具**：自動連續點擊，適合需要重複操作的場合
-- **🔍 環境檢查工具**：檢查系統是否滿足運行要求
 - **📊 系統狀態顯示**：功能分級和狀態顯示
 - **🔄 版本檢查功能**：自動更新檢測
 
@@ -76,5 +75,6 @@ PathofExile Sid GameTools_HealthMonitor 是一款專為 Path of Exile 玩家設�
 **⭐ 如果這個工具對你有幫助，請給個 Star！**
 
 [📥 下載最新版本](../../releases/latest) · [📖 使用說明](docs/使用說明.md) · [❓ 問題回報](../../issues)
+
 
 </div>
