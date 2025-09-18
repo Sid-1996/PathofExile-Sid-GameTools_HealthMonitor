@@ -38,6 +38,17 @@
 
 遇到問題？請前往 [Issues](../../issues) 頁面回報，我們會盡快協助解決。
 
+## ☕ 支持作者  
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K3K11KMXOL)  
+
+[🔗 Support This Project](https://www.paypal.com/ncp/payment/4YCFVARX3ADGW](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4))  
+
+[💚 綠界科技贊助（支持作者）](https://p.ecpay.com.tw/E0E3A)  
+
+[![Donate via ECPay](https://payment.ecpay.com.tw/Upload/QRCode/201901/QRCode_21c4c069-547f-4115-9f8d-2c050273f028.png)](https://p.ecpay.com.tw/E0E3A)  
+感謝每一位支持者！💖
+
 ---
 
 <div align="center">
@@ -45,5 +56,6 @@
 **⭐ 如果這個工具讓你的遊戲更順暢，請給個 Star 支持！**
 
 [📥 下載最新版本](https://github.com/your-repo/releases/latest) · [📖 使用指南](docs/使用指南.md) · [❓ 問題回報](https://github.com/your-repo/issues)
+
 
 </div>
