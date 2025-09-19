@@ -44,8 +44,9 @@
 
 **⭐ 如果這個工具讓你的遊戲更順暢，請給個 Star 支持！**
 
-[📥 下載最新版本](https://github.com/your-repo/releases/latest) · [📖 使用指南](docs/使用指南.md) · [❓ 問題回報](https://github.com/your-repo/issues)
+[📥 下載最新版本](https://github.com/Sid-1996/releases/latest) · [📖 使用指南](docs/使用指南.md) · [❓ 問題回報](https://github.com/Sid-1996/issues)
 
 
 </div>
+
 
