@@ -131,7 +131,7 @@
 
 - **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
 - **Discord**：(暫無連結)
-- **贊助支持**：[https://afdian.com/a/sid-1996](https://afdian.com/a/sid-1996)
+- **贊助支持**：[https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
 
 ## 📄 開源協議
 
@@ -153,8 +153,7 @@
 
 ### 🔓 開源特性
 - ✅ 完全開放源代碼，可自由查看、修改、分發
-- ✅ 無功能限制，所有功能永久免費
-- ✅ MIT License 授權，商業友好
+- ✅ 無功能限制，所有功能永久免費
 - ✅ 歡迎社群貢獻和改進
 
 ---
