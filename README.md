@@ -1,18 +1,20 @@
-# Path of Exile 遊戲輔助工具 (Health Monitor)
+# Path of Exile 遊戲輔助工具 (Health Monitor) - 開源版
 
-🎮 輕量、零安裝、單一 EXE 的 Path of Exile 輔助工具。專注「血量/魔力監控、自動化操作與效率提升」，幫助玩家更穩定、減少重複操作。
+🎮 **完全免費開源**的 Path of Exile 輔助工具。專注「血量/魔力監控、自動化操作與效率提升」，幫助玩家更穩定、減少重複操作。
+
+🔓 **重要更新：本工具現已完全開源，所有功能免費使用，無任何限制！**
 
 ---
 
-## ✨ 功能總覽
+## ✨ 功能總覽 (完全免費)
 
-- 🩸 血量 / 魔力監控：可視化百分比 + 多閾值自動觸發
-- ⚡ 技能連段：自訂觸發鍵，順序與延遲全可調
-- 🎒 一鍵清包：記錄背包佈局與顏色後自動清理
-- 📦 一鍵取物：設定 5 個取物座標後按 F6 依序拾取
-- 🖱️ 自動連點：Ctrl + 左鍵啟動 / 停止
-- 🧪 即時預覽：監控區域、狀態標記
-- ⏸️ 全域暫停：F9 立即停用所有熱鍵邏輯
+- 🩸 **血量 / 魔力監控**：可視化百分比 + 多閾值自動觸發
+- ⚡ **技能連段**：自訂觸發鍵，順序與延遲全可調
+- 🎒 **一鍵清包**：記錄背包佈局與顏色後自動清理
+- 📦 **一鍵取物**：設定 5 個取物座標後按 F6 依序拾取
+- 🖱️ **自動連點**：Ctrl + 左鍵啟動 / 停止
+- 🧪 **即時預覽**：監控區域、狀態標記
+- ⏸️ **全域暫停**：F9 立即停用所有熱鍵邏輯
 
 ---
 
@@ -30,9 +32,9 @@
 
 ---
 
-## 🚀 安裝與啟動 (v1.0.1)
+## 🚀 安裝與啟動 (v1.0.2)
 
-1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.1.zip`
+1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.2.zip`
 2. 解壓縮到任意資料夾
 3. 直接執行 `GameTools_HealthMonitor.exe` (免安裝 / 免 Python)
 4. 第一次使用：建議設定血量、魔力、背包、取物座標
@@ -94,7 +96,66 @@
 ## 🗂️ 版本與更新
 
 - 最新發布說明：`RELEASE_NOTES.md`
-- 當前版本：v1.0.1（GUI 凍結與熱鍵恢復修復 / 完整打包 / 零依賴）
+- 當前版本：v1.0.2（雙重按鍵發送機制優化 / GUI 凍結與熱鍵恢復修復 / 完整打包 / 零依賴）
+
+---
+
+## ⚠️ 免責聲明
+
+本軟體是一個外部工具，專為教育和學習目的而開發。它僅通過螢幕截圖和模擬鍵盤輸入與遊戲交互，不會修改任何遊戲文件或代碼，也不會讀取遊戲記憶體。
+
+本軟體開源、免費，僅供個人學習交流使用，僅限於個人遊戲帳號，不得用於任何商業或營利性目的。開發者團隊擁有本項目的最終解釋權。使用本軟體產生的所有問題與本項目及開發者團隊無關。若您發現商家使用本軟體進行代練並收費，這是商家的個人行為，本軟體不授權用於代練服務，產生的問題及後果與本軟體無關。本軟體不授權任何人進行售賣，售賣的軟體可能被加入惡意代碼，導致遊戲帳號或電腦資料被盜，與本軟體無關。
+
+**重要提醒**：根據 Grinding Gear Games 的《Path of Exile》服務條款，遊戲可能禁止使用任何第三方自動化工具。使用此工具存在帳號風險，請謹慎評估。
+
+### 風險警告
+
+1. **帳號風險**：使用本工具可能導致帳號被封。請在了解風險後再使用。
+2. **個人責任**：任何因使用本工具導致的帳號問題，均由使用者自行承擔。
+3. **合規使用**：請確保在當地法律允許的範圍內使用本工具。
+
+### 正確使用方式
+
+本軟體僅供個人使用，用於學習 Python 程式設計、電腦視覺、UI 自動化等技術。請勿將其用於任何營利性或商業用途。
+
+### 獲取官方版本
+
+本軟體是免費開源的。如果你被收費，請立即退款。請造訪 GitHub 下載最新的官方版本：
+- **GitHub 官方倉庫**：[https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor)
+
+---
+
+## 🤝 支持與社群
+
+### 聯繫方式
+
+- **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
+- **Discord**：(暫無連結)
+- **贊助支持**：[https://afdian.com/a/sid-1996](https://afdian.com/a/sid-1996)
+
+## 📄 開源協議
+
+本項目採用 MIT License 開源協議。詳見 [LICENSE](LICENSE) 文件。
+
+---
+
+## 📂 專案結構
+
+本專案是完全開源的 Path of Exile 輔助工具：
+
+### 🗂️ 目錄說明
+- **src/**：主要源代碼（health_monitor.py、配置文件等）
+- **tools/**：建置工具和自動化腳本
+- **scripts/**：輔助腳本（auto_click.ahk 等）
+- **github/**：GitHub 發布相關文檔
+- **build/**：建置輸出目錄
+- **dist/**：最終發布包目錄
+
+### 🔓 開源特性
+- ✅ 完全開放源代碼，可自由查看、修改、分發
+- ✅ 無功能限制，所有功能永久免費
+- ✅ MIT License 授權，商業友好
+- ✅ 歡迎社群貢獻和改進
 
 ---
 
@@ -107,9 +168,24 @@
 ## ⭐ 支持
 
 如果覺得有幫助，可以：
+
 - Star 專案
 - 回報 Issue
 - 分享給朋友
+- 贊助支持開發者
+
+### 💝 贊助方式
+
+如果這個工具對你有幫助，歡迎贊助支持開發者：
+
+[![愛發電](https://img.shields.io/badge/%E6%84%9B%E7%99%BC%E9%9B%BB-sid--1996-green)](https://afdian.com/a/sid-1996)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-orange)](https://ko-fi.com/K3K11KMXOL)
+[![綠界支付](https://img.shields.io/badge/%E7%B6%A0%E7%95%8C%E6%94%AF%E4%BB%98-Support-blue)](https://p.ecpay.com.tw/E0E3A)
+
+[![PayPal 1](https://img.shields.io/badge/PayPal-1-blue)](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
+[![PayPal 2](https://img.shields.io/badge/PayPal-2-blue)](https://www.paypal.com/ncp/payment/S5PTHJJVBC5VS)
+
+感謝所有支持者！你們的支持是持續改進的動力 ❤️
 
 ---
 
