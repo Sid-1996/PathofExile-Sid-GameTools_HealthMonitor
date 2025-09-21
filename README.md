@@ -2,7 +2,7 @@
 
 ## 基於圖像識別的 Path of Exile 自動化, 使用 Windows 接口模擬用戶點擊, 無讀取遊戲內存或侵入修改遊戲文件/數據
 
-![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 1000⭐=Open Source](https://img.shields.io/badge/Milestone-1000⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
@@ -31,7 +31,30 @@
 
 ---
 
-## ⌨️ 熱鍵一覽
+## 🎯 開源里程碑目標
+
+### 🌟 **1000 星星 = 完整開源主工具源代碼！**
+
+我們承諾：當這個專案獲得 **1000 個 GitHub 星星** ⭐ 時，將會：
+
+- 🔓 **開放主工具完整源代碼** (`src/health_monitor.py` 等核心文件)
+- 📚 **提供詳細的技術文檔** 和開發指南
+- 🛠️ **分享編譯和打包腳本**
+- 🤝 **歡迎社群貢獻和改進**
+
+**目前進度：**
+
+![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 1000 ⭐
+
+**加入我們一起達成目標！**
+
+- ⭐ **給專案一個星星** 來支持我們
+- 🔄 **分享給朋友** 讓更多人知道
+- 💬 **在 Issues 中提供建議** 幫助改進
+
+> 💡 **為什麼設定這個目標？** 我們相信開源能帶來更好的工具和更強大的社群。您的支持將幫助我們邁向完全透明的開發！
+
+---
 
 | 熱鍵 | 功能 |
 |------|------|
