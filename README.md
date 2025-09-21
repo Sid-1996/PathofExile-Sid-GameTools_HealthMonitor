@@ -1,4 +1,4 @@
-# Path of Exile 遊戲輔助工具 (Health Monitor) - 開源版
+# Path of Exile Sid遊戲工具 (Health Monitor) - 開源版
 
 🎮 **完全免費開源**的 Path of Exile 輔助工具。專注「血量/魔力監控、自動化操作與效率提升」，幫助玩家更穩定、減少重複操作。
 
@@ -32,9 +32,9 @@
 
 ---
 
-## 🚀 安裝與啟動 (v1.0.2)
+## 🚀 安裝與啟動 (v1.0.3)
 
-1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.2.zip`
+1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.3.zip`
 2. 解壓縮到任意資料夾
 3. 直接執行 `GameTools_HealthMonitor.exe` (免安裝 / 免 Python)
 4. 第一次使用：建議設定血量、魔力、背包、取物座標
@@ -75,7 +75,7 @@
 
 ### 自動連點
 
-- 高頻點擊 (固定短間隔)，適用整理/互動場景
+- 高頻點擊 (固定短間隔)，適用箱子/互動場景
 
 ---
 
@@ -96,7 +96,7 @@
 ## 🗂️ 版本與更新
 
 - 最新發布說明：`RELEASE_NOTES.md`
-- 當前版本：v1.0.2（雙重按鍵發送機制優化 / GUI 凍結與熱鍵恢復修復 / 完整打包 / 零依賴）
+- 當前版本：v1.0.3（雙重按鍵發送機制優化 / GUI 凍結與熱鍵恢復修復 / 完整打包 / 零依賴 / 分頁美化優化 / 功能修復完善）
 
 ---
 
@@ -131,11 +131,11 @@
 
 - **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
 - **Discord**：(暫無連結)
-- **贊助支持**：[https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
+- **贊助支持**：[https://afdian.com/a/sid-1996](https://afdian.com/a/sid-1996)
 
 ## 📄 開源協議
 
-本項目採用 MIT License 開源協議。詳見 [LICENSE](LICENSE) 文件。
+本項目採用 GNU AGPL v3 開源協議。詳見 [LICENSE](LICENSE) 文件。
 
 ---
 
@@ -153,7 +153,8 @@
 
 ### 🔓 開源特性
 - ✅ 完全開放源代碼，可自由查看、修改、分發
-- ✅ 無功能限制，所有功能永久免費
+- ✅ 無功能限制，所有功能永久免費
+- ✅ GNU AGPL v3 授權，保護開源完整性
 - ✅ 歡迎社群貢獻和改進
 
 ---
