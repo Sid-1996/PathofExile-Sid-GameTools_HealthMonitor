@@ -140,23 +140,11 @@
 - **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
 - **Discord**：(暫無連結)
 
-## 📄 開源協議
-
-本項目採用 GNU AGPL v3 開源協議。詳見 [LICENSE](LICENSE) 文件。
-
 ---
 
 ## 📂 專案結構
 
 本專案是完全開源的 Path of Exile 輔助工具：
-
-### 🗂️ 目錄說明
-- **src/**：主要源代碼（health_monitor.py、配置文件等）
-- **tools/**：建置工具和自動化腳本
-- **scripts/**：輔助腳本（auto_click.ahk 等）
-- **github/**：GitHub 發布相關文檔
-- **build/**：建置輸出目錄
-- **dist/**：最終發布包目錄
 
 ### � 技術分享特性
 - ✅ 提供混淆後源代碼，供學習參考
@@ -182,6 +170,7 @@
 ---
 
 > 簡潔版 README，完整教學請參考 `docs/使用指南.md` 與 `docs/運作原理.md`。
+
 
 
 
