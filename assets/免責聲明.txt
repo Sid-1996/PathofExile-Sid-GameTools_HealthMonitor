@@ -1,0 +1,13 @@
+免責聲明
+
+本軟體是一個外部工具，旨在減輕《流亡黯道》的遊戲負擔。它僅透過現有用戶介面與遊戲交互，並遵守相關法律法規。本軟體旨在簡化用戶與遊戲的交互，不會破壞遊戲平衡或提供不公平優勢，也不會修改任何遊戲檔案或程式碼。
+
+本軟體開源、免費，僅供個人學習交流使用，僅限於個人遊戲帳號，不得用於任何商業或營利性目的。開發者團隊擁有本專案的最終解釋權。使用本軟體所產生的所有問題，與本專案及開發者團隊無關。若您發現商家使用本軟體進行代練並收費，這屬於商家的個人行為，本軟體並未授權用於代練服務，其所產生的問題與後果與本軟體無關。本軟體不授權任何人進行販售，任何被販售的版本可能會被加入惡意程式碼，導致遊戲帳號或電腦資料被盜，與本軟體無關。
+
+Disclaimer
+
+This software is an external tool designed to assist with gameplay in Path of Exile. It interacts with the game solely through the existing user interface and complies with relevant laws and regulations. This software does not modify any game files or code, nor does it provide unfair advantages or disrupt game balance.
+
+This software is open-source and free, intended solely for personal learning and communication purposes, and limited to personal game accounts. It must not be used for any commercial or profit-making activities. All issues arising from the use of this software are unrelated to the project and the development team. If you find merchants using this software for paid boosting services, such actions are their personal behavior and are not authorized by this software. Any consequences from such use are not the responsibility of this project.
+
+This software is not authorized for resale. Any sold versions may contain malicious code, which could lead to the theft of game accounts or computer data. Such risks are unrelated to this software.

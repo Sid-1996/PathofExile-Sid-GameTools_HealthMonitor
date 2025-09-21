@@ -1,12 +1,25 @@
-# Path of Exile Sid遊戲工具 (Health Monitor) - 開源版
+# ![Health Monitor Icon](github/assets/GameTools_HealthMonitor.ico) Path of Exile Sid遊戲工具
 
-🎮 **完全免費開源**的 Path of Exile 輔助工具。專注「血量/魔力監控、自動化操作與效率提升」，幫助玩家更穩定、減少重複操作。
+## 基於圖像識別的 Path of Exile 自動化, 使用 Windows 接口模擬用戶點擊, 無讀取遊戲內存或侵入修改遊戲文件/數據
 
-🎉 **開源免費工具**：所有功能完全免費，無任何限制！
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
-## ✨ 功能總覽 (完全免費)
+## [教學影片](https://www.youtube.com/watch?v=qRe8GODRx98) | 中文說明
+
+演示和教程 [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
+
+---
+
+## 使用方法：下載綠色版壓縮包，解壓後雙擊 GameTools_HealthMonitor.exe
+
+• [GitHub下載](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases), 免費網頁直鏈, 不要點擊下載 Source Code, 點擊下載壓縮包
+• 可窗口化，可全屏，無需額外依賴
+
+---
+
+## ✨ 功能總覽
 
 - 🩸 **血量 / 魔力監控**：可視化百分比 + 多閾值自動觸發
 - ⚡ **技能連段**：自訂觸發鍵，順序與延遲全可調
@@ -32,14 +45,32 @@
 
 ---
 
-## 🚀 安裝與啟動 (v1.0.3)
+## 🚀 安裝與啟動
+
+### 選項 1: 輕量級版本 (推薦用於 GitHub 分發)
+
+1. 確保已安裝 Python 3.8+
+2. 下載源代碼: `git clone` 或下載 ZIP
+3. 雙擊 `scripts/install_dependencies.bat` 安裝依賴項
+4. 雙擊 `scripts/run_monitor.bat` 或執行 `python src/health_monitor.py`
+
+**優點**: 文件小 (僅 ~360KB)，適合 GitHub 分發
+
+### 選項 2: 輕量級啟動器 (最小化)
+
+1. 下載源代碼和 `scripts/GameTools_HealthMonitor_Light.bat`
+2. 雙擊 `scripts/GameTools_HealthMonitor_Light.bat`
+3. 腳本會檢查 Python 和依賴項，然後啟動程序
+
+**優點**: 極輕量 (僅 766KB)，但需要安裝依賴項
+
+### 選項 3: 完整獨立 EXE 版本 (v1.0.3)
 
 1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.3.zip`
 2. 解壓縮到任意資料夾
-3. 直接執行 `GameTools_HealthMonitor.exe` (免安裝 / 免 Python)
-4. 第一次使用：建議設定血量、魔力、背包、取物座標
+3. 直接執行 `GameTools_HealthMonitor.exe`
 
-> 無需額外依賴，所有需要的函式庫已內嵌於 EXE。
+**注意**: EXE 版本包含所有依賴項，文件較大 (~50MB+)
 
 ---
 
@@ -112,7 +143,7 @@
 
 本軟體是一個外部工具，專為教育和學習目的而開發。它僅通過螢幕截圖和模擬鍵盤輸入與遊戲交互，不會修改任何遊戲文件或代碼，也不會讀取遊戲記憶體。
 
-本軟體開源、免費，僅供個人學習交流使用，僅限於個人遊戲帳號，不得用於任何商業或營利性目的。開發者團隊擁有本項目的最終解釋權。使用本軟體產生的所有問題與本項目及開發者團隊無關。若您發現商家使用本軟體進行代練並收費，這是商家的個人行為，本軟體不授權用於代練服務，產生的問題及後果與本軟體無關。本軟體不授權任何人進行售賣，售賣的軟體可能被加入惡意代碼，導致遊戲帳號或電腦資料被盜，與本軟體無關。
+本軟體僅供個人學習交流使用，僅限於個人遊戲帳號，不得用於任何商業或營利性目的。開發者團隊擁有本項目的最終解釋權。使用本軟體產生的所有問題與本項目及開發者團隊無關。若您發現商家使用本軟體進行代練並收費，這是商家的個人行為，本軟體不授權用於代練服務，產生的問題及後果與本軟體無關。本軟體不授權任何人進行售賣，售賣的軟體可能被加入惡意代碼，導致遊戲帳號或電腦資料被盜，與本軟體無關。
 
 **重要提醒**：根據 Grinding Gear Games 的《Path of Exile》服務條款，遊戲可能禁止使用任何第三方自動化工具。使用此工具存在帳號風險，請謹慎評估。
 
@@ -122,15 +153,6 @@
 2. **個人責任**：任何因使用本工具導致的帳號問題，均由使用者自行承擔。
 3. **合規使用**：請確保在當地法律允許的範圍內使用本工具。
 
-### 正確使用方式
-
-本軟體僅供個人使用，用於學習 Python 程式設計、電腦視覺、UI 自動化等技術。請勿將其用於任何營利性或商業用途。
-
-### 獲取官方版本
-
-本軟體是免費開源的。如果你被收費，請立即退款。請造訪 GitHub 下載最新的官方版本：
-- **GitHub 官方倉庫**：[https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor)
-
 ---
 
 ## 🤝 支持與社群
@@ -138,6 +160,7 @@
 ### 聯繫方式
 
 - **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
+- **GitHub 官方倉庫**：[https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor)
 - **Discord**：(暫無連結)
 
 ---
@@ -146,17 +169,20 @@
 
 本專案是完全開源的 Path of Exile 輔助工具：
 
-### � 技術分享特性
-- ✅ 提供混淆後源代碼，供學習參考
+### 🔧 技術分享特性
+
+- ✅ 提供開源源代碼，供學習參考
 - ✅ 無功能限制，所有功能永久免費
 - ✅ 歡迎技術交流和學習討論
-- ✅ 保護核心邏輯，防止商業化利用
 
 ---
 
-## ⚠️ 使用聲明
+## 致謝
 
-本工具僅供個人學習、效率提升使用。請遵循遊戲服務條款；任何風險由使用者自行承擔。
+- [OpenCV](https://opencv.org/) - 圖像處理核心技術
+- [Python Keyboard](https://github.com/boppreh/keyboard) - 全域熱鍵監聽
+- [PyAutoGUI](https://pyautogui.readthedocs.io/) - 滑鼠鍵盤自動化
+- [PyGetWindow](https://github.com/asweigart/PyGetWindow) - 視窗管理
 
 ---
 
@@ -167,6 +193,7 @@
 - Star 專案
 - 回報 Issue
 - 分享給朋友
+
 ---
 
 > 簡潔版 README，完整教學請參考 `docs/使用指南.md` 與 `docs/運作原理.md`。
