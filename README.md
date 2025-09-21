@@ -139,7 +139,6 @@
 
 - **GitHub Issues**：[回報問題與建議](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues)
 - **Discord**：(暫無連結)
-- **贊助支持**：[https://afdian.com/a/sid-1996](https://afdian.com/a/sid-1996)
 
 ## 📄 開源協議
 
@@ -180,27 +179,9 @@
 - Star 專案
 - 回報 Issue
 - 分享給朋友
-- 贊助支持開發者
-
-### 💝 贊助方式
-
-如果這個工具對你有幫助，歡迎贊助支持開發者：
-
-#### 💰 主要贊助管道
-
-[![綠界支付](https://img.shields.io/badge/%E7%B6%A0%E7%95%8C%E6%94%AF%E4%BB%98-Donate-green)](https://payment.ecpay.com.tw/Broadcaster/Donate/0286662540DEC1DFDF46C3DD62F11FEB)
-[![PayPal 1](https://img.shields.io/badge/PayPal-1-blue)](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
-[![PayPal 2](https://img.shields.io/badge/PayPal-2-blue)](https://www.paypal.com/ncp/payment/S5PTHJJVBC5VS)
-
-<!--#### 🌍 其他支持方式
-
-[![愛發電](https://img.shields.io/badge/%E6%84%9B%E7%99%BC%E9%9B%BB-sid--1996-green)](https://afdian.com/a/sid-1996)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-orange)](https://ko-fi.com/K3K11KMXOL)-->
-
-感謝所有支持者！你們的支持是持續改進的動力 ❤️
-
 ---
 
 > 簡潔版 README，完整教學請參考 `docs/使用指南.md` 與 `docs/運作原理.md`。
+
 
 
