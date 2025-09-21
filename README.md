@@ -1,4 +1,4 @@
-# ![Health Monitor Icon](github/assets/GameTools_HealthMonitor.ico) Path of Exile Sid遊戲工具
+# ![Health Monitor Icon](/assets/GameTools_HealthMonitor.ico) Path of Exile Sid遊戲工具
 
 ## 基於圖像識別的 Path of Exile 自動化, 使用 Windows 接口模擬用戶點擊, 無讀取遊戲內存或侵入修改遊戲文件/數據
 
@@ -239,6 +239,7 @@
 ---
 
 > 簡潔版 README，完整教學請參考 `docs/使用指南.md` 與 `docs/運作原理.md`。
+
 
 
 
