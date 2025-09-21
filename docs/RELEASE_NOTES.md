@@ -182,18 +182,4 @@
 
 ---
 
-## 💝 支持開發者
-
-如果這些版本對你有幫助，歡迎支持開發者：
-
-- 🇹🇼 [愛發電](https://afdian.com/a/sid-1996)
-- ☕ [Ko-fi](https://ko-fi.com/K3K11KMXOL)
-- 💳 [綠界支付](https://p.ecpay.com.tw/E0E3A)
-- 🌍 [PayPal (1)](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
-- 🌍 [PayPal (2)](https://www.paypal.com/ncp/payment/S5PTHJJVBC5VS)
-
-感謝所有支持者！❤️
-
----
-
 **免責聲明**: 此工具僅供個人學習和研究使用，請遵守遊戲官方規定。開發者不對使用此工具產生的任何後果負責.
