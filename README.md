@@ -192,14 +192,15 @@
 [![PayPal 1](https://img.shields.io/badge/PayPal-1-blue)](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
 [![PayPal 2](https://img.shields.io/badge/PayPal-2-blue)](https://www.paypal.com/ncp/payment/S5PTHJJVBC5VS)
 
-#### 🌍 其他支持方式
+<!--#### 🌍 其他支持方式
 
-<!--[![愛發電](https://img.shields.io/badge/%E6%84%9B%E7%99%BC%E9%9B%BB-sid--1996-green)](https://afdian.com/a/sid-1996)-->
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-orange)](https://ko-fi.com/K3K11KMXOL)
+[![愛發電](https://img.shields.io/badge/%E6%84%9B%E7%99%BC%E9%9B%BB-sid--1996-green)](https://afdian.com/a/sid-1996)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-orange)](https://ko-fi.com/K3K11KMXOL)-->
 
 感謝所有支持者！你們的支持是持續改進的動力 ❤️
 
 ---
 
 > 簡潔版 README，完整教學請參考 `docs/使用指南.md` 與 `docs/運作原理.md`。
+
 
