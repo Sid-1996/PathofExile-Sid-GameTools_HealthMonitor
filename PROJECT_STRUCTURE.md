@@ -16,7 +16,6 @@ GameTools_HealthMonitor/
 │   ├── 使用說明.md              # 使用說明
 │   └── 運作原理.md              # 運作原理
 ├── scripts/                    # 腳本和配置
-│   ├── GameTools_HealthMonitor_Light.bat    # 輕量啟動器
 │   ├── install_dependencies.bat              # 依賴項安裝腳本
 │   ├── requirements.txt                      # Python 依賴項列表
 │   └── run_monitor.bat                       # 運行腳本

@@ -70,24 +70,7 @@
 
 ## 🚀 安裝與啟動
 
-### 選項 1: 輕量級版本 (推薦用於 GitHub 分發)
-
-1. 確保已安裝 Python 3.8+
-2. 下載源代碼: `git clone` 或下載 ZIP
-3. 雙擊 `scripts/install_dependencies.bat` 安裝依賴項
-4. 雙擊 `scripts/run_monitor.bat` 或執行 `python src/health_monitor.py`
-
-**優點**: 文件小 (僅 ~360KB)，適合 GitHub 分發
-
-### 選項 2: 輕量級啟動器 (最小化)
-
-1. 下載源代碼和 `scripts/GameTools_HealthMonitor_Light.bat`
-2. 雙擊 `scripts/GameTools_HealthMonitor_Light.bat`
-3. 腳本會檢查 Python 和依賴項，然後啟動程序
-
-**優點**: 極輕量 (僅 766KB)，但需要安裝依賴項
-
-### 選項 3: 完整獨立 EXE 版本 (v1.0.3)
+### 選項 1: 完整獨立 EXE 版本 (v1.0.3)
 
 1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.3.zip`
 2. 解壓縮到任意資料夾
@@ -95,7 +78,7 @@
 
 **注意**: EXE 版本包含所有依賴項，文件較大 (~50MB+)
 
-### 選項 4: 示範源代碼版本 (學習與預覽)
+### 選項 2: 示範源代碼版本 (學習與預覽)
 
 1. 下載源代碼: `git clone` 或下載 ZIP
 2. 查看 `src/demo_health_monitor.py` (示範版本)
