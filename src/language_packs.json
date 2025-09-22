@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "default_language": "zh-tw",
+  "languages": {
+    "zh-tw": {
+      "name": "繁體中文",
+      "messages": {
+        "app_title": "Path of Exile Sid 遊戲工具箱",
+        "health_monitor": "智能血魔監控",
+        "skill_combo": "技能連段系統",
+        "inventory_clear": "一鍵清包功能",
+        "auto_click": "自動連點工具",
+        "settings": "設定",
+        "start": "開始",
+        "stop": "停止",
+        "exit": "退出",
+        "language": "語言",
+        "about": "關於",
+        "help": "幫助"
+      }
+    },
+    "zh-cn": {
+      "name": "简体中文",
+      "messages": {
+        "app_title": "Path of Exile Sid 游戏工具箱",
+        "health_monitor": "智能血魔监控",
+        "skill_combo": "技能连段系统",
+        "inventory_clear": "一键清包功能",
+        "auto_click": "自动连点工具",
+        "settings": "设置",
+        "start": "开始",
+        "stop": "停止",
+        "exit": "退出",
+        "language": "语言",
+        "about": "关于",
+        "help": "帮助"
+      }
+    },
+    "en": {
+      "name": "English",
+      "messages": {
+        "app_title": "Path of Exile Sid Game Tools",
+        "health_monitor": "Smart Health Monitor",
+        "skill_combo": "Skill Combo System",
+        "inventory_clear": "One-Click Inventory Clear",
+        "auto_click": "Auto Click Tool",
+        "settings": "Settings",
+        "start": "Start",
+        "stop": "Stop",
+        "exit": "Exit",
+        "language": "Language",
+        "about": "About",
+        "help": "Help"
+      }
+    },
+    "ja": {
+      "name": "日本語",
+      "messages": {
+        "app_title": "Path of Exile Sid ゲームツールボックス",
+        "health_monitor": "スマートヘルスモニター",
+        "skill_combo": "スキルコンボシステム",
+        "inventory_clear": "ワンクリックインベントリクリア",
+        "auto_click": "自動クリックツール",
+        "settings": "設定",
+        "start": "開始",
+        "stop": "停止",
+        "exit": "終了",
+        "language": "言語",
+        "about": "について",
+        "help": "ヘルプ"
+      }
+    }
+  }
+}

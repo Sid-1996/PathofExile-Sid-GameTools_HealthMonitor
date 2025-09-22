@@ -44,7 +44,7 @@ import sys
 # =============================================================================
 # 版本信息 / Version Information
 # =============================================================================
-DEMO_VERSION = "Demo v1.0.3 (Preview)"
+DEMO_VERSION = "Demo v1.0.4 (Preview)"
 FULL_VERSION_REQUIREMENT = "需要 1000 個 GitHub 星星 ⭐ 才能解鎖完整版"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 

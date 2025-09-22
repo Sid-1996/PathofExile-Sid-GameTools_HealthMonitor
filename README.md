@@ -2,6 +2,8 @@
 
 ## 基於圖像識別的 Path of Exile 自動化, 使用 Windows 接口模擬用戶點擊, 無讀取遊戲內存或侵入修改遊戲文件/數據
 
+> 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
+
 ![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 1000⭐=Open Source](https://img.shields.io/badge/Milestone-1000⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
@@ -35,11 +37,12 @@
 
 ### 🌟 **1000 星星 = 完整開源主工具源代碼！**
 
-我們承諾：當這個專案獲得 **1000 個 GitHub 星星** ⭐ 時，將會：
+我們已經分享了完整打包好的工具壓縮檔供下載使用！
+
+當這個專案獲得 **1000 個 GitHub 星星** ⭐ 時，將會額外開放：
 
 - 🔓 **開放主工具完整源代碼** (`src/health_monitor.py` 等核心文件)
 - 📚 **提供詳細的技術文檔** 和開發指南
-- 🛠️ **分享編譯和打包腳本**
 - 🤝 **歡迎社群貢獻和改進**
 
 **目前進度：**
@@ -70,9 +73,9 @@
 
 ## 🚀 安裝與啟動
 
-### 選項 1: 完整獨立 EXE 版本 (v1.0.3)
+### 選項 1: 完整獨立 EXE 版本 (推薦)
 
-1. 從 Releases 下載壓縮檔 `GameTools_HealthMonitor_v1.0.3.zip`
+1. 前往 [Releases 頁面](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) 下載最新版本的壓縮檔
 2. 解壓縮到任意資料夾
 3. 直接執行 `GameTools_HealthMonitor.exe`
 
@@ -148,8 +151,8 @@
 
 ## 🗂️ 版本與更新
 
-- 最新發布說明：`RELEASE_NOTES.md`
-- 當前版本：v1.0.3（雙重按鍵發送機制優化 / GUI 凍結與熱鍵恢復修復 / 完整打包 / 零依賴 / 分頁美化優化 / 功能修復完善）
+- 最新發布說明：[`RELEASE_NOTES.md`](RELEASE_NOTES.md)
+- 最新版本請前往：[Releases 頁面](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases)
 
 ---
 

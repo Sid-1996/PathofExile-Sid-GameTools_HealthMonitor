@@ -16,25 +16,31 @@ GameTools_HealthMonitor/
 │   ├── 使用說明.md              # 使用說明
 │   └── 運作原理.md              # 運作原理
 ├── scripts/                    # 腳本和配置
+│   ├── auto_click.ahk          # AutoHotkey 腳本源碼
+│   ├── GameTools_HealthMonitor_Light.bat    # 輕量版啟動腳本
 │   ├── install_dependencies.bat              # 依賴項安裝腳本
 │   ├── requirements.txt                      # Python 依賴項列表
 │   └── run_monitor.bat                       # 運行腳本
 ├── src/                        # 源代碼
 │   ├── auto_click.exe          # AutoHotkey 腳本執行文件
-│   ├── health_monitor.py       # 主程序
-│   ├── health_monitor_config.json    # 配置文件
-│   └── screenshots/            # 截圖資源
+│   ├── demo_health_monitor.py  # 演示版本主程序
+│   ├── health_monitor.py       # 主程序(暫定)
+│   ├── health_monitor_config.json    # 配置文件(工具儲存時自動產生)
+│   ├── language_packs.json     # 多語言支援檔案
+│   └── screenshots/            # 截圖資源(設置框選時自動產生)
 │       ├── health_monitor_mana_preview.png
 │       ├── health_monitor_preview.png
 │       ├── interface_ui.png
 │       └── inventory_ui.png
 ├── .gitignore                  # Git 忽略文件
-└── README.md                   # 項目說明
+├── PROJECT_STRUCTURE.md        # 項目結構說明
+├── README.md                   # 項目說明（中文）
+└── README_EN.md                # 項目說明（英文）
 ```
 
 ## 📊 文件大小統計
 
-- **總大小**: 1.81 MB
+- **總大小**: 1.49 MB
 - **GitHub 友好**: 適合直接上傳到 GitHub
 - **結構清晰**: 文件分類明確，易於維護
 
