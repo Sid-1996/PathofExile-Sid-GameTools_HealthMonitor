@@ -7,7 +7,7 @@
 #
 # 這個文件是完整版源代碼的預留位置
 #
-#  解鎖條件：需要 1000 個 GitHub 星星 
+#  解鎖條件：需要 500 個 GitHub 星星 
 #
 #  當前狀態 / Current Status
 # -----------------------------------------------------------------------------
@@ -49,7 +49,7 @@ Path of Exile Sid 遊戲工具 - 完整版
 - 熱鍵管理
 - 遊戲交互功能
 
-完整源代碼將在獲得 1000 個 GitHub 星星後開放！
+完整源代碼將在獲得 500 個 GitHub 星星後開放！
 \"""
 
 # =============================================================================
@@ -73,7 +73,7 @@ def main():
     # 標題
     title = tk.Label(
         frame,
-        text=" 完整版源代碼\n\n需要 1000 個 GitHub 星星  才能解鎖",
+        text=" 完整版源代碼\n\n需要 500 個 GitHub 星星  才能解鎖",
         font=("Microsoft YaHei", 14, "bold"),
         justify=tk.CENTER
     )
@@ -81,7 +81,7 @@ def main():
 
     # 說明文字
     info_text = \"""
- 目標：1000 個 GitHub 星星
+ 目標：500 個 GitHub 星星
  進度：請查看倉庫頁面
  獎勵：完整源代碼 + 技術文檔
 
@@ -143,13 +143,13 @@ def show_demo_info(root):
         " GUI 界面預覽\n"
         " 功能說明\n"
         " 解鎖目標展示\n\n"
-        "完整功能需要 1000 星星解鎖！"
+        "完整功能需要 500 星星解鎖！"
     )
 
 if __name__ == "__main__":
     print("=" * 60)
     print(" Path of Exile Sid 遊戲工具 - 完整版預留位置")
-    print(" 需要 1000 個 GitHub 星星  才能解鎖完整源代碼")
+    print(" 需要 500 個 GitHub 星星  才能解鎖完整源代碼")
     print(" 追蹤進度: https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor")
     print("=" * 60)
     print()

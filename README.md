@@ -4,7 +4,7 @@
 
 > 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
 
-![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 1000⭐=Open Source](https://img.shields.io/badge/Milestone-1000⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 500⭐=Open Source](https://img.shields.io/badge/Milestone-500⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
@@ -35,11 +35,11 @@
 
 ## 🎯 開源里程碑目標
 
-### 🌟 **1000 星星 = 完整開源主工具源代碼！**
+### 🌟 **500 星星 = 完整開源主工具源代碼！**
 
 我們已經分享了完整打包好的工具壓縮檔供下載使用！
 
-當這個專案獲得 **1000 個 GitHub 星星** ⭐ 時，將會額外開放：
+當這個專案獲得 **500 個 GitHub 星星** ⭐ 時，將會額外開放：
 
 - 🔓 **開放主工具完整源代碼** (`src/health_monitor.py` 等核心文件)
 - 📚 **提供詳細的技術文檔** 和開發指南
@@ -47,7 +47,7 @@
 
 **目前進度：**
 
-![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 1000 ⭐
+![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 500 ⭐
 
 **加入我們一起達成目標！**
 
@@ -87,7 +87,7 @@
 2. 查看 `src/demo_health_monitor.py` (示範版本)
 3. 查看 `src/health_monitor.py` (完整版預留位置)
 
-**說明**: 示範版本包含 GUI 界面和功能預覽，完整源代碼需要 **1000 個 GitHub 星星** ⭐ 才能解鎖！
+**說明**: 示範版本包含 GUI 界面和功能預覽，完整源代碼需要 **500 個 GitHub 星星** ⭐ 才能解鎖！
 
 ---
 
@@ -195,13 +195,13 @@
 
 ### 🎯 完整開源目標
 
-- 🔒 **完整主工具源代碼** (`src/health_monitor.py`) - 需要 **1000 個 GitHub 星星** ⭐ 解鎖
+- 🔒 **完整主工具源代碼** (`src/health_monitor.py`) - 需要 **500 個 GitHub 星星** ⭐ 解鎖
 - 🔒 **核心算法實現** - 圖像識別和自動化邏輯
 - 🔒 **詳細技術文檔** - 開發指南和 API 說明
 
 ### 🌟 加入我們一起解鎖
 
-當星星數達到 1000 時，將開放所有源代碼，歡迎社群參與開發和改進！
+當星星數達到 500 時，將開放所有源代碼，歡迎社群參與開發和改進！
 
 ---
 

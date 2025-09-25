@@ -1,6 +1,6 @@
 {
   "zh-tw": {
-    "window_title": "Sid遊戲工具 v1.0.4 - 血魔監控 + 一鍵清包 + 自動化工具",
+    "window_title": "Sid遊戲工具 v1.0.5 - 血魔監控 + 一鍵清包 + 自動化工具",
     "tab_health_monitor": "血魔監控",
     "tab_inventory_clear": "一鍵清包",
     "tab_skill_combo": "技能連段",
@@ -456,7 +456,7 @@
     "warning": "警告"
   },
   "en": {
-    "window_title": "Sid Game Tools v1.0.4 - Health Monitor + Auto Clear Inventory + Automation Tools",
+    "window_title": "Sid Game Tools v1.0.5 - Health Monitor + Auto Clear Inventory + Automation Tools",
     "tab_health_monitor": "Health Monitor",
     "tab_inventory_clear": "Auto Clear Inventory",
     "tab_skill_combo": "Skill Combo",

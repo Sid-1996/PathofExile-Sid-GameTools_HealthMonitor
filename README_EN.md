@@ -4,7 +4,7 @@
 
 > 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
 
-![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 1000⭐=Open Source](https://img.shields.io/badge/Milestone-1000⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 500⭐=Open Source](https://img.shields.io/badge/Milestone-500⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
@@ -35,11 +35,11 @@ Demo and tutorial [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
 
 ## 🎯 Open Source Milestone Goal
 
-### 🌟 **1000 Stars = Complete Open Source Main Tool Source Code!**
+### 🌟 **500 Stars = Complete Open Source Main Tool Source Code!**
 
 We have already shared the complete packaged tool archive for download!
 
-When this project gets **1000 GitHub stars** ⭐, we will additionally open:
+When this project gets **500 GitHub stars** ⭐, we will additionally open:
 
 - 🔓 **Open complete main tool source code** (`src/health_monitor.py` and other core files)
 - 📚 **Provide detailed technical documentation** and development guides
@@ -47,7 +47,7 @@ When this project gets **1000 GitHub stars** ⭐, we will additionally open:
 
 **Current Progress:**
 
-![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 1000 ⭐
+![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 500 ⭐
 
 **Join us in achieving this goal!**
 
@@ -87,7 +87,7 @@ When this project gets **1000 GitHub stars** ⭐, we will additionally open:
 2. Check `src/demo_health_monitor.py` (demo version)
 3. Check `src/health_monitor.py` (full version placeholder)
 
-**Note**: Demo version includes GUI interface and feature preview, complete source code requires **1000 GitHub stars** ⭐ to unlock!
+**Note**: Demo version includes GUI interface and feature preview, complete source code requires **500 GitHub stars** ⭐ to unlock!
 
 ---
 
@@ -195,13 +195,13 @@ This project adopts a progressive open source strategy:
 
 ### 🎯 Complete Open Source Goal
 
-- 🔒 **Complete Main Tool Source Code** (`src/health_monitor.py`) - Requires **1000 GitHub stars** ⭐ to unlock
+- 🔒 **Complete Main Tool Source Code** (`src/health_monitor.py`) - Requires **500 GitHub stars** ⭐ to unlock
 - 🔒 **Core Algorithm Implementation** - Image recognition and automation logic
 - 🔒 **Detailed Technical Documentation** - Development guides and API documentation
 
 ### 🌟 Join Us to Unlock
 
-When star count reaches 1000, all source code will be open, welcome community participation in development and improvement!
+When star count reaches 500, all source code will be open, welcome community participation in development and improvement!
 
 ---
 
