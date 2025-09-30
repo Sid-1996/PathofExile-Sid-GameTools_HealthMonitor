@@ -1,5 +1,5 @@
 # =============================================================================
-# 🚀 Path of Exile Sid 遊戲工具 - 示範版本 (Demo Version)
+# 🚀 Path of Exile Sid 輔助工具 - 示範版本 (Demo Version)
 # =============================================================================
 #
 # ⚠️  重要通知 / IMPORTANT NOTICE
@@ -44,7 +44,7 @@ import sys
 # =============================================================================
 # 版本信息 / Version Information
 # =============================================================================
-DEMO_VERSION = "Demo v1.0.5 (Preview)"
+DEMO_VERSION = "Demo v1.0.6 (Preview)"
 FULL_VERSION_REQUIREMENT = "需要 500 個 GitHub 星星 ⭐ 才能解鎖完整版"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 
@@ -61,7 +61,7 @@ class HealthMonitorDemo:
     def create_main_window(self):
         """創建主窗口 (Create Main Window)"""
         self.root = tk.Tk()
-        self.root.title(f"Path of Exile Sid 遊戲工具 - {DEMO_VERSION}")
+        self.root.title(f"Path of Exile Sid 輔助工具 - {DEMO_VERSION}")
         self.root.geometry("800x600")
         self.root.resizable(True, True)
 
@@ -72,7 +72,7 @@ class HealthMonitorDemo:
         # 標題
         title_label = ttk.Label(
             main_frame,
-            text="🎯 Path of Exile Sid 遊戲工具\n示範版本 (Demo Version)",
+            text="🎯 Path of Exile Sid 輔助工具\n示範版本 (Demo Version)",
             font=("Microsoft YaHei", 16, "bold"),
             justify=tk.CENTER
         )
@@ -209,7 +209,7 @@ class HealthMonitorDemo:
 # 主程序入口 (Main Program Entry)
 # =============================================================================
 if __name__ == "__main__":
-    print("🚀 Path of Exile Sid 遊戲工具 - 示範版本")
+    print("🚀 Path of Exile Sid 輔助工具 - 示範版本")
     print(f"📋 版本: {DEMO_VERSION}")
     print(f"🎯 解鎖條件: {FULL_VERSION_REQUIREMENT}")
     print(f"📊 追蹤進度: https://github.com/{GITHUB_REPO}/stargazers")

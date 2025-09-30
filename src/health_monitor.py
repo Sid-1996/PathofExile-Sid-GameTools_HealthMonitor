@@ -1,5 +1,5 @@
 ﻿# =============================================================================
-#  Path of Exile Sid 遊戲工具 - 完整版預留位置
+#  Path of Exile Sid 輔助工具 - 完整版預留位置
 # =============================================================================
 #
 #   重要通知 / IMPORTANT NOTICE
@@ -40,7 +40,7 @@
 # =============================================================================
 
 \"""
-Path of Exile Sid 遊戲工具 - 完整版
+Path of Exile Sid 輔助工具 - 完整版
 
 這個文件包含完整的工具實現，包括：
 - 圖像識別和處理
@@ -63,7 +63,7 @@ import sys
 def main():
     \"""臨時主函數 - 顯示解鎖信息\"""
     root = tk.Tk()
-    root.title("Path of Exile Sid 遊戲工具 - 完整版預留")
+    root.title("Path of Exile Sid 輔助工具 - 完整版預留")
     root.geometry("600x400")
 
     # 創建主框架
@@ -148,7 +148,7 @@ def show_demo_info(root):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print(" Path of Exile Sid 遊戲工具 - 完整版預留位置")
+    print(" Path of Exile Sid 輔助工具 - 完整版預留位置")
     print(" 需要 500 個 GitHub 星星  才能解鎖完整源代碼")
     print(" 追蹤進度: https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor")
     print("=" * 60)
