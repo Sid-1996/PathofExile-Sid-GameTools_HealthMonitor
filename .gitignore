@@ -1,3 +1,7 @@
+# Temporary files
+.tmp.driveupload/
+.tmp.drivedownload/
+
 # Python
 __pycache__/
 *.py[cod]
