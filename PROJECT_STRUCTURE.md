@@ -4,40 +4,28 @@
 
 ```
 GameTools_HealthMonitor/
-├── .github/                    # GitHub 配置和文檔
-│   ├── FUNDING.yml            # 贊助配置
-│   └── workflows/             # GitHub Actions 工作流
-├── assets/                     # 資源文件
-│   ├── GameTools_HealthMonitor.ico    # 應用圖標
-│   └── 免責聲明.txt              # 免責聲明
-├── docs/                       # 詳細文檔
-│   ├── LICENSE.txt             # 授權文件
-│   ├── RELEASE_NOTES.md        # 發佈說明
-│   ├── 使用指南.md              # 使用指南
-│   ├── 使用說明.md              # 使用說明
-│   └── 運作原理.md              # 運作原理
-├── scripts/                    # 腳本和工具
-│   ├── auto_click.ahk          # AutoHotkey 腳本源碼
-│   ├── GameTools_HealthMonitor_Light.bat    # 輕量版啟動腳本
-│   ├── install_dependencies.bat              # 依賴項安裝腳本
-│   ├── requirements.txt                      # Python 依賴項列表
-│   └── run_monitor.bat                       # 運行腳本
-├── src/                        # 源代碼
-│   ├── health_monitor.py       # 主程序
-│   ├── health_monitor_config.json    # 配置文件(工具儲存時自動產生)
-│   ├── language_packs.json     # 多語言支援檔案
-│   └── screenshots/            # 截圖資源(設置框選時自動產生)
-│       ├── health_monitor_mana_preview.png
-│       ├── health_monitor_preview.png
-│       ├── interface_ui.png
-│       └── inventory_ui.png
-├── tools/                      # 開發工具
-│   └── build.py               # 打包腳本
-├── .gitignore                  # Git 忽略文件
-├── LICENSE                     # 授權文件
-├── PROJECT_STRUCTURE.md        # 項目結構說明
-├── README.md                   # 項目說明（中文）
-└── README_EN.md                # 項目說明（英文）
+├── .github/                    # GitHub 配置
+├── assets/                     # 圖標與資源
+├── docs/                       # 使用與技術文檔
+├── scripts/                    # 一鍵流程腳本
+│   ├── install_dependencies.bat
+│   ├── run_monitor.bat
+│   ├── build_exe.bat
+│   └── test_built_exe.bat
+├── src/                        # 主開發目錄（source of truth）
+│   ├── health_monitor.py
+│   ├── demo_health_monitor.py
+│   ├── language_packs.json
+│   └── screenshots/
+├── src for DEVELOPER/          # 相容層（舊流程 fallback）
+├── tools/                      # 打包工具
+│   └── build.py
+├── AGENTS.md                   # 給下一個 AI 的快速工作流
+├── .gitignore
+├── LICENSE
+├── PROJECT_STRUCTURE.md
+├── README.md
+└── README_EN.md
 ```
 
 ## 📊 文件大小統計 (v1.0.7)
@@ -100,6 +88,12 @@ test: 測試相關
 chore: 構建過程或工具配置更新
 ```
 
+## 🤖 AI 協作入口
+
+- 請先閱讀 `AGENTS.md`
+- 主要修改目錄：`src/`、`scripts/`、`tools/`
+- 打包前後流程：`scripts/build_exe.bat` → `scripts/test_built_exe.bat`
+
 ## 📈 版本歷史
 
 - **v1.0.7** (2026-04-29): 性能優化與穩定性提升版
@@ -124,11 +118,3 @@ chore: 構建過程或工具配置更新
 
 本項目採用 AGPL v3 授權 - 查看 [LICENSE](LICENSE) 文件了解詳情
 3. **運行程序**: 雙擊 `scripts/run_monitor.bat`
-
-## 📂 目錄說明
-
-- **assets/**: 存放圖標、聲明等資源文件
-- **docs/**: 所有文檔，包括授權、使用指南等
-- **scripts/**: 所有腳本文件和配置文件
-- **src/**: 源代碼和資源文件
-- **.github/**: GitHub 相關配置

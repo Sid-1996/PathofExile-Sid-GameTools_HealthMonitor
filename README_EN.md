@@ -71,13 +71,13 @@ Latest updates and guides are published on [Facebook](https://www.facebook.com/t
 
 **Note**: EXE version includes all dependencies, larger file size (~50MB+)
 
-### Option 2: Demo Source Code Version (Learning & Preview)
+### Option 2: Source Code Mode (Development & Customization)
 
 1. Download source code: `git clone` or download ZIP
 2. Check `src/demo_health_monitor.py` (demo version)
-3. Check `src/health_monitor.py` (full version placeholder)
+3. Run `scripts/run_monitor.bat` or start `src/health_monitor.py` directly
 
-**Note**: Demo version includes GUI interface and feature preview, complete source code requires **500 GitHub stars** ⭐ to unlock!
+**Note**: This repository already contains the main source code and supports direct development, debugging, and local packaging.
 
 ---
 
@@ -174,24 +174,11 @@ This software is for personal learning and communication only, limited to person
 
 ## 📂 Project Structure
 
-This project adopts a progressive open source strategy:
-
-### 🔧 Currently Provided Content
-
-- ✅ **Demo Source Code** (`src/demo_health_monitor.py`) - Includes GUI interface and feature preview
-- ✅ **Helper Scripts** (`scripts/auto_click.ahk`) - AutoHotkey auto clicker tool
-- ✅ **Documentation and Resources** (`docs/`, `assets/`) - User guides and image resources
-- ✅ **Build Scripts** (`tools/`) - Packaging and build tools
-
-### 🎯 Complete Open Source Goal
-
-- 🔒 **Complete Main Tool Source Code** (`src/health_monitor.py`) - Requires **500 GitHub stars** ⭐ to unlock
-- 🔒 **Core Algorithm Implementation** - Image recognition and automation logic
-- 🔒 **Detailed Technical Documentation** - Development guides and API documentation
-
-### 🌟 Join Us to Unlock
-
-When star count reaches 500, all source code will be open, welcome community participation in development and improvement!
+- `src/`: primary source and language packs (main development directory)
+- `src for DEVELOPER/`: legacy compatibility directory for fallback workflows
+- `scripts/`: one-click install/run/build/test scripts
+- `tools/`: packaging pipeline and utilities
+- `docs/`: user and technical documentation
 
 ---
 

@@ -11,6 +11,8 @@ import subprocess
 import shutil
 from datetime import datetime
 
+APP_VERSION = "1.0.7"
+
 class GameToolBuilder:
     def __init__(self):
         self.project_dir = os.path.dirname(os.path.dirname(__file__))
@@ -39,7 +41,14 @@ class GameToolBuilder:
 
     def log(self, message):
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] {message}")
+        line = f"[{timestamp}] {message}"
+        try:
+            print(line)
+        except UnicodeEncodeError:
+            # Fallback for Windows consoles using legacy encodings (e.g. cp950).
+            encoding = sys.stdout.encoding or "utf-8"
+            safe_line = line.encode(encoding, errors="replace").decode(encoding, errors="replace")
+            print(safe_line)
 
     def start_step(self, step_name):
         self.step_times[step_name] = datetime.now()
@@ -244,13 +253,29 @@ class GameToolBuilder:
         """創建安裝包"""
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
 
-        use_src = self.src_dir if os.path.exists(self.src_dir) else self.compat_src_dir
-
         # 複製必要檔案
         files_to_copy = [
-            (os.path.join(use_src, "auto_click.exe"), "auto_click.exe"),
-            (os.path.join(use_src, "使用說明.md"), "使用說明.md"),
-            (os.path.join(use_src, "language_packs.json"), "language_packs.json"),
+            (
+                self._first_existing_path(
+                    os.path.join(self.src_dir, "auto_click.exe"),
+                    os.path.join(self.compat_src_dir, "auto_click.exe"),
+                ),
+                "auto_click.exe",
+            ),
+            (
+                self._first_existing_path(
+                    os.path.join(self.src_dir, "使用說明.md"),
+                    os.path.join(self.compat_src_dir, "使用說明.md"),
+                ),
+                "使用說明.md",
+            ),
+            (
+                self._first_existing_path(
+                    os.path.join(self.src_dir, "language_packs.json"),
+                    os.path.join(self.compat_src_dir, "language_packs.json"),
+                ),
+                "language_packs.json",
+            ),
         ]
 
         for src_path, dst_name in files_to_copy:
@@ -294,7 +319,7 @@ start "" "GameTools_HealthMonitor.exe"
 如有問題，請參考使用說明.md或查看源代碼。
 
 ## 版本資訊
-- 版本：v1.0.6
+- 版本：v{APP_VERSION}
 - 構建時間：{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 - 版本類型：無功能限制
 
@@ -332,7 +357,7 @@ start "" "GameTools_HealthMonitor.exe"
 
         # 創建 ZIP
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        zip_name = f"GameTools_HealthMonitor_v1.0.6_{timestamp}"
+        zip_name = f"GameTools_HealthMonitor_v{APP_VERSION}_{timestamp}"
         zip_path = os.path.join(self.dist_dir, zip_name)
 
         shutil.make_archive(zip_path, 'zip', package_dir)
