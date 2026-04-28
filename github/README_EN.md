@@ -8,9 +8,9 @@
 
 ---
 
-## [Tutorial Video](https://www.youtube.com/watch?v=qRe8GODRx98) | English Instructions
+## [Facebook Page](https://www.facebook.com/talksometingshit/) | English Instructions
 
-Demo and tutorial [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
+Latest updates and guides are published on [Facebook](https://www.facebook.com/talksometingshit/)
 
 ---
 
@@ -91,11 +91,11 @@ When this project gets **500 GitHub stars** ⭐, we will additionally open:
 
 ---
 
-## 📹 Tool Tutorial Video
+## 📹 Guides & Updates
 
-[![YouTube Tutorial Video](https://img.shields.io/badge/YouTube-Tutorial_Video-red)](https://www.youtube.com/watch?v=qRe8GODRx98)
+[![Facebook Page](https://img.shields.io/badge/Facebook-Page-blue)](https://www.facebook.com/talksometingshit/)
 
-> 📺 **Recommended to watch the tutorial video first** to quickly understand tool functions and settings!
+> 📺 **Check the pinned Facebook post first** to quickly understand the latest setup and workflow.
 
 ---
 

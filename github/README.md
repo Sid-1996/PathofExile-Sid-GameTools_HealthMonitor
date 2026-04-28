@@ -8,9 +8,9 @@
 
 ---
 
-## [教學影片](https://www.youtube.com/watch?v=qRe8GODRx98) | 中文說明
+## [Facebook 專頁](https://www.facebook.com/talksometingshit/) | 中文說明
 
-演示和教程 [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
+最新消息與教學更新請見 [Facebook](https://www.facebook.com/talksometingshit/)
 
 ---
 
@@ -91,11 +91,11 @@
 
 ---
 
-## 📹 工具教學影片
+## 📹 教學與更新
 
-[![YouTube 教學影片](https://img.shields.io/badge/YouTube-教學影片-red)](https://www.youtube.com/watch?v=qRe8GODRx98)
+[![Facebook 專頁](https://img.shields.io/badge/Facebook-專頁-blue)](https://www.facebook.com/talksometingshit/)
 
-> 📺 **推薦先觀看教學影片**，快速了解工具功能與設定方法！
+> 📺 **建議先看 Facebook 專頁置頂貼文**，快速了解最新功能與設定方式。
 
 ---
 

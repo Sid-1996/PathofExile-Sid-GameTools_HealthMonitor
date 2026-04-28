@@ -1,16 +1,17 @@
-# ![Health Monitor Icon](/assets/GameTools_HealthMonitor.ico) Path of Exile Sid Game Tools
+# Path of Exile Sid Game Tools
 
-## Image Recognition Based Path of Exile Automation Tool, Uses Windows Interface to Simulate User Clicks, No Game Memory Reading or File Modification
+> A Windows automation toolkit based on screen recognition and input simulation for health/mana monitoring, skill combos, and inventory routines.  
+> It does not read game memory and does not modify game files.
 
 > 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
 
-![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 500⭐=Open Source](https://img.shields.io/badge/Milestone-500⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
-## [Tutorial Video](https://www.youtube.com/watch?v=qRe8GODRx98) | English Instructions
+## [Facebook Page](https://www.facebook.com/talksometingshit/) | English Instructions
 
-Demo and tutorial [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
+Latest updates and guides are published on [Facebook](https://www.facebook.com/talksometingshit/)
 
 ---
 
@@ -33,29 +34,18 @@ Demo and tutorial [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
 
 ---
 
-## 🎯 Open Source Milestone Goal
+## 📦 Download & Usage
 
-### 🌟 **500 Stars = Complete Open Source Main Tool Source Code!**
+- End users: get the packaged build from [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) and run `GameTools_HealthMonitor.exe`
+- Developers: use the source workflow below
 
-We have already shared the complete packaged tool archive for download!
+## 🧭 Local Dev Quick Start
 
-When this project gets **500 GitHub stars** ⭐, we will additionally open:
-
-- 🔓 **Open complete main tool source code** (`src/health_monitor.py` and other core files)
-- 📚 **Provide detailed technical documentation** and development guides
-- 🤝 **Welcome community contributions and improvements**
-
-**Current Progress:**
-
-![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 500 ⭐
-
-**Join us in achieving this goal!**
-
-- ⭐ **Give the project a star** to support us
-- 🔄 **Share with friends** to let more people know
-- 💬 **Provide suggestions in Issues** to help improve
-
-> 💡 **Why set this goal?** We believe open source brings better tools and stronger communities. Your support will help us move towards completely transparent development!
+- Install dependencies: `scripts/install_dependencies.bat`
+- Run from source: `scripts/run_monitor.bat`
+- Build EXE: `scripts/build_exe.bat`
+- Test built EXE: `scripts/test_built_exe.bat`
+- File purpose guide: `docs/檔案用途與建議流程.md`
 
 ---
 
@@ -91,11 +81,11 @@ When this project gets **500 GitHub stars** ⭐, we will additionally open:
 
 ---
 
-## 📹 Tool Tutorial Video
+## 📹 Guides & Updates
 
-[![YouTube Tutorial Video](https://img.shields.io/badge/YouTube-Tutorial_Video-red)](https://www.youtube.com/watch?v=qRe8GODRx98)
+[![Facebook Page](https://img.shields.io/badge/Facebook-Page-blue)](https://www.facebook.com/talksometingshit/)
 
-> 📺 **Recommended to watch the tutorial video first** to quickly understand tool functions and settings!
+> 📺 **Check the pinned Facebook post first** to quickly understand the latest setup and workflow.
 
 ---
 

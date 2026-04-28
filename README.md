@@ -1,24 +1,17 @@
-# ![Health Monitor Icon](/assets/GameTools_HealthMonitor.ico) Path of Exile Sid輔助工具
+# Path of Exile Sid 輔助工具
 
-## 基於圖像識別的 Path of Exile 自動化, 使用 Windows 接口模擬用戶點擊, 無讀取遊戲內存或侵入修改遊戲文件/數據
+> 以影像辨識與輸入模擬為核心的 Windows 工具，提供血魔監控、技能連段與背包自動化功能。  
+> 不讀取遊戲記憶體、不修改遊戲檔案。
 
 > 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
 
-## 🧭 本地開發快速入口（重要）
-
-- 安裝依賴：`scripts/install_dependencies.bat`
-- 直接跑 Python：`scripts/run_monitor.bat`
-- 一鍵打包 EXE：`scripts/build_exe.bat`
-- 打包後測試 EXE：`scripts/test_built_exe.bat`
-- 檔案用途說明：`docs/檔案用途與建議流程.md`
-
-![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 500⭐=Open Source](https://img.shields.io/badge/Milestone-500⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
 
-## [教學影片](https://www.youtube.com/watch?v=qRe8GODRx98) | 中文說明
+## [Facebook 專頁](https://www.facebook.com/talksometingshit/) | 中文說明
 
-演示和教程 [YouTube](https://www.youtube.com/watch?v=qRe8GODRx98)
+最新消息與教學更新請見 [Facebook](https://www.facebook.com/talksometingshit/)
 
 ---
 
@@ -41,29 +34,18 @@
 
 ---
 
-## 🎯 開源里程碑目標
+## 📦 下載與使用
 
-### 🌟 **500 星星 = 完整開源主工具源代碼！**
+- 一般使用者：到 [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) 下載壓縮包並執行 `GameTools_HealthMonitor.exe`
+- 開發者：直接使用原始碼（見下方「本機開發快速入口」）
 
-我們已經分享了完整打包好的工具壓縮檔供下載使用！
+## 🧭 本機開發快速入口
 
-當這個專案獲得 **500 個 GitHub 星星** ⭐ 時，將會額外開放：
-
-- 🔓 **開放主工具完整源代碼** (`src/health_monitor.py` 等核心文件)
-- 📚 **提供詳細的技術文檔** 和開發指南
-- 🤝 **歡迎社群貢獻和改進**
-
-**目前進度：**
-
-![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow&style=for-the-badge) / 500 ⭐
-
-**加入我們一起達成目標！**
-
-- ⭐ **給專案一個星星** 來支持我們
-- 🔄 **分享給朋友** 讓更多人知道
-- 💬 **在 Issues 中提供建議** 幫助改進
-
-> 💡 **為什麼設定這個目標？** 我們相信開源能帶來更好的工具和更強大的社群。您的支持將幫助我們邁向完全透明的開發！
+- 安裝依賴：`scripts/install_dependencies.bat`
+- 直接跑 Python：`scripts/run_monitor.bat`
+- 一鍵打包 EXE：`scripts/build_exe.bat`
+- 打包後測試 EXE：`scripts/test_built_exe.bat`
+- 檔案用途說明：`docs/檔案用途與建議流程.md`
 
 ---
 
@@ -99,11 +81,11 @@
 
 ---
 
-## 📹 工具教學影片
+## 📹 教學與更新
 
-[![YouTube 教學影片](https://img.shields.io/badge/YouTube-教學影片-red)](https://www.youtube.com/watch?v=qRe8GODRx98)
+[![Facebook 專頁](https://img.shields.io/badge/Facebook-專頁-blue)](https://www.facebook.com/talksometingshit/)
 
-> 📺 **推薦先觀看教學影片**，快速了解工具功能與設定方法！
+> 📺 **建議先看 Facebook 專頁置頂貼文**，快速了解最新功能與設定方式。
 
 ---
 

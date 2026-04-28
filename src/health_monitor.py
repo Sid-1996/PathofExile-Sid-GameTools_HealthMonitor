@@ -1969,7 +1969,7 @@ class HealthMonitor:
         video_frame.pack(pady=(0, 10))
 
         video_button = ttk.Button(video_frame, text=self.get_text("watch_demo_video"),
-                                 command=lambda: self.open_video_link("https://youtu.be/qRe8GODRx98"))
+                                 command=lambda: self.open_video_link("https://www.facebook.com/talksometingshit/"))
         video_button.pack()
 
         video_note_label = ttk.Label(video_frame, text=self.get_text("video_recommendation"),
