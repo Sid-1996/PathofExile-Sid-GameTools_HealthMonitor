@@ -1,0 +1,9 @@
+opencv-python==4.8.1.78
+numpy==1.24.3
+Pillow==10.0.1
+mss==9.0.1
+keyboard==0.13.5
+PyGetWindow==0.0.9
+pyautogui==0.9.54
+psutil==5.9.5
+requests==2.31.0

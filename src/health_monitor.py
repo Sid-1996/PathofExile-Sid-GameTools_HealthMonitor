@@ -81,7 +81,7 @@ def load_language_packs():
 LANGUAGE_PACKS = load_language_packs()
 
 # 版本資訊
-CURRENT_VERSION = "v1.0.6"
+CURRENT_VERSION = "v1.0.7"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -310,212 +310,6 @@ class CustomMessageBox:
         CustomMessageBox.result = result
         window.destroy()
 
-class WindowManager:
-    """統一管理主視窗的 topmost / alpha / iconify 行為"""
-
-    def __init__(self, root):
-        self.root = root
-        self._min_alpha = 0.2
-        self._max_alpha = 1.0
-        self._default_monitor_alpha = 0.8
-        # GUI 互動保護：當使用者主動與 GUI 互動時，暫停自動失焦判斷
-        self._gui_interaction_active = False
-        self._gui_interaction_timer = None
-
-    # ------------------------------------------------------------------
-    # 統一動作允許判斷
-    # ------------------------------------------------------------------
-    def is_action_allowed(self, action_name: str, window_title: str,
-                          global_pause: bool) -> tuple[bool, str]:
-        """
-        統一判斷熱鍵動作是否允許執行。
-        回傳 (allowed: bool, reason: str)。
-
-        規則：
-        1. 全域暫停中 → 拒絕
-        2. 無遊戲視窗標題設定 → 拒絕
-        3. 遊戲視窗不在前台（且 GUI 互動保護未啟用）→ 拒絕
-        4. 其餘 → 允許
-        """
-        if global_pause:
-            return False, f"按下 {action_name} - 因全域暫停模式而跳過執行"
-
-        if not window_title:
-            return False, f"{action_name} 執行失敗 - 未設定遊戲視窗"
-
-        # 若 GUI 互動保護已啟用（使用者剛剛點擊 GUI），放行動作
-        # 實際場景：使用者手動點測試按鈕而非熱鍵觸發，此時不需要遊戲在前台
-        if self._gui_interaction_active:
-            return True, ""
-
-        # 檢查遊戲視窗是否在前台
-        if not self._is_foreground(window_title):
-            return False, f"{action_name} 執行取消 - 遊戲視窗不在前台"
-
-        return True, ""
-
-    def _is_foreground(self, window_title: str) -> bool:
-        """檢查指定標題視窗是否在前台（Windows API）。"""
-        try:
-            import ctypes
-            user32 = ctypes.windll.user32
-            hwnd = user32.GetForegroundWindow()
-            length = user32.GetWindowTextLengthW(hwnd)
-            if length <= 0:
-                return False
-            buf = ctypes.create_unicode_buffer(length + 1)
-            user32.GetWindowTextW(hwnd, buf, length + 1)
-            return window_title.lower() in buf.value.lower()
-        except Exception:
-            return False
-
-    # ------------------------------------------------------------------
-    # GUI 互動保護（讓 GUI 操作時暫停「不在前台就拒絕」判斷）
-    # ------------------------------------------------------------------
-    def begin_gui_interaction(self, duration_ms: int = 3000):
-        """
-        標記 GUI 互動保護期開始。
-        duration_ms 後自動解除，或呼叫 end_gui_interaction() 手動解除。
-        """
-        self._gui_interaction_active = True
-        if self._gui_interaction_timer is not None:
-            try:
-                self.root.after_cancel(self._gui_interaction_timer)
-            except Exception:
-                pass
-        self._gui_interaction_timer = self.root.after(
-            duration_ms, self.end_gui_interaction)
-
-    def end_gui_interaction(self):
-        """解除 GUI 互動保護。"""
-        self._gui_interaction_active = False
-        self._gui_interaction_timer = None
-
-    def bring_to_front(self):
-        """
-        將主視窗帶到前台，並自動啟用 GUI 互動保護。
-        適用於使用者點擊工具列、從工作列恢復視窗等場景。
-        """
-        try:
-            self.root.deiconify()
-            self.root.lift()
-            self.root.focus_force()
-            self.begin_gui_interaction(3000)
-        except tk.TclError as e:
-            print(f"bring_to_front 失敗: {e}")
-
-    def _clamp_alpha(self, alpha):
-        try:
-            alpha = float(alpha)
-        except (TypeError, ValueError):
-            alpha = self._max_alpha
-        return max(self._min_alpha, min(self._max_alpha, alpha))
-
-    def set_topmost(self, enabled):
-        try:
-            self.root.attributes("-topmost", bool(enabled))
-        except tk.TclError as e:
-            print(f"設定 topmost 失敗: {e}")
-
-    def set_alpha(self, alpha):
-        try:
-            self.root.attributes("-alpha", self._clamp_alpha(alpha))
-        except tk.TclError as e:
-            print(f"設定 alpha 失敗: {e}")
-
-    def iconify(self):
-        try:
-            self.window_manager.minimize_main(self.should_keep_topmost())
-        except tk.TclError as e:
-            print(f"最小化視窗失敗: {e}")
-
-    def deiconify(self):
-        try:
-            self.root.deiconify()
-        except tk.TclError as e:
-            print(f"恢復視窗失敗: {e}")
-
-    def withdraw(self):
-        try:
-            self.root.withdraw()
-        except tk.TclError as e:
-            print(f"隱藏視窗失敗: {e}")
-
-    def minimize_main(self, keep_topmost=False, alpha=None):
-        """主視窗最小化前統一處理屬性。"""
-        if alpha is not None:
-            self.set_alpha(alpha)
-        self.apply_user_topmost(keep_topmost)
-        self.iconify()
-
-    def restore_main(self, keep_topmost=False, alpha=1.0, bring_to_front=True):
-        """主視窗還原後統一處理屬性。"""
-        self.deiconify()
-        self.set_alpha(alpha)
-        self.apply_user_topmost(keep_topmost)
-        if bring_to_front:
-            try:
-                self.root.lift()
-                self.root.focus_force()
-            except tk.TclError as e:
-                print(f"恢復焦點失敗: {e}")
-
-    def apply_user_topmost(self, always_on_top):
-        """依據使用者偏好立即套用置頂狀態"""
-        self.set_topmost(always_on_top)
-
-    def apply_monitoring_mode(self, monitoring, always_on_top, monitor_alpha=None):
-        """
-        監控模式統一套用：
-        - 監控中：套用半透明 + 使用者置頂偏好
-        - 非監控：恢復不透明 + 使用者置頂偏好
-        """
-        if monitoring:
-            self.set_alpha(self._default_monitor_alpha if monitor_alpha is None else monitor_alpha)
-        else:
-            self.set_alpha(1.0)
-        self.apply_user_topmost(always_on_top)
-
-    def apply_hierarchy(self, window, level, keep_main_topmost):
-        """
-        管理視窗層級系統
-        層級從高到低: CHILD > SETTINGS > MAIN
-        """
-        try:
-            # 先清空所有既有置頂狀態
-            self.set_topmost(False)
-            for child in self.root.winfo_children():
-                if isinstance(child, tk.Toplevel):
-                    try:
-                        child.attributes("-topmost", False)
-                    except tk.TclError:
-                        pass
-
-            # 再依照層級決定
-            if level == "CHILD":
-                window.attributes("-topmost", True)
-                if keep_main_topmost:
-                    self.set_topmost(True)
-            elif level == "SETTINGS":
-                if keep_main_topmost:
-                    self.set_topmost(True)
-                window.attributes("-topmost", True)
-            elif level == "MAIN":
-                if keep_main_topmost:
-                    self.set_topmost(True)
-        except Exception as e:
-            print(f"管理視窗層級時發生錯誤: {e}")
-
-    def on_game_focus_lost(self):
-        """遊戲失焦時，讓輔助視窗轉為低干擾狀態。"""
-        # 失焦時避免輔助視窗搶焦點或遮擋
-        self.set_topmost(False)
-        self.set_alpha(1.0)
-
-    def on_game_focus_regained(self, monitoring, always_on_top):
-        """遊戲回到前景後，恢復監控模式視窗狀態。"""
-        self.apply_monitoring_mode(monitoring, always_on_top)
-
 class HealthMonitor:
     def get_text(self, key):
         """獲取本地化文字"""
@@ -682,15 +476,6 @@ class HealthMonitor:
             self.language_var.set(display_name)
             print("使用者取消語言切換，保持原語言設定")
 
-    def _rebuild_tab_min_sizes(self):
-        """依目前語言重建 tab_min_sizes（顯示名稱 → 最小尺寸）映射。"""
-        if not hasattr(self, '_tab_size_map'):
-            return
-        self.tab_min_sizes = {
-            self.get_text(key): size
-            for key, size in self._tab_size_map.items()
-        }
-
     def update_ui_language(self):
         """更新UI語言"""
         try:
@@ -705,9 +490,6 @@ class HealthMonitor:
             self.notebook.tab(4, text=self.get_text("tab_help"))
             self.notebook.tab(5, text=self.get_text("tab_version"))
             self.notebook.tab(6, text=self.get_text("tab_about"))
-
-            # 切換語言後重建分頁尺寸映射，確保 adjust_window_for_tab 仍能找到對應尺寸
-            self._rebuild_tab_min_sizes()
 
             # 更新Treeview標題
             if hasattr(self, 'settings_tree'):
@@ -963,14 +745,13 @@ class HealthMonitor:
         _app_instance = self  # 保存全局引用
 
         self.root = root
-        self.window_manager = WindowManager(self.root)
 
         self.root.title(self.get_text("window_title"))
         # 初始設定為中等大小的視窗，讓智能自適應功能根據分頁調整
         self.root.geometry("800x600")
         self.root.minsize(650, 500)    # 設定最小尺寸防止內容被擠壓，降低最小值
         # 移除預設的 -topmost 設定，讓設定載入時決定
-        self.window_manager.set_alpha(1.0)  # 預設完全不透明        # 設定檔案路徑 - 使用應用程式目錄確保在打包後也能正確存取
+        self.root.attributes("-alpha", 1.0)  # 預設完全不透明        # 設定檔案路徑 - 使用應用程式目錄確保在打包後也能正確存取
         self.config_file = os.path.join(get_app_dir(), "health_monitor_config.json")
 
         # 記錄應用程式啟動時間
@@ -1102,6 +883,12 @@ class HealthMonitor:
         self.monitoring_was_active = False  # 記錄血魔監控在暫停前的狀態
         self.combo_was_running = False  # 記錄技能連段在暫停前的狀態
 
+        # ========== 線程同步機制 ==========
+        # 使用 RLock 允許同一線程多次獲取鎖
+        self.monitoring_lock = threading.RLock()  # 監控狀態的鎖
+        self.combo_lock = threading.RLock()  # 連段狀態的鎖
+        self.global_pause_lock = threading.RLock()  # 全域暫停狀態的鎖
+
         # 狀態更新控制變數
         self.last_status_update = 0
         self.status_update_interval = 100  # 100ms更新一次狀態
@@ -1164,7 +951,7 @@ class HealthMonitor:
         self.center_window()
 
         # 確保GUI最上方設定正確應用（無論設定載入是否成功）
-        self.window_manager.apply_user_topmost(self.always_on_top_var.get())
+        self.root.attributes("-topmost", self.always_on_top_var.get())
 
         # 設置全域滾輪支持
         self.update_loading_status("正在設置功能...")
@@ -1180,7 +967,6 @@ class HealthMonitor:
         # 監控狀態
         self.monitoring = False
         self.monitor_thread = None
-        self.game_focus_lost = False
 
         # 快捷鍵設定
         self.setup_hotkeys()
@@ -1190,10 +976,6 @@ class HealthMonitor:
 
         # 設置右鍵中斷功能
         self.setup_mouse_interrupt()
-
-        # 綁定 GUI 焦點事件 — 使用者點擊或喚醒 GUI 時啟動互動保護
-        self.root.bind("<FocusIn>", self._on_root_focus_in)
-        self.root.bind("<Button-1>", self._on_root_click)
 
         # 應用程式啟動完成訊息
         self.update_loading_status("即將完成...")
@@ -1205,57 +987,6 @@ class HealthMonitor:
 
         # 關閉載入提示視窗
         self.close_loading_window()
-
-        # 為重要設定變數加上自動儲存 trace（變更後 2 秒靜默存檔）
-        self._setup_autosave_traces()
-
-    def _setup_autosave_traces(self):
-        """為關鍵設定變數附加 trace，變更後延遲 2 秒自動靜默儲存。"""
-        self._autosave_pending = None
-
-        def _schedule_autosave(*_args):
-            if self._autosave_pending is not None:
-                try:
-                    self.root.after_cancel(self._autosave_pending)
-                except Exception:
-                    pass
-            self._autosave_pending = self.root.after(2000, self._silent_autosave)
-
-        def _schedule_autosave_str(*_args):
-            # StringVar trace 附帶 name/index/mode 三個參數
-            _schedule_autosave()
-
-        # 監控間隔
-        if hasattr(self, 'monitor_interval_var'):
-            self.monitor_interval_var.trace_add("write", _schedule_autosave_str)
-        # 預覽設定
-        if hasattr(self, 'preview_enabled'):
-            self.preview_enabled.trace_add("write", _schedule_autosave_str)
-        if hasattr(self, 'preview_interval_var'):
-            self.preview_interval_var.trace_add("write", _schedule_autosave_str)
-        # 多重觸發
-        if hasattr(self, 'multi_trigger_var'):
-            self.multi_trigger_var.trace_add("write", _schedule_autosave_str)
-
-    def _silent_autosave(self):
-        """靜默自動儲存（不顯示提示訊息）。"""
-        self._autosave_pending = None
-        try:
-            self.save_config(show_message=False)
-            print("[AUTO-SAVE] 設定已自動儲存")
-        except Exception as e:
-            print(f"[AUTO-SAVE] 自動儲存失敗: {e}")
-
-    def _on_root_focus_in(self, event=None):
-        """主視窗獲得焦點時啟動 GUI 互動保護（3 秒）。"""
-        # 只對根視窗本身的 FocusIn 反應，忽略子元件冒泡
-        if event and str(event.widget) != str(self.root):
-            return
-        self.window_manager.begin_gui_interaction(3000)
-
-    def _on_root_click(self, event=None):
-        """使用者在 GUI 上點擊時延長互動保護至 5 秒。"""
-        self.window_manager.begin_gui_interaction(5000)
 
     def setup_mouse_interrupt(self):
         """設置滑鼠右鍵中斷功能"""
@@ -1388,18 +1119,16 @@ class HealthMonitor:
         # 綁定分頁切換事件來實現智能自適應視窗大小
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
         
-        # 初始化分頁最小尺寸字典 - 使用語言鍵對應，確保在英文模式下同樣生效
-        self._tab_size_map = {
-            "tab_health_monitor": (1000, 700),
-            "tab_inventory_clear": (1200, 800),
-            "tab_skill_combo": (1100, 650),
-            "tab_status": (800, 600),
-            "tab_help": (900, 650),
-            "tab_version": (750, 550),
-            "tab_about": (650, 500),
+        # 初始化分頁最小尺寸字典 - 根據實際內容需求優化
+        self.tab_min_sizes = {
+            "血魔監控": (1000, 700),  # 血魔監控：左右分欄+設定區域，需要適中空間
+            "一鍵清包": (1200, 800),  # 一鍵清包：左側控制+右側預覽，需要較大空間
+            "技能連段": (1100, 650),  # 技能連段：3個連段區域橫向排列，需要寬度
+            "執行狀態": (800, 600),   # 執行狀態：主要是文字顯示區域，較緊湊
+            "使用說明": (900, 650),   # 使用說明：卡片式佈局，中等空間
+            "版本檢查": (750, 550),   # 版本檢查：簡單的版本資訊顯示，較小空間
+            "🚀 關於作者": (650, 500)       # 關於：卡片式按鈕佈局，緊湊空間
         }
-        # 建立「目前語言顯示名稱 → 最小尺寸」的映射，供 adjust_window_for_tab 使用
-        self._rebuild_tab_min_sizes()
 
         # 創建各分頁內容
         self.create_monitor_tab()
@@ -1879,42 +1608,53 @@ class HealthMonitor:
 
             window = windows[0]
 
-            # 激活遊戲視窗
-            window.activate()
-            time.sleep(0.8)  # 給足夠時間讓視窗完全激活
+            # 先隱藏主介面，避免遮擋遊戲視窗
+            self.root.iconify()
 
-            # 縮小主介面以避免遮擋遊戲畫面
-            self.window_manager.minimize_main(self.should_keep_topmost())
-            time.sleep(0.2)  # 確保主介面完全隱藏
-
-            try:
+            def _perform_preview_test():
                 success_count = 0
-                
-                # 測試血量預覽
-                if self.config.get('region'):
-                    try:
-                        self.capture_preview()
-                        success_count += 1
-                        print(self.get_text("health_preview_test_complete"))
-                    except Exception as e:
-                        print(f"{self.get_text('health_preview_test_failed')} {e}")
+                error_messages = []
 
-                # 測試魔力預覽
-                if self.config.get('mana_region'):
-                    try:
-                        self.capture_mana_preview()
-                        success_count += 1
-                        print(self.get_text("mana_preview_test_complete"))
-                    except Exception as e:
-                        print(f"魔力預覽測試失敗: {e}")
-                
-                if success_count > 0:
-                    CustomMessageBox.show_info(self.get_text("settings_applied"), self.get_text("preview_test_completed").format(success_count=success_count), self.root)
-                else:
-                    CustomMessageBox.show_warning(self.get_text("important_reminder"), self.get_text("no_testable_regions"), self.root)
-            finally:
-                # 復原主介面
-                self.window_manager.restore_main(self.should_keep_topmost())
+                try:
+                    window.activate()
+                    # 給遊戲視窗時間激活，但避免長時間阻塞 UI
+                    time.sleep(0.2)
+
+                    if self.config.get('region'):
+                        try:
+                            self.capture_preview_async()
+                            success_count += 1
+                            print(self.get_text("health_preview_test_complete"))
+                        except Exception as e:
+                            error_messages.append(f"{self.get_text('health_preview_test_failed')} {e}")
+
+                    if self.config.get('mana_region'):
+                        try:
+                            self.capture_mana_preview_async()
+                            success_count += 1
+                            print(self.get_text("mana_preview_test_complete"))
+                        except Exception as e:
+                            error_messages.append(f"魔力預覽測試失敗: {e}")
+
+                except Exception as e:
+                    error_messages.append(self.get_text("preview_test_failed").format(error=str(e)))
+
+                finally:
+                    self.root.after(0, self.root.deiconify)
+
+                    def _show_result():
+                        if success_count > 0:
+                            CustomMessageBox.show_info(self.get_text("settings_applied"), self.get_text("preview_test_completed").format(success_count=success_count), self.root)
+                        else:
+                            CustomMessageBox.show_warning(self.get_text("important_reminder"), self.get_text("no_testable_regions"), self.root)
+
+                        for msg in error_messages:
+                            print(msg)
+
+                    self.root.after(0, _show_result)
+
+            thread = threading.Thread(target=_perform_preview_test, daemon=True)
+            thread.start()
 
         except Exception as e:
             CustomMessageBox.show_error(self.get_text("error"), self.get_text("preview_test_failed").format(error=str(e)), self.root)
@@ -1923,13 +1663,17 @@ class HealthMonitor:
         """切換GUI是否保持在最上方"""
         try:
             is_topmost = self.always_on_top_var.get()
-            self.window_manager.apply_user_topmost(is_topmost)
+            self.root.attributes("-topmost", is_topmost)
             print(f"GUI最上方設定已{'啟用' if is_topmost else '停用'}")
 
-            # 自動保存設定，並保持為靜默儲存（不跳訊息視窗）
-            self.config['always_on_top'] = is_topmost
-            self.save_config(show_message=False)
-            print("GUI最上方設定已自動保存")
+            # 自動保存設定
+            try:
+                self.config['always_on_top'] = is_topmost
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, indent=2, ensure_ascii=False)
+                print("GUI最上方設定已自動保存")
+            except Exception as save_error:
+                print(f"自動保存設定失敗: {save_error}")
 
         except Exception as e:
             print(f"切換GUI最上方設定失敗: {e}")
@@ -1941,7 +1685,7 @@ class HealthMonitor:
     def set_topmost_if_enabled(self):
         """如果用戶啟用了永遠在最上方，則設定為置頂"""
         if self.should_keep_topmost():
-            self.window_manager.set_topmost(True)
+            self.root.attributes("-topmost", True)
 
     def manage_window_hierarchy(self, window, level="SETTINGS"):
         """
@@ -1951,7 +1695,37 @@ class HealthMonitor:
         - SETTINGS: 設定視窗（顏色調整、背包設定等）- 中間層級
         - MAIN: 主介面 - 最低層級（根據用戶設定決定是否置頂）
         """
-        self.window_manager.apply_hierarchy(window, level, self.should_keep_topmost())
+        try:
+            # 首先取消所有視窗的置頂，然後按層級重新設置
+            self.root.attributes("-topmost", False)
+
+            # 關閉所有現有的子視窗置頂
+            for child in self.root.winfo_children():
+                if isinstance(child, tk.Toplevel):
+                    try:
+                        child.attributes("-topmost", False)
+                    except:
+                        pass
+
+            # 根據層級設置置頂
+            if level == "CHILD":
+                # 子視窗最高層級
+                window.attributes("-topmost", True)
+                # 主介面根據用戶設定決定
+                if self.should_keep_topmost():
+                    self.root.attributes("-topmost", True)
+            elif level == "SETTINGS":
+                # 設定視窗中間層級
+                if self.should_keep_topmost():
+                    self.root.attributes("-topmost", True)
+                window.attributes("-topmost", True)
+            elif level == "MAIN":
+                # 主介面層級
+                if self.should_keep_topmost():
+                    self.root.attributes("-topmost", True)
+
+        except Exception as e:
+            print(f"管理視窗層級時發生錯誤: {e}")
 
     def create_settings_window(self, title, geometry="800x600", parent=None):
         """創建設定視窗（中間層級）"""
@@ -2401,7 +2175,7 @@ class HealthMonitor:
         return "break"  # 阻止事件繼續傳播
 
     def auto_load_preview(self):
-        """在程式啟動時自動載入預覽圖片"""
+        """在程式啟動時自動載入預覽圖片（僅載入已保存的圖片，避免耗時的即時截圖）"""
         # 檢查是否有已儲存的區域設定
         if self.config.get('region') and self.config.get('window_title'):
             try:
@@ -2411,7 +2185,7 @@ class HealthMonitor:
                     # 設定視窗選擇
                     self.window_var.set(self.config['window_title'])
                     
-                    # 嘗試載入預覽圖片
+                    # 只載入已保存的預覽圖片，不進行即時截圖以加快啟動速度
                     health_loaded = self.load_preview_image()
                     mana_loaded = self.load_mana_preview_image()
                     
@@ -2472,7 +2246,7 @@ class HealthMonitor:
             self.selection_active = True
 
             # 框選時最小化主視窗以便清楚看到遊戲視窗
-            self.window_manager.minimize_main(self.should_keep_topmost())  # 最小化主視窗
+            self.root.iconify()  # 最小化主視窗
 
             # 創建覆蓋遊戲視窗的選擇視窗（子視窗 - 最高層級）
             self.selection_window = self.create_child_window("", f"{window.width}x{window.height}")
@@ -2539,18 +2313,17 @@ class HealthMonitor:
             self.config['region'] = self.selected_region
             self.region_label.config(text=self.get_region_text(), background="lightgreen")
 
-            # 擷取預覽圖
-            self.capture_preview()
+            # 非同步擷取預覽圖，避免阻塞UI線程
+            self.root.after(100, self.capture_preview_async)
 
         self.selection_active = False
-        self.selection_window.destroy()
+        self.remove_global_esc_listener()
+        if hasattr(self, 'selection_window') and self.selection_window:
+            self.selection_window.destroy()
+            self.selection_window = None
 
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())  # 恢復主視窗
-        self.manage_window_hierarchy(self.root, "MAIN")  # 恢復主視窗層級
-        self.root.lift()
-        self.root.focus_force()
-        self.root.focus_force()
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def cancel_selection(self, event):
         self.selection_active = False
@@ -2563,11 +2336,8 @@ class HealthMonitor:
         if hasattr(self, 'selection_window') and self.selection_window:
             self.selection_window.destroy()
         
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())  # 恢復主視窗
-        self.manage_window_hierarchy(self.root, "MAIN")  # 恢復主視窗層級
-        self.root.lift()
-        self.root.focus_force()
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def setup_global_esc_listener(self):
         """設置全局ESC鍵監聽，用於框選取消"""
@@ -2598,6 +2368,21 @@ class HealthMonitor:
                 self.root.after(0, lambda: self.cancel_selection(None))
         except Exception as e:
             print(f"全局ESC處理失敗: {e}")
+
+    def finalize_selection_restore_gui(self, success_message_key=None, message_params=None):
+        """統一的選擇完成後GUI恢復和訊息顯示helper函數"""
+        # 重新激活主視窗並恢復正常狀態
+        self.root.deiconify()
+        self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+        self.root.lift()
+        self.root.focus_force()
+
+        # 如果有成功訊息，顯示確認對話框
+        if success_message_key:
+            message = self.get_text(success_message_key)
+            if message_params:
+                message = message.format(**message_params)
+            CustomMessageBox.show_info(self.get_text("success"), message, self.root)
 
     def setup_global_esc_listener_for_inventory(self):
         """設置背包UI選擇的全局ESC鍵監聽"""
@@ -2698,7 +2483,7 @@ class HealthMonitor:
             self.selection_active = True
 
             # 框選時最小化主視窗以便清楚看到遊戲視窗
-            self.window_manager.minimize_main(self.should_keep_topmost())  # 最小化主視窗
+            self.root.iconify()  # 最小化主視窗
 
             # 創建覆蓋遊戲視窗的選擇視窗（子視窗 - 最高層級）
             self.selection_window = self.create_child_window("", f"{window.width}x{window.height}")
@@ -2769,18 +2554,17 @@ class HealthMonitor:
             self.config['mana_region'] = self.selected_mana_region
             self.mana_region_label.config(text=self.get_mana_region_text(), background="lightgreen")
 
-            # 擷取魔力預覽圖
-            self.capture_mana_preview()
+            # 非同步擷取魔力預覽圖，避免阻塞UI線程
+            self.root.after(100, self.capture_mana_preview_async)
 
         self.selection_active = False
-        self.selection_window.destroy()
+        self.remove_global_esc_listener()
+        if hasattr(self, 'selection_window') and self.selection_window:
+            self.selection_window.destroy()
+            self.selection_window = None
 
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())  # 恢復主視窗
-        self.manage_window_hierarchy(self.root, "MAIN")  # 恢復主視窗層級
-        self.root.lift()
-        self.root.focus_force()
-        self.root.focus_force()
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def capture_mana_preview(self):
         if not self.selected_mana_region:
@@ -2858,6 +2642,53 @@ class HealthMonitor:
             if hasattr(self, 'preview_label'):
                 self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
 
+    def capture_preview_async(self):
+        """非同步擷取預覽圖，避免阻塞UI線程"""
+        def _capture():
+            if not self.selected_region:
+                return
+
+            try:
+                window = gw.getWindowsWithTitle(self.window_var.get())[0]
+                x, y, w, h = self.selected_region
+                abs_x = window.left + x
+                abs_y = window.top + y
+
+                with mss.mss() as sct:
+                    monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
+                    screenshot = sct.grab(monitor)
+                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                    img.thumbnail((200, 200))
+
+                    preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_preview.png")
+                    os.makedirs(os.path.dirname(preview_path), exist_ok=True)
+                    img.save(preview_path)
+
+                    self.draw_scale_lines(img)
+                    resized_img = self.resize_and_center_image(img, self.preview_size)
+
+                    def _update_preview():
+                        try:
+                            self.preview_image = ImageTk.PhotoImage(resized_img)
+                            if hasattr(self, 'preview_label'):
+                                self.preview_label.config(image=self.preview_image, text="")
+                            print("血量預覽更新成功")
+                        except Exception as e:
+                            print(f"血量預覽更新失敗: {e}")
+                            if hasattr(self, 'preview_label'):
+                                self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
+
+                    self.root.after(0, _update_preview)
+            except Exception as e:
+                print(f"預覽擷取失敗: {e}")
+                def _update_error():
+                    if hasattr(self, 'preview_label'):
+                        self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
+                self.root.after(0, _update_error)
+
+        thread = threading.Thread(target=_capture, daemon=True)
+        thread.start()
+
     def load_preview_image(self):
         """載入儲存的預覽圖片"""
         preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_preview.png")
@@ -2879,18 +2710,61 @@ class HealthMonitor:
                     self.preview_label.config(text="載入預覽失敗", image="")
                 return False
         else:
-            # 如果沒有預覽檔案但有區域設定，嘗試即時擷取
+            # 如果沒有預覽檔案且有區域設定，顯示等待預覽的提示
             if self.selected_region and hasattr(self, 'preview_label'):
-                # 嘗試即時擷取預覽
-                try:
-                    self.capture_preview()
-                    return True
-                except:
-                    self.preview_label.config(text=self.get_text("health_region_set_waiting_preview"), image="")
-                    return False
+                self.preview_label.config(text=self.get_text("health_region_set_waiting_preview"), image="")
+                return False
             elif hasattr(self, 'preview_label'):
                 self.preview_label.config(text=self.get_text("select_health_bar_first"), image="")
                 return False
+
+    def capture_mana_preview_async(self):
+        """非同步擷取魔力預覽圖片，避免阻塞UI"""
+        def _capture():
+            if not self.selected_mana_region:
+                return
+
+            try:
+                window = gw.getWindowsWithTitle(self.window_var.get())[0]
+                x, y, w, h = self.selected_mana_region
+                abs_x = window.left + x
+                abs_y = window.top + y
+
+                with mss.mss() as sct:
+                    monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
+                    screenshot = sct.grab(monitor)
+                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                    img.thumbnail((200, 200))
+
+                    mana_preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_mana_preview.png")
+                    os.makedirs(os.path.dirname(mana_preview_path), exist_ok=True)
+                    img.save(mana_preview_path)
+
+                    self.draw_scale_lines(img)
+                    resized_img = self.resize_and_center_image(img, self.preview_size)
+
+                    def _update_preview():
+                        try:
+                            self.mana_preview_image = ImageTk.PhotoImage(resized_img)
+                            if hasattr(self, 'mana_preview_label'):
+                                self.mana_preview_label.config(image=self.mana_preview_image, text="")
+                            print("魔力預覽更新成功")
+                        except Exception as e:
+                            print(f"魔力預覽更新失敗: {e}")
+                            if hasattr(self, 'mana_preview_label'):
+                                self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{str(e)}", image="")
+
+                    self.root.after(0, _update_preview)
+            except Exception as e:
+                print(f"魔力預覽擷取失敗: {e}")
+                def _update_error():
+                    if hasattr(self, 'mana_preview_label'):
+                        self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{str(e)}", image="")
+                self.root.after(0, _update_error)
+
+        import threading
+        thread = threading.Thread(target=_capture, daemon=True)
+        thread.start()
 
     def load_mana_preview_image(self):
         """載入儲存的魔力預覽圖片"""
@@ -2917,7 +2791,7 @@ class HealthMonitor:
             if self.selected_mana_region and hasattr(self, 'mana_preview_label'):
                 # 嘗試即時擷取預覽
                 try:
-                    self.capture_mana_preview()
+                    self.capture_mana_preview_async()
                     return True
                 except:
                     self.mana_preview_label.config(text=self.get_text("mana_region_set_waiting_preview"), image="")
@@ -3120,7 +2994,65 @@ class HealthMonitor:
             print(f"[WARN] 檢查遊戲視窗狀態失敗: {e}")
             return False
 
+    # ========== 線程安全的監控狀態管理 ==========
+    def is_monitoring(self):
+        """線程安全地檢查監控狀態"""
+        with self.monitoring_lock:
+            return self.monitoring
+    
+    def set_monitoring(self, state):
+        """線程安全地設置監控狀態"""
+        with self.monitoring_lock:
+            self.monitoring = state
+    
+    def wait_monitoring_stopped(self, timeout=2.0):
+        """等待監控線程停止"""
+        start_time = time.time()
+        while self.is_monitoring() and (time.time() - start_time) < timeout:
+            time.sleep(0.05)
+        
+        # 等待線程完全結束
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            self.monitor_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
+
+    # ========== 線程安全的連段狀態管理 ==========
+    def is_combo_running(self):
+        """線程安全地檢查連段狀態"""
+        with self.combo_lock:
+            return self.combo_running
+    
+    def set_combo_running(self, state):
+        """線程安全地設置連段狀態"""
+        with self.combo_lock:
+            self.combo_running = state
+    
+    def wait_combo_stopped(self, timeout=2.0):
+        """等待連段線程停止"""
+        start_time = time.time()
+        while self.is_combo_running() and (time.time() - start_time) < timeout:
+            time.sleep(0.05)
+        
+        # 等待線程完全結束
+        if self.combo_thread and self.combo_thread.is_alive():
+            self.combo_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
+
+    # ========== 線程安全的全域暫停管理 ==========
+    def is_global_pause(self):
+        """線程安全地檢查全域暫停狀態"""
+        with self.global_pause_lock:
+            return self.global_pause
+    
+    def set_global_pause(self, state):
+        """線程安全地設置全域暫停狀態"""
+        with self.global_pause_lock:
+            self.global_pause = state
+
     def start_monitoring(self):
+        # 檢查是否已在監控中
+        if self.is_monitoring():
+            print("[WARN] 監控已在運行中，跳過重複啟動")
+            return
+
         # 檢查OpenCV是否可用
         if not OPENCV_AVAILABLE:
             messagebox.showerror(self.get_text("error"), "OpenCV不可用，無法啟動監控功能。請重新安裝應用程式。")
@@ -3152,7 +3084,8 @@ class HealthMonitor:
         except Exception as e:
             print(f"激活遊戲視窗失敗: {e}")
 
-        self.monitoring = True
+        # 線程安全地設置監控狀態
+        self.set_monitoring(True)
         self.start_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
 
@@ -3160,7 +3093,7 @@ class HealthMonitor:
         self.add_status_message(self.get_text("health_monitor_started"), "success")
 
         # 開始監控時設置為非干擾模式：降低不透明度但保持可見
-        self.window_manager.apply_monitoring_mode(True, self.should_keep_topmost(), 0.8)
+        self.root.attributes("-alpha", 0.8)  # 輕微透明
         self.manage_window_hierarchy(self.root, "MAIN")  # 設置主視窗層級
 
         self.monitor_thread = threading.Thread(target=self.monitor_health)
@@ -3168,8 +3101,17 @@ class HealthMonitor:
         self.monitor_thread.start()
 
     def stop_monitoring(self):
-        self.monitoring = False
-        self.game_focus_lost = False
+        """停止監控並等待線程完全結束"""
+        if not self.is_monitoring():
+            return  # 已經停止
+        
+        print("[STOP] 正在停止監控...")
+        # 線程安全地設置監控狀態
+        self.set_monitoring(False)
+        
+        # 等待監控線程完全結束
+        self.wait_monitoring_stopped(timeout=2.0)
+        
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
 
@@ -3177,12 +3119,13 @@ class HealthMonitor:
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
 
         # 停止監控時恢復正常狀態
-        self.window_manager.apply_monitoring_mode(False, self.should_keep_topmost())  # 恢復完全不透明
+        self.root.attributes("-alpha", 1.0)  # 恢復完全不透明
         self.manage_window_hierarchy(self.root, "MAIN")  # 恢復主視窗層級
+        print("[STOP] 監控已完全停止")
 
     def restart_monitoring_silently(self):
         """靜默重新啟動血魔監控（用於全域暫停恢復）"""
-        if self.monitoring:
+        if self.is_monitoring():
             return  # 已經在監控中
         
         if not self.window_var.get():
@@ -3204,7 +3147,8 @@ class HealthMonitor:
         except Exception as e:
             print(f"激活遊戲視窗失敗: {e}")
         
-        self.monitoring = True
+        # 線程安全地設置監控狀態
+        self.set_monitoring(True)
         
         # 更新UI（如果元件存在）
         try:
@@ -3216,52 +3160,49 @@ class HealthMonitor:
             pass  # UI 更新失敗不影響功能
         
         # 開始監控時設置為非干擾模式
-        self.window_manager.apply_monitoring_mode(True, self.should_keep_topmost(), 0.8)
+        self.root.attributes("-alpha", 0.8)
         self.manage_window_hierarchy(self.root, "MAIN")
         
         self.monitor_thread = threading.Thread(target=self.monitor_health)
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
 
+    def _interruptible_sleep(self, duration):
+        """可中斷的睡眠函數，能夠快速響應停止信號"""
+        start_time = time.time()
+        while self.is_monitoring() and (time.time() - start_time) < duration:
+            time.sleep(0.01)  # 10ms的小睡眠，允許快速響應停止
+
     def monitor_health(self):
         with mss.mss() as sct:
-            while self.monitoring:
+            while self.is_monitoring():
                 # 提前檢查監控狀態，避免不必要的處理
-                if not self.monitoring:
+                if not self.is_monitoring():
                     break
                     
                 try:
                     # 獲取遊戲視窗位置
                     windows = gw.getWindowsWithTitle(self.window_var.get())
                     if not windows:
-                        if not self.game_focus_lost:
-                            self.window_manager.on_game_focus_lost()
-                            self.game_focus_lost = True
                         self.update_status("--", "--", "視窗未找到", "")
                         self.add_status_message(self.get_text("game_window_closed"), "warning")
-                        time.sleep(1)
+                        self._interruptible_sleep(1.0)
                         continue
 
                     window = windows[0]
                     if window.isMinimized:
-                        if not self.game_focus_lost:
-                            self.window_manager.on_game_focus_lost()
-                            self.game_focus_lost = True
                         self.update_status("--", "--", "視窗最小化", "")
                         self.add_status_message(self.get_text("game_window_minimized"), "warning")
-                        time.sleep(1)
+                        self._interruptible_sleep(1.0)
                         continue
 
                     # 檢查遊戲視窗是否在前台（處於焦點）
                     if not window.isActive:
-                        if not self.game_focus_lost:
-                            self.window_manager.on_game_focus_lost()
-                            self.game_focus_lost = True
                         self.update_status("--", "--", self.get_text("waiting_for_game_window"), "")
                         self.add_status_message(self.get_text("game_window_lost_focus"), "warning")
                         # 等待遊戲視窗重新激活，每500ms檢查一次
-                        while self.monitoring and not window.isActive:
-                            time.sleep(0.5)
+                        while self.is_monitoring() and not window.isActive:
+                            self._interruptible_sleep(0.5)
                             # 重新獲取視窗狀態（因為視窗可能已經關閉或改變）
                             windows = gw.getWindowsWithTitle(self.window_var.get())
                             if not windows:
@@ -3270,17 +3211,11 @@ class HealthMonitor:
                             if window.isMinimized:
                                 break
                         # 如果監控被停止或視窗不存在，跳出循環
-                        if not self.monitoring or not windows or window.isMinimized:
+                        if not self.is_monitoring() or not windows or window.isMinimized:
                             continue
                         # 遊戲視窗重新激活，繼續監控
                         print("遊戲視窗已激活，繼續血魔監控")
-                        self.window_manager.on_game_focus_regained(True, self.should_keep_topmost())
-                        self.game_focus_lost = False
                         self.add_status_message(self.get_text("game_window_regained_focus"), "success")
-                    elif self.game_focus_lost:
-                        # 從失焦狀態回到前景時，恢復監控視窗策略
-                        self.window_manager.on_game_focus_regained(True, self.should_keep_topmost())
-                        self.game_focus_lost = False
 
                     # 計算區域在螢幕上的絕對位置
                     x, y, w, h = self.config['region']
@@ -3336,14 +3271,14 @@ class HealthMonitor:
                     # 使用選擇的檢查頻率
                     try:
                         interval_ms = int(self.monitor_interval_var.get())
-                        time.sleep(interval_ms / 1000.0)  # 轉換為秒
+                        self._interruptible_sleep(interval_ms / 1000.0)  # 轉換為秒
                     except (ValueError, AttributeError):
-                        time.sleep(0.1)  # 預設100ms
+                        self._interruptible_sleep(0.1)  # 預設100ms
 
                 except Exception as e:
                     print(f"監控錯誤: {e}")
                     self.update_status("--", "--", "--", f"錯誤: {str(e)}")
-                    time.sleep(1)
+                    self._interruptible_sleep(1)
 
     def update_live_preview(self, img, health_percent):
         """動態更新預覽圖片，減少更新頻率以避免閃爍"""
@@ -4823,10 +4758,13 @@ class HealthMonitor:
         self.setup_auto_click_listener()
     
     def toggle_global_pause(self):
-        """F9: 全域暫停開關 - 暫停/恢復所有熱鍵功能"""
-        self.global_pause = not self.global_pause
+        """F9: 全域暫停開關 - 暫停/恢復所有熱鍵功能（線程安全）"""
+        # 使用鎖保護全域暫停狀態的修改
+        with self.global_pause_lock:
+            self.global_pause = not self.global_pause
+            is_pausing = self.global_pause
         
-        if self.global_pause:
+        if is_pausing:
             print("[STOP] 全域暫停已啟用 - 所有熱鍵功能已暫停")
             print("💬 現在可以安全聊天，不會誤觸任何熱鍵")
             print("🔄 再次按F9可恢復所有功能")
@@ -4835,7 +4773,7 @@ class HealthMonitor:
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
             
             # 記錄並停止血魔監控（如果正在運行）
-            if self.monitoring:
+            if self.is_monitoring():
                 self.monitoring_was_active = True
                 self.stop_monitoring()
                 print("🛑 血魔監控已自動停止")
@@ -4844,7 +4782,7 @@ class HealthMonitor:
                 self.monitoring_was_active = False
             
             # 記錄並停止技能連段（如果正在運行）
-            if self.combo_running:
+            if self.is_combo_running():
                 self.combo_was_running = True
                 self.stop_combo_system()
                 print("🛑 技能連段已自動停止")
@@ -4890,7 +4828,7 @@ class HealthMonitor:
     def update_pause_status_display(self):
         """更新暫停狀態顯示"""
         if self.pause_status_label:
-            if self.global_pause:
+            if self.is_global_pause():
                 self.pause_status_label.config(
                     text="[STOP] 全域暫停中 - 所有熱鍵已停用",
                     foreground="red",
@@ -4904,14 +4842,14 @@ class HealthMonitor:
                 )
     
     def toggle_monitoring(self):
-        """F10: 血魔監控開關"""
-        # 全域暫停檢查（F10 不需要遊戲在前台，僅檢查暫停狀態）
-        if self.global_pause:
+        """F10: 血魔監控開關（線程安全）"""
+        # 全域暫停檢查
+        if self.is_global_pause():
             print("[STOP] 全域暫停中，跳過F10熱鍵")
             self.add_status_message("按下 F10 - 因全域暫停模式而跳過執行", "warning")
             return
 
-        if self.monitoring:
+        if self.is_monitoring():
             self.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
             self.stop_monitoring()
         else:
@@ -4919,18 +4857,15 @@ class HealthMonitor:
             self.start_monitoring()
 
     def quick_clear_inventory(self):
-        """F3快速清包功能"""
-        # 統一前置檢查（全域暫停 + 遊戲前台）
-        window_title = self.window_var.get()
-        allowed, reason = self.window_manager.is_action_allowed(
-            "F3", window_title, self.global_pause)
-        if not allowed:
-            print(f"[STOP] {reason}")
-            self.add_status_message(reason, "warning")
+        """F3快速清包功能（線程安全）"""
+        # 全域暫停檢查
+        if self.is_global_pause():
+            print("[STOP] 全域暫停中，跳過F3熱鍵")
+            self.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning")
             return
-
+            
         self.add_status_message(self.get_text("f3_hotkey_pressed"), "hotkey")
-
+        
         # 重置中斷標誌
         self.inventory_clear_interrupt = False
 
@@ -4945,9 +4880,17 @@ class HealthMonitor:
             messagebox.showwarning(self.get_text("f3_inventory_reminder"), self.get_text("inventory_ui_screenshot_not_set"))
             return
 
+        # 使用血魔監控的遊戲視窗
+        window_title = self.window_var.get()
         if not window_title:
             self.add_status_message(self.get_text("f3_fail_game_window_not_set"), "error")
             messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。")
+            return
+
+        # 檢查遊戲視窗是否處於前台
+        if not self.is_game_window_foreground(window_title):
+            self.add_status_message(self.get_text("f3_cancel_game_not_foreground"), "warning")
+            print(f"F3: 遊戲視窗 '{window_title}' 不在前台，跳過清包操作")
             return
 
         try:
@@ -4985,7 +4928,7 @@ class HealthMonitor:
                 print("F3: 正在縮小GUI以避免遮擋...")
                 original_state_for_ui_check = self.root.state()
                 original_geometry_for_ui_check = self.root.geometry()
-                self.window_manager.minimize_main(self.should_keep_topmost())
+                self.root.iconify()
                 time.sleep(0.2)
                 gui_minimized_for_ui_check = True
                 print("F3: GUI已縮小")
@@ -5015,7 +4958,7 @@ class HealthMonitor:
                 self.add_status_message(self.get_text("f3_cancel_inventory_not_open"), "warning")
                 # 如果之前縮小了GUI，需要恢復
                 if gui_minimized_for_ui_check:
-                    self.window_manager.restore_main(self.should_keep_topmost())
+                    self.root.deiconify()
                     if original_state_for_ui_check == 'zoomed':
                         self.root.state('zoomed')
                     else:
@@ -5026,7 +4969,7 @@ class HealthMonitor:
 
             # 如果之前為UI檢測而縮小了GUI，現在恢復它（因為接下來要縮小GUI進行清包）
             if gui_minimized_for_ui_check:
-                self.window_manager.restore_main(self.should_keep_topmost())
+                self.root.deiconify()
                 if original_state_for_ui_check == 'zoomed':
                     self.root.state('zoomed')
                 else:
@@ -5399,7 +5342,7 @@ class HealthMonitor:
         """縮小所有GUI以避免干擾螢幕截圖操作"""
         try:
             # 簡單地將主GUI最小化
-            self.window_manager.minimize_main(self.should_keep_topmost())
+            self.root.iconify()
             print("GUI已縮小以避免干擾螢幕截圖")
         except Exception as e:
             print(f"縮小GUI時發生錯誤: {e}")
@@ -5408,7 +5351,7 @@ class HealthMonitor:
         """恢復所有GUI到正常狀態"""
         try:
             # 恢復主GUI
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
             print("GUI已恢復")
         except Exception as e:
             print(f"恢復GUI時發生錯誤: {e}")
@@ -5715,7 +5658,7 @@ class HealthMonitor:
             game_window = windows[0]
 
             # 縮小GUI視窗以避免干擾
-            self.window_manager.minimize_main(self.should_keep_topmost())
+            self.root.iconify()
             print("GUI已縮小以進行背包區域框選")
 
             # 激活遊戲視窗並等待激活完成
@@ -5735,7 +5678,7 @@ class HealthMonitor:
         except Exception as e:
             messagebox.showerror(self.get_text("error"), self.get_text("selection_failed").format(error=str(e)))
             # 確保GUI被恢復
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
 
     def create_inventory_selection_window(self, game_window):
         """創建背包區域選擇視窗（參考血魔監控邏輯）"""
@@ -5825,14 +5768,14 @@ class HealthMonitor:
                     # 移除全局ESC監聽
                     self.remove_global_esc_listener_for_inventory()
 
-                    # 顯示警告並恢復GUI
-                    messagebox.showwarning(self.get_text("warning"), self.get_text("selection_too_small"))
-
-                    # 重新激活主視窗並恢復正常狀態
-                    self.window_manager.restore_main(self.should_keep_topmost())
-                    self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+                    # 先恢復主視窗，避免警告對話框被隱藏
+                    self.root.deiconify()
+                    self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
                     self.root.lift()
                     self.root.focus_force()
+
+                    # 顯示警告並恢復GUI
+                    messagebox.showwarning(self.get_text("warning"), self.get_text("selection_too_small"))
                     return
 
                 # 轉換為遊戲視窗內的相對座標
@@ -5852,16 +5795,30 @@ class HealthMonitor:
                     'height': abs(rel_y2 - rel_y1)
                 }
 
-                # 先顯示確認視窗（在銷毀選擇視窗之前）
-                CustomMessageBox.show_info(self.get_text("success"), self.get_text("inventory_region_set").format(
-                    x=self.inventory_region['x'], y=self.inventory_region['y'],
-                    width=self.inventory_region['width'], height=self.inventory_region['height']), self.root)
+                # 銷毀選擇視窗（在顯示對話框之前）
+                if hasattr(self, 'inventory_selection_window'):
+                    self.inventory_selection_window.destroy()
 
-            self.inventory_selection_window.destroy()
+                # 移除全局ESC監聽
+                self.remove_global_esc_listener_for_inventory()
+
+                # 統一的GUI恢復和訊息顯示
+                self.finalize_selection_restore_gui("inventory_region_set", {
+                    'x': self.inventory_region['x'], 
+                    'y': self.inventory_region['y'],
+                    'width': self.inventory_region['width'], 
+                    'height': self.inventory_region['height']
+                })
+
+            else:
+                # 如果沒有找到遊戲視窗，銷毀選擇視窗
+                if hasattr(self, 'inventory_selection_window'):
+                    self.inventory_selection_window.destroy()
+                self.remove_global_esc_listener_for_inventory()
 
             # 重新激活主視窗並恢復正常狀態
-            self.window_manager.restore_main(self.should_keep_topmost())
-            self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+            self.root.deiconify()
+            self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
             self.root.lift()
             self.root.focus_force()
             print("GUI已恢復（背包區域選擇完成）")
@@ -5882,12 +5839,8 @@ class HealthMonitor:
         if hasattr(self, 'inventory_selection_window'):
             self.inventory_selection_window.destroy()
 
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())
-        self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
-        self.root.lift()
-        self.root.focus_force()
-        print("GUI已恢復（背包區域選擇取消）")
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def record_empty_inventory_color(self):
         """記錄淨空背包的60個格子顏色"""
@@ -6006,7 +5959,7 @@ class HealthMonitor:
             game_window = windows[0]
 
             # 縮小GUI視窗以避免干擾
-            self.window_manager.minimize_main(self.should_keep_topmost())
+            self.root.iconify()
             print("GUI已縮小以進行背包UI框選")
 
             # 激活遊戲視窗並等待激活完成
@@ -6026,7 +5979,7 @@ class HealthMonitor:
         except Exception as e:
             messagebox.showerror("錯誤", f"框選失敗: {str(e)}")
             # 確保GUI被恢復
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
 
     def select_interface_ui_region(self):
         """框選介面UI區域"""
@@ -6050,7 +6003,7 @@ class HealthMonitor:
             game_window = windows[0]
 
             # 縮小GUI視窗以避免干擾
-            self.window_manager.minimize_main(self.should_keep_topmost())
+            self.root.iconify()
             print("GUI已縮小以進行介面UI框選")
 
             # 激活遊戲視窗並等待激活完成
@@ -6070,7 +6023,7 @@ class HealthMonitor:
         except Exception as e:
             messagebox.showerror("錯誤", f"框選失敗: {str(e)}")
             # 確保GUI被恢復
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
 
     def create_inventory_ui_selection_window(self, game_window):
         """創建背包UI區域選擇視窗"""
@@ -6190,14 +6143,14 @@ class HealthMonitor:
                     # 移除全局ESC監聽
                     self.remove_global_esc_listener_for_inventory_ui()
 
-                    # 顯示警告並恢復GUI
-                    messagebox.showwarning(self.get_text("warning"), self.get_text("selection_too_small"))
-
-                    # 重新激活主視窗並恢復正常狀態
-                    self.window_manager.restore_main(self.should_keep_topmost())
-                    self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+                    # 先恢復主視窗，避免警告對話框被隱藏
+                    self.root.deiconify()
+                    self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
                     self.root.lift()
                     self.root.focus_force()
+
+                    # 顯示警告並恢復GUI
+                    messagebox.showwarning(self.get_text("warning"), self.get_text("selection_too_small"))
                     return
 
                 # 轉換為遊戲視窗內的相對座標
@@ -6253,21 +6206,36 @@ class HealthMonitor:
                         # 更新UI預覽
                         self.update_ui_preview()
 
-                        messagebox.showinfo(self.get_text("success"), self.get_text("inventory_ui_region_set").format(
-                            x=self.inventory_ui_region['x'], y=self.inventory_ui_region['y'],
-                            width=self.inventory_ui_region['width'], height=self.inventory_ui_region['height']))
-
                 except Exception as e:
                     messagebox.showerror("錯誤", f"截圖失敗: {str(e)}")
                     print(f"詳細錯誤: {e}")
                     import traceback
                     traceback.print_exc()
 
-            self.inventory_ui_selection_window.destroy()
+                # 銷毀選擇視窗（在處理完成後）
+                if hasattr(self, 'inventory_ui_selection_window'):
+                    self.inventory_ui_selection_window.destroy()
+
+                # 移除全局ESC監聽
+                self.remove_global_esc_listener_for_inventory_ui()
+
+                # 統一的GUI恢復和訊息顯示
+                self.finalize_selection_restore_gui("inventory_ui_region_set", {
+                    'x': self.inventory_ui_region['x'], 
+                    'y': self.inventory_ui_region['y'],
+                    'width': self.inventory_ui_region['width'], 
+                    'height': self.inventory_ui_region['height']
+                })
+
+            else:
+                # 如果沒有找到遊戲視窗，銷毀選擇視窗
+                if hasattr(self, 'inventory_ui_selection_window'):
+                    self.inventory_ui_selection_window.destroy()
+                self.remove_global_esc_listener_for_inventory_ui()
 
             # 重新激活主視窗並恢復正常狀態
-            self.window_manager.restore_main(self.should_keep_topmost())
-            self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+            self.root.deiconify()
+            self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
             self.root.lift()
             self.root.focus_force()
             print("GUI已恢復")
@@ -6283,17 +6251,13 @@ class HealthMonitor:
         self.inventory_ui_selection_end = None
 
         # 移除全局ESC監聽
-        self.remove_global_esc_listener_for_inventory()
+        self.remove_global_esc_listener_for_inventory_ui()
 
         if hasattr(self, 'inventory_ui_selection_window'):
             self.inventory_ui_selection_window.destroy()
 
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())
-        self.window_manager.apply_user_topmost(self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
-        self.root.lift()
-        self.root.focus_force()
-        print("GUI已恢復（取消選擇）")
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def start_interface_ui_selection(self, event):
         """開始介面UI區域選擇"""
@@ -6349,11 +6313,14 @@ class HealthMonitor:
                     # 移除全局ESC監聽
                     self.remove_global_esc_listener_for_interface()
 
+                    # 先恢復主視窗，避免警告對話框被隱藏
+                    self.root.deiconify()
+                    self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+                    self.root.lift()
+                    self.root.focus_force()
+
                     # 顯示警告並恢復GUI
                     messagebox.showwarning(self.get_text("warning"), self.get_text("selection_too_small"))
-
-                    # 重新激活主視窗並恢復正常狀態
-                    self.window_manager.restore_main(self.should_keep_topmost())
                     return
 
                 # 轉換為遊戲視窗內的相對座標
@@ -6409,21 +6376,38 @@ class HealthMonitor:
                         # 更新介面UI預覽
                         self.update_interface_ui_preview()
 
-                        # 先顯示確認視窗（在銷毀選擇視窗之前）
-                        CustomMessageBox.show_info(self.get_text("success"), self.get_text("interface_ui_region_set").format(
-                            x=self.interface_ui_region['x'], y=self.interface_ui_region['y'],
-                            width=self.interface_ui_region['width'], height=self.interface_ui_region['height']), self.root)
-
                 except Exception as e:
                     messagebox.showerror("錯誤", f"截圖失敗: {str(e)}")
                     print(f"詳細錯誤: {e}")
                     import traceback
                     traceback.print_exc()
 
-            self.interface_ui_selection_window.destroy()
+                # 銷毀選擇視窗（在處理完成後）
+                if hasattr(self, 'interface_ui_selection_window'):
+                    self.interface_ui_selection_window.destroy()
+
+                # 移除全局ESC監聽
+                self.remove_global_esc_listener_for_interface()
+
+                # 統一的GUI恢復和訊息顯示
+                self.finalize_selection_restore_gui("interface_ui_region_set", {
+                    'x': self.interface_ui_region['x'], 
+                    'y': self.interface_ui_region['y'],
+                    'width': self.interface_ui_region['width'], 
+                    'height': self.interface_ui_region['height']
+                })
+
+            else:
+                # 如果沒有找到遊戲視窗，銷毀選擇視窗
+                if hasattr(self, 'interface_ui_selection_window'):
+                    self.interface_ui_selection_window.destroy()
+                self.remove_global_esc_listener_for_interface()
 
             # 重新激活主視窗並恢復正常狀態
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
+            self.root.attributes("-topmost", self.always_on_top_var.get())  # 恢復置頂（根據用戶設定）
+            self.root.lift()
+            self.root.focus_force()
             print("GUI已恢復（介面UI選擇完成）")
         else:
             # 如果沒有有效的選擇，取消選擇
@@ -6442,9 +6426,8 @@ class HealthMonitor:
         if hasattr(self, 'interface_ui_selection_window'):
             self.interface_ui_selection_window.destroy()
 
-        # 重新激活主視窗並恢復正常狀態
-        self.window_manager.restore_main(self.should_keep_topmost())
-        print("GUI已恢復（介面UI選擇取消）")
+        # 統一的GUI恢復
+        self.finalize_selection_restore_gui()
 
     def save_ui_screenshot_to_file(self):
         """將UI截圖保存為PNG文件 - 此函數現在不再需要，因為已在截圖時直接保存"""
@@ -7381,7 +7364,7 @@ class HealthMonitor:
                 print("正在縮小GUI以避免遮擋...")
                 original_state = self.root.state()
                 original_geometry = self.root.geometry()
-                self.window_manager.minimize_main(self.should_keep_topmost())
+                self.root.iconify()
                 time.sleep(0.2)
                 gui_minimized_for_test = True
                 print("GUI已縮小")
@@ -7449,7 +7432,7 @@ class HealthMonitor:
 
             # 5. 恢復GUI面板（如果之前縮小了）
             if gui_minimized_for_test:
-                self.window_manager.restore_main(self.should_keep_topmost())
+                self.root.deiconify()
                 if original_state == 'zoomed':
                     self.root.state('zoomed')
                 else:
@@ -7493,7 +7476,7 @@ class HealthMonitor:
             messagebox.showerror("錯誤", f"測試失敗: {str(e)}")
             # 確保GUI恢復正常
             try:
-                self.window_manager.restore_main(self.should_keep_topmost())
+                self.root.deiconify()
             except:
                 pass
 
@@ -7524,45 +7507,59 @@ class HealthMonitor:
                 self.root.focus_force()
                 # 根據用戶設定決定是否置頂主視窗
                 if self.should_keep_topmost():
-                    self.window_manager.set_topmost(True)
+                    self.root.attributes("-topmost", True)
                 
         except Exception as e:
             messagebox.showerror("錯誤", f"儲存失敗: {str(e)}")
 
     def return_to_hideout(self):
         """F5 返回藏身功能"""
-        window_title = self.window_var.get()
-        allowed, reason = self.window_manager.is_action_allowed(
-            "F5", window_title, self.global_pause)
-        if not allowed:
-            print(f"[STOP] {reason}")
-            self.add_status_message(reason, "warning")
+        # 全域暫停檢查
+        if self.global_pause:
+            print("[STOP] 全域暫停中，跳過F5熱鍵")
+            self.add_status_message("按下 F5 - 因全域暫停模式而跳過執行", "warning")
             return
-
+            
         self.add_status_message("按下 F5 - 執行返回藏身", "hotkey")
-
+        
         try:
+            # 檢查是否有設定遊戲視窗
+            window_title = self.window_var.get()
+            if not window_title:
+                print("F5: 未設定遊戲視窗，無法使用返回藏身功能")
+                self.add_status_message("F5 執行失敗 - 未設定遊戲視窗", "error")
+                return
+            
+            # 檢查遊戲視窗是否在前台
+            if not self.is_game_window_foreground(window_title):
+                print(f"F5: 遊戲視窗 '{window_title}' 不在前台，跳過返回藏身操作")
+                self.add_status_message("F5 執行取消 - 遊戲視窗不在前台", "warning")
+                return
+            
             self.add_status_message("F5 執行中 - 發送返回藏身指令", "info")
             print("F5: 執行返回藏身")
-
+            
+            # 暫時阻止輸入，防止按鍵衝突
+            import time
+            
             # 按下 Enter 鍵開啟聊天框
             pyautogui.press('enter')
             time.sleep(0.025)
-
+            
             # 使用 pyperclip 直接設定剪貼簿內容（更高效）
             import pyperclip
             pyperclip.copy("/hideout")
-
+            
             # 貼上指令
             pyautogui.hotkey('ctrl', 'v')
             time.sleep(0.025)
-
+            
             # 按下 Enter 鍵執行指令
             pyautogui.press('enter')
-
+            
             print("F5: 返回藏身指令已執行")
             self.add_status_message(self.get_text("f5_success_hide_command_sent"), "success")
-
+            
         except Exception as e:
             print(f"F5: 返回藏身失敗: {str(e)}")
             self.add_status_message(f"F5 執行失敗 - {str(e)}", "error")
@@ -7571,25 +7568,34 @@ class HealthMonitor:
         """F6 一鍵取物（非阻塞版）
         主線程做必要的檢查與安排 GUI 操作（使用 root.after），實際的滑鼠/視窗操作在背景執行緒中完成，
         避免阻塞 Tkinter 事件迴圈造成主 GUI 無法互動。"""
-        # 統一前置檢查（主線程，使用 is_action_allowed）
-        window_title = self.window_var.get()
-        allowed, reason = self.window_manager.is_action_allowed(
-            "F6", window_title, self.global_pause)
-        if not allowed:
-            print(f"[STOP] {reason}")
+        # 全域暫停檢查（主線程）
+        if self.global_pause:
+            print("[STOP] 全域暫停中，跳過F6熱鍵")
+            # 在主線程更新狀態訊息
             try:
-                self.root.after(0, lambda r=reason: self.add_status_message(r, "warning"))
-            except Exception:
+                self.root.after(0, lambda: self.add_status_message(self.get_text("f6_skip_global_pause"), "warning"))
+            except:
                 pass
             return
 
         # 簡短回饋（主線程）
         try:
             self.root.after(0, lambda: self.add_status_message(self.get_text("f6_hotkey_pressed"), "hotkey"))
-        except Exception:
+        except:
             pass
 
         print("=== F6取物功能被調用（非阻塞版） ===")
+
+        # 在主線程進行輕量檢查與狀態擷取
+        window_title = self.window_var.get()
+        if not window_title:
+            print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
+            try:
+                self.root.after(0, lambda: self.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
+            except:
+                pass
+            return
+
         print(f"F6: 遊戲視窗已設定為: {window_title}")
 
         # 檢查 GUI 狀態（在主線程）
@@ -7612,7 +7618,7 @@ class HealthMonitor:
                 try:
                     # 如果原本保持在最上方，先取消置頂
                     if gui_was_topmost:
-                        self.window_manager.set_topmost(False)
+                        self.root.attributes("-topmost", False)
                         print("F6: 已取消 GUI 置頂設定")
                     # 然後移到後台
                     getattr(self.root, 'lower', lambda: None)()
@@ -7758,7 +7764,7 @@ class HealthMonitor:
                                 self.root.focus_force()
                                 # 如果原本保持在最上方，恢復置頂
                                 if gui_was_topmost_local:
-                                    self.window_manager.set_topmost(True)
+                                    self.root.attributes("-topmost", True)
                                     print("F6(worker): 已在主線程恢復 GUI 到前台並重新置頂")
                                 else:
                                     print("F6(worker): 已在主線程恢復 GUI 到前台")
@@ -7831,7 +7837,7 @@ class HealthMonitor:
                 self.root.focus_force()
                 # 根據用戶設定決定是否置頂主視窗
                 if self.should_keep_topmost():
-                    self.window_manager.set_topmost(True)
+                    self.root.attributes("-topmost", True)
                 
         except Exception as e:
             print(f"儲存取物座標失敗: {str(e)}")
@@ -7911,7 +7917,7 @@ class HealthMonitor:
         try:
             # 隱藏設定視窗和主視窗
             parent_window.withdraw()
-            self.window_manager.withdraw()
+            self.root.withdraw()
             
             # 等待視窗完全隱藏
             time.sleep(0.5)
@@ -8025,7 +8031,7 @@ class HealthMonitor:
                     self.root.focus_force()
                     # 根據用戶設定決定是否置頂主視窗
                     if self.should_keep_topmost():
-                        self.window_manager.set_topmost(True)
+                        self.root.attributes("-topmost", True)
                 else:
                     messagebox.showinfo(self.get_text("setup_cancelled"), self.get_text("setup_cancelled_message"))
                     
@@ -8047,7 +8053,7 @@ class HealthMonitor:
         finally:
             # 恢復視窗顯示
             try:
-                self.window_manager.restore_main(self.should_keep_topmost())
+                self.root.deiconify()
                 parent_window.deiconify()
             except:
                 pass
@@ -8077,7 +8083,7 @@ class HealthMonitor:
         try:
             # 隱藏設定視窗
             parent_window.withdraw()
-            self.window_manager.withdraw()
+            self.root.withdraw()
             
             # 等待一段時間讓視窗完全隱藏
             time.sleep(0.5)
@@ -8107,7 +8113,7 @@ class HealthMonitor:
             messagebox.showerror("錯誤", f"截取座標失敗: {str(e)}")
         finally:
             # 恢復視窗顯示
-            self.window_manager.restore_main(self.should_keep_topmost())
+            self.root.deiconify()
             parent_window.deiconify()
 
     def clear_pickup_coordinate(self, index):
@@ -8226,18 +8232,7 @@ class HealthMonitor:
             else:
                 self.pickup_coords_label.config(foreground="gray")
 
-    def on_closing(self):
-        """處理GUI關閉事件，提供確認對話框"""
-        # 創建自定義的確認對話框，支援Enter快速確認
-        result = messagebox.askyesno(
-            "確認關閉", 
-            self.get_text("confirm_close_app"), 
-            default=messagebox.YES  # 預設選擇YES，支援Enter快速確認
-        )
-        
-        if result:
-            self.close_app()
-
+    # Duplicate on_closing removed; actual on_closing is defined later.
     def close_app(self):
         # 計算並記錄運行時間
         end_time = datetime.now()
@@ -8444,9 +8439,6 @@ class HealthMonitor:
             self.notebook.tab(5, text=self.get_text("tab_version"))
             self.notebook.tab(6, text=self.get_text("tab_about"))
 
-            # 切換語言後重建分頁尺寸映射
-            self._rebuild_tab_min_sizes()
-
             # 更新Treeview標題
             if hasattr(self, 'settings_tree'):
                 self.settings_tree.heading("type", text=self.get_text("type"))
@@ -8607,7 +8599,7 @@ class HealthMonitor:
             # 載入GUI最上方設定
             always_on_top = self.config.get('always_on_top', True)  # 預設為True
             self.always_on_top_var.set(always_on_top)
-            self.window_manager.apply_user_topmost(always_on_top)
+            self.root.attributes("-topmost", always_on_top)
 
             # 如果設定檔案中沒有always_on_top設定，保存預設值
             if 'always_on_top' not in self.config:
@@ -9488,8 +9480,8 @@ class HealthMonitor:
             print(f"更新組合UI元件時發生錯誤: {e}")
 
     def start_combo_system(self):
-        """啟動連段系統"""
-        if self.combo_running:
+        """啟動連段系統（線程安全）"""
+        if self.is_combo_running():
             messagebox.showwarning(self.get_text("warning"), self.get_text("combo_system_already_running"))
             return
         
@@ -9511,8 +9503,8 @@ class HealthMonitor:
                 messagebox.showerror("錯誤", f"連段套組 {i+1} 沒有設定任何連段技能")
                 return
         
-        # 啟動連段系統
-        self.combo_running = True
+        # 線程安全地設置連段狀態
+        self.set_combo_running(True)
         self.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
         self.combo_thread.start()
         
@@ -9526,13 +9518,16 @@ class HealthMonitor:
         print("技能連段系統已啟動")
 
     def stop_combo_system(self):
-        """停止連段系統"""
-        if not self.combo_running:
+        """停止連段系統（線程安全）"""
+        if not self.is_combo_running():
             return
         
-        self.combo_running = False
-        if self.combo_thread and self.combo_thread.is_alive():
-            self.combo_thread.join(timeout=1.0)
+        print("[STOP] 正在停止連段系統...")
+        # 線程安全地設置連段狀態
+        self.set_combo_running(False)
+        
+        # 等待連段線程完全結束
+        self.wait_combo_stopped(timeout=2.0)
         
         # 取消所有快捷鍵綁定
         for hotkey in self.combo_hotkeys.values():
@@ -9548,11 +9543,11 @@ class HealthMonitor:
         self.combo_status_label.config(text=self.get_text("combo_stopped"), foreground="red")
         
         self.add_status_message("技能連擊系統已停止", "info")
-        print("技能連段系統已停止")
+        print("[STOP] 連段系統已完全停止")
 
     def restart_combo_system_silently(self):
-        """靜默重新啟動連段系統（用於全域暫停恢復）"""
-        if self.combo_running:
+        """靜默重新啟動連段系統（用於全域暫停恢復，線程安全）"""
+        if self.is_combo_running():
             return  # 已經在運行中
         
         # 檢查是否有啟用的套組
@@ -9570,8 +9565,8 @@ class HealthMonitor:
             if not has_combo:
                 raise Exception(f"連段套組 {i+1} 沒有設定任何連段技能")
         
-        # 啟動連段系統
-        self.combo_running = True
+        # 線程安全地設置連段狀態
+        self.set_combo_running(True)
         self.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
         self.combo_thread.start()
         
@@ -9587,7 +9582,7 @@ class HealthMonitor:
             pass  # UI 更新失敗不影響功能
 
     def run_combo_system(self):
-        """運行連段系統的主循環"""
+        """運行連段系統的主循環（線程安全）"""
         print("連段系統線程已啟動")
         
         # 註冊快捷鍵
@@ -9606,23 +9601,21 @@ class HealthMonitor:
                     print(f"註冊快捷鍵失敗 {trigger_key}: {e}")
         
         # 保持線程運行
-        while self.combo_running:
+        while self.is_combo_running():
             time.sleep(0.1)
         
         print("連段系統線程已結束")
 
     def execute_combo(self, set_index):
-        """執行指定的連段套組"""
-        if not self.combo_running:
+        """執行指定的連段套組（線程安全）"""
+        if not self.is_combo_running():
             return
 
-        # 統一前置檢查（全域暫停 + 遊戲前台）
-        window_title = self.window_var.get()
-        allowed, reason = self.window_manager.is_action_allowed(
-            f"Combo-{set_index+1}", window_title, self.global_pause)
-        if not allowed:
-            print(f"[STOP] {reason}")
-            return
+        # 檢查遊戲視窗是否在前台
+        if self.window_var.get():
+            if not self.is_game_window_foreground(self.window_var.get()):
+                print(f"遊戲視窗 '{self.window_var.get()}' 不在前台，跳過連段執行")
+                return
 
         combo_set = self.combo_sets[set_index]
         combo_keys = combo_set['combo_keys']
@@ -9659,8 +9652,8 @@ class HealthMonitor:
         # 執行連段
         for i, key in enumerate(combo_keys):
             # 跳過off或空值的技能
-            if not key or key == 'off' or key == '' or not self.combo_running:
-                if not self.combo_running:
+            if not key or key == 'off' or key == '' or not self.is_combo_running():
+                if not self.is_combo_running():
                     self.add_status_message(f"⏹️ 連擊套組 {set_index + 1} 被中斷", "warning")
                     print(f"連段套組 {set_index + 1} 被中斷")
                     return
@@ -10314,15 +10307,22 @@ class HealthMonitor:
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
+        result = messagebox.askyesno(
+            "確認關閉", 
+            self.get_text("confirm_close_app"), 
+            default=messagebox.YES
+        )
+
+        if not result:
+            return
+
         try:
             print("應用程式正在關閉，保存使用時間...")
-            # 追蹤並保存使用時間
             self.track_usage_time()
             print("使用時間已保存")
         except Exception as e:
             print(f"保存使用時間時發生錯誤: {e}")
-        
-        # 調用完整的應用程式關閉流程
+
         self.close_app()
 
     def update_usage_time_display(self):
