@@ -14,7 +14,10 @@ from datetime import datetime
 class GameToolBuilder:
     def __init__(self):
         self.project_dir = os.path.dirname(os.path.dirname(__file__))
-        self.src_dir = os.path.join(self.project_dir, "src for DEVELOPER")
+        # Canonical source directory.
+        self.src_dir = os.path.join(self.project_dir, "src")
+        # Backward-compatible source directory used by older workflows.
+        self.compat_src_dir = os.path.join(self.project_dir, "src for DEVELOPER")
         self.tools_dir = os.path.join(self.project_dir, "tools")
         self.build_dir = os.path.join(self.project_dir, "build")
         self.dist_dir = os.path.join(self.project_dir, "dist")
@@ -26,6 +29,13 @@ class GameToolBuilder:
 
         os.makedirs(self.build_dir, exist_ok=True)
         os.makedirs(self.dist_dir, exist_ok=True)
+
+    def _first_existing_path(self, *candidates):
+        """Return the first existing path from candidates, else None."""
+        for path in candidates:
+            if path and os.path.exists(path):
+                return path
+        return None
 
     def log(self, message):
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -59,10 +69,22 @@ class GameToolBuilder:
 
     def build_main_tool(self):
         """構建主工具 - 使用完整依賴打包"""
-        source_file = os.path.join(self.src_dir, "health_monitor.py")
+        source_file = self._first_existing_path(
+            os.path.join(self.src_dir, "health_monitor.py"),
+            os.path.join(self.compat_src_dir, "health_monitor.py"),
+        )
         if not os.path.exists(source_file):
             self.log("❌ health_monitor.py 不存在")
             return False
+
+        language_pack_file = self._first_existing_path(
+            os.path.join(self.src_dir, "language_packs.json"),
+            os.path.join(self.compat_src_dir, "language_packs.json"),
+        )
+        auto_click_exe_file = self._first_existing_path(
+            os.path.join(self.src_dir, "auto_click.exe"),
+            os.path.join(self.compat_src_dir, "auto_click.exe"),
+        )
 
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
         os.makedirs(package_dir, exist_ok=True)
@@ -117,10 +139,13 @@ class GameToolBuilder:
                 "--collect-data", "tkinter",
                 # 數據檔案
                 "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
-                "--add-data", f"{os.path.join(self.src_dir, 'auto_click.exe')};.",
-                "--add-data", f"{os.path.join(self.src_dir, 'language_packs.json')};.",
                 source_file
             ]
+
+            if auto_click_exe_file:
+                cmd.extend(["--add-data", f"{auto_click_exe_file};."])
+            if language_pack_file:
+                cmd.extend(["--add-data", f"{language_pack_file};."])
 
             # 添加 Tkinter 和 Pillow 二進位檔案
             self._add_binary_dependencies(cmd)
@@ -219,19 +244,20 @@ class GameToolBuilder:
         """創建安裝包"""
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
 
+        use_src = self.src_dir if os.path.exists(self.src_dir) else self.compat_src_dir
+
         # 複製必要檔案
         files_to_copy = [
-            ("src for DEVELOPER/auto_click.exe", "auto_click.exe"),
-            ("src for DEVELOPER/使用說明.md", "使用說明.md"),
-            ("src for DEVELOPER/language_packs.json", "language_packs.json")
+            (os.path.join(use_src, "auto_click.exe"), "auto_click.exe"),
+            (os.path.join(use_src, "使用說明.md"), "使用說明.md"),
+            (os.path.join(use_src, "language_packs.json"), "language_packs.json"),
         ]
 
         for src_path, dst_name in files_to_copy:
-            src_full = os.path.join(self.project_dir, src_path)
             dst_full = os.path.join(package_dir, dst_name)
 
-            if os.path.exists(src_full):
-                shutil.copy2(src_full, dst_full)
+            if os.path.exists(src_path):
+                shutil.copy2(src_path, dst_full)
                 self.log(f"✅ 複製: {dst_name}")
 
         # 創建啟動工具.bat
