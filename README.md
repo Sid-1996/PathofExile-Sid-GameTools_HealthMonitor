@@ -4,6 +4,14 @@
 
 > 🌐 **Language / 語言**: [English](README_EN.md) | [中文](README.md)
 
+## 🧭 本地開發快速入口（重要）
+
+- 安裝依賴：`scripts/install_dependencies.bat`
+- 直接跑 Python：`scripts/run_monitor.bat`
+- 一鍵打包 EXE：`scripts/build_exe.bat`
+- 打包後測試 EXE：`scripts/test_built_exe.bat`
+- 檔案用途說明：`docs/檔案用途與建議流程.md`
+
 ![Windows](https://img.shields.io/badge/platform-Windows-blue?color=blue) ![GitHub release](https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=green) ![GitHub downloads](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?color=orange) ![GitHub stars](https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=yellow) ![GitHub forks](https://img.shields.io/github/forks/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=lightgrey) ![GitHub last commit](https://img.shields.io/github/last-commit/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=red) ![GitHub language count](https://img.shields.io/github/languages/count/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?color=purple) ![Milestone: 500⭐=Open Source](https://img.shields.io/badge/Milestone-500⭐=Open_Source-gold?style=flat-square) ![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
 
 ---
