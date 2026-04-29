@@ -4218,7 +4218,7 @@ class HealthMonitor:
                 foreground_title = buffer.value
 
                 # 檢查前台視窗標題是否包含GUI標題
-                gui_title = "Sid輔助工具 v1.0.6 - 血魔監控 + 一鍵清包 + 自動化工具"
+                gui_title = "Sid輔助工具 v1.0.7 - 血魔監控 + 一鍵清包 + 自動化工具"
                 return gui_title.lower() in foreground_title.lower()
             else:
                 return False

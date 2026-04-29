@@ -97,6 +97,11 @@ class GameToolBuilder:
 
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
         os.makedirs(package_dir, exist_ok=True)
+        run_tag = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        work_path = os.path.join(self.build_dir, f"pyinstaller_work_{run_tag}")
+        spec_path = os.path.join(self.build_dir, "pyinstaller_specs")
+        os.makedirs(work_path, exist_ok=True)
+        os.makedirs(spec_path, exist_ok=True)
 
         try:
             # 創建完整的 PyInstaller 命令，確保所有依賴都被包含
@@ -104,7 +109,9 @@ class GameToolBuilder:
                 sys.executable, "-m", "PyInstaller",
                 "--onefile",
                 "--noconsole",  # 隱藏命令視窗，只顯示GUI
-                "--clean",
+                "--noconfirm",
+                "--workpath", work_path,
+                "--specpath", spec_path,
                 "--name", "GameTools_HealthMonitor",
                 "--icon", self.icon_file,
                 # 核心依賴
