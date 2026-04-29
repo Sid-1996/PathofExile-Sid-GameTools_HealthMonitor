@@ -7,6 +7,14 @@
 
 ## [1.0.7] - 2026-04-29
 
+### GUI maintenance update
+- Improved shared popup sizing and layout so long Traditional Chinese / English messages no longer hide confirmation buttons.
+- Fixed the language-switch restart prompt and other confirmation popups to remain visible even when the parent window is hidden.
+- Fixed the continuous pickup-coordinate setup flow after dialog parenting changes.
+- Reduced perceived startup delay by deferring preview loading, hotkey setup, and heavy visual refresh work until after the main window is shown.
+- Improved `Stop Monitoring` responsiveness by making the shutdown wait non-blocking for the Tk main thread.
+
+
 ### ✨ 新增
 - 新增可中斷睡眠機制，提升停止響應速度
 - 新增統一的選擇完成GUI恢復helper函數
