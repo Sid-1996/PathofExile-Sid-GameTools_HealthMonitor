@@ -405,7 +405,7 @@ start "" "GameTools_HealthMonitor.exe"
 def main():
     builder = GameToolBuilder()
     success = builder.build_all()
-    input("\n按任意鍵結束...")
+    # input("\n按任意鍵結束...")  # 移除以支持非互動環境
     return 0 if success else 1
 
 if __name__ == "__main__":
