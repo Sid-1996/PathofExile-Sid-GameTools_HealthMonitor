@@ -978,7 +978,8 @@ class HealthMonitor:
         self.center_window()
 
         # 確保GUI最上方設定正確應用（無論設定載入是否成功）
-        self.root.attributes("-topmost", self.always_on_top_var.get())
+        # 移除預設置頂，讓用戶手動控制
+        # self.root.attributes("-topmost", self.always_on_top_var.get())
 
         # 設置全域滾輪支持
         self.update_loading_status("正在設置功能...")
@@ -8672,9 +8673,10 @@ class HealthMonitor:
             self.multi_trigger_var.set(self.config.get('multi_trigger', False))
 
             # 載入GUI最上方設定
-            always_on_top = self.config.get('always_on_top', True)  # 預設為True
+            always_on_top = self.config.get('always_on_top', False)  # 預設為False，不自動置頂
             self.always_on_top_var.set(always_on_top)
-            self.root.attributes("-topmost", always_on_top)
+            # 移除自動置頂，讓用戶手動控制
+            # self.root.attributes("-topmost", always_on_top)
 
             # 如果設定檔案中沒有always_on_top設定，保存預設值
             if 'always_on_top' not in self.config:
