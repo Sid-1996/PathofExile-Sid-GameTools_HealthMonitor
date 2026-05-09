@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkinter import font as tkfont
 import json
 import os
 import threading
@@ -153,162 +154,186 @@ SendMessageW.restype = ctypes.c_long
 
 # ========== 自訂對話框類 ==========
 class CustomMessageBox:
-    """自訂對話框，在確認按鈕上顯示'按Enter確認'提示"""
+    """Shared modal dialogs with dynamic sizing for long localized text."""
     result = None
-    
+
+    MIN_WIDTH = 420
+    MAX_WIDTH = 760
+    MIN_HEIGHT = 180
+    MAX_HEIGHT = 560
+    MESSAGE_WRAP = 520
+
     @staticmethod
-    def show_info(title, message, parent=None):
-        """顯示信息對話框 (OK按鈕)"""
-        CustomMessageBox.result = None
-        window = tk.Toplevel(parent)
-        window.title(title)
-        window.geometry("400x200")
-        window.resizable(False, False)
-        
-        # 居中顯示
-        window.transient(parent)
-        window.grab_set()
-        
-        # 消息文本
-        text_frame = ttk.Frame(window)
-        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        label = ttk.Label(text_frame, text=message, wraplength=350, justify=tk.LEFT)
-        label.pack()
-        
-        # 按鈕框架
-        button_frame = ttk.Frame(window)
-        button_frame.pack(fill=tk.X, padx=20, pady=10)
-        
-        ok_button = ttk.Button(button_frame, text="確認 (按Enter) ✓", 
-                               command=lambda: CustomMessageBox._close(window, True))
-        ok_button.pack(side=tk.RIGHT, padx=5)
-        ok_button.focus()
-        
-        # 綁定Enter鍵
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, True))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, True))
-        
-        window.wait_window()
-        return True
-    
+    def _resolve_parent(parent=None):
+        candidate = parent or tk._default_root
+        if candidate is None:
+            return None
+
+        try:
+            if not candidate.winfo_exists():
+                return None
+            if candidate.state() == 'withdrawn':
+                return None
+        except Exception:
+            return None
+
+        return candidate
+
     @staticmethod
-    def show_warning(title, message, parent=None):
-        """顯示警告對話框 (OK按鈕)"""
+    def _build_dialog(title, message, buttons, parent=None, accent=None, close_result=False):
         CustomMessageBox.result = None
+        parent = CustomMessageBox._resolve_parent(parent)
+
         window = tk.Toplevel(parent)
-        window.title(title)
-        window.geometry("400x220")
+        window.title(title or 'Message')
         window.resizable(False, False)
-        
-        # 居中顯示
-        window.transient(parent)
+        window.minsize(CustomMessageBox.MIN_WIDTH, CustomMessageBox.MIN_HEIGHT)
+
+        if parent is not None:
+            window.transient(parent)
         window.grab_set()
-        
-        # 消息文本
-        text_frame = ttk.Frame(window)
-        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        label = ttk.Label(text_frame, text=message, wraplength=350, justify=tk.LEFT)
-        label.pack()
-        
-        # 按鈕框架
-        button_frame = ttk.Frame(window)
-        button_frame.pack(fill=tk.X, padx=20, pady=10)
-        
-        ok_button = ttk.Button(button_frame, text="確認 (按Enter) ✓", 
-                               command=lambda: CustomMessageBox._close(window, True))
-        ok_button.pack(side=tk.RIGHT, padx=5)
-        ok_button.focus()
-        
-        # 綁定Enter鍵
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, True))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, True))
-        
-        window.wait_window()
-        return True
-    
-    @staticmethod
-    def show_error(title, message, parent=None):
-        """顯示錯誤對話框 (OK按鈕)"""
-        CustomMessageBox.result = None
-        window = tk.Toplevel(parent)
-        window.title(title)
-        window.geometry("400x220")
-        window.resizable(False, False)
-        
-        # 居中顯示
-        window.transient(parent)
-        window.grab_set()
-        
-        # 消息文本
-        text_frame = ttk.Frame(window)
-        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        label = ttk.Label(text_frame, text=message, wraplength=350, justify=tk.LEFT, foreground="red")
-        label.pack()
-        
-        # 按鈕框架
-        button_frame = ttk.Frame(window)
-        button_frame.pack(fill=tk.X, padx=20, pady=10)
-        
-        ok_button = ttk.Button(button_frame, text="確認 (按Enter) ✓", 
-                               command=lambda: CustomMessageBox._close(window, True))
-        ok_button.pack(side=tk.RIGHT, padx=5)
-        ok_button.focus()
-        
-        # 綁定Enter鍵
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, True))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, True))
-        
-        window.wait_window()
-        return True
-    
-    @staticmethod
-    def ask_yes_no(title, message, parent=None):
-        """顯示是/否確認對話框"""
-        CustomMessageBox.result = None
-        window = tk.Toplevel(parent)
-        window.title(title)
-        window.geometry("400x220")
-        window.resizable(False, False)
-        
-        # 居中顯示
-        window.transient(parent)
-        window.grab_set()
-        
-        # 消息文本
-        text_frame = ttk.Frame(window)
-        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        label = ttk.Label(text_frame, text=message, wraplength=350, justify=tk.LEFT)
-        label.pack()
-        
-        # 按鈕框架
-        button_frame = ttk.Frame(window)
-        button_frame.pack(fill=tk.X, padx=20, pady=10)
-        
-        no_button = ttk.Button(button_frame, text="否 (Esc)", 
-                               command=lambda: CustomMessageBox._close(window, False))
-        no_button.pack(side=tk.RIGHT, padx=5)
-        
-        yes_button = ttk.Button(button_frame, text="是 (按Enter) ✓", 
-                                command=lambda: CustomMessageBox._close(window, True))
-        yes_button.pack(side=tk.RIGHT, padx=5)
-        yes_button.focus()
-        
-        # 綁定Enter鍵 = 是，Escape鍵 = 否
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, True))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, False))
-        
+
+        container = ttk.Frame(window, padding=(20, 18, 20, 14))
+        container.pack(fill=tk.BOTH, expand=True)
+
+        message_font = tkfont.nametofont('TkDefaultFont')
+        message_widget = tk.Message(
+            container,
+            text=message or '',
+            width=CustomMessageBox.MESSAGE_WRAP,
+            justify=tk.LEFT,
+            anchor='w',
+            font=message_font,
+            foreground=accent or 'black',
+            padx=0,
+            pady=0,
+        )
+        message_widget.pack(fill=tk.BOTH, expand=True)
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill=tk.X, pady=(18, 0))
+
+        focus_button = None
+        for button in reversed(buttons):
+            btn = ttk.Button(
+                button_frame,
+                text=button['text'],
+                command=lambda value=button['result']: CustomMessageBox._close(window, value),
+                width=max(12, len(button['text']) + 2),
+            )
+            btn.pack(side=tk.RIGHT, padx=(8, 0))
+            if button.get('default') and focus_button is None:
+                focus_button = btn
+
+        if focus_button is not None:
+            focus_button.focus_set()
+
+        default_result = next((button['result'] for button in buttons if button.get('default')), True)
+        window.bind('<Return>', lambda e: CustomMessageBox._close(window, default_result))
+        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, close_result))
+        window.protocol('WM_DELETE_WINDOW', lambda: CustomMessageBox._close(window, close_result))
+
+        window.update_idletasks()
+
+        width = min(max(container.winfo_reqwidth() + 8, CustomMessageBox.MIN_WIDTH), CustomMessageBox.MAX_WIDTH)
+        if width != CustomMessageBox.MIN_WIDTH:
+            message_widget.configure(width=max(320, width - 70))
+            window.update_idletasks()
+
+        height = min(max(container.winfo_reqheight() + 8, CustomMessageBox.MIN_HEIGHT), CustomMessageBox.MAX_HEIGHT)
+
+        if parent is not None and parent.winfo_exists():
+            parent.update_idletasks()
+            parent_x = parent.winfo_rootx()
+            parent_y = parent.winfo_rooty()
+            parent_width = parent.winfo_width()
+            parent_height = parent.winfo_height()
+            x = parent_x + max(0, (parent_width - width) // 2)
+            y = parent_y + max(0, (parent_height - height) // 2)
+        else:
+            screen_width = window.winfo_screenwidth()
+            screen_height = window.winfo_screenheight()
+            x = max(0, (screen_width - width) // 2)
+            y = max(0, (screen_height - height) // 2)
+
+        window.geometry(f'{width}x{height}+{x}+{y}')
         window.wait_window()
         return CustomMessageBox.result
-    
+
+    @staticmethod
+    def show_info(title, message, parent=None):
+        CustomMessageBox._build_dialog(
+            title,
+            message,
+            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            parent=parent,
+            close_result=True,
+        )
+        return True
+
+    @staticmethod
+    def show_warning(title, message, parent=None):
+        CustomMessageBox._build_dialog(
+            title,
+            message,
+            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            parent=parent,
+            accent='#8a6d00',
+            close_result=True,
+        )
+        return True
+
+    @staticmethod
+    def show_error(title, message, parent=None):
+        CustomMessageBox._build_dialog(
+            title,
+            message,
+            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            parent=parent,
+            accent='#b00020',
+            close_result=True,
+        )
+        return True
+
+    @staticmethod
+    def ask_yes_no(title, message, parent=None):
+        return CustomMessageBox._build_dialog(
+            title,
+            message,
+            buttons=[
+                {'text': 'No (Esc)', 'result': False},
+                {'text': 'Yes (Enter)', 'result': True, 'default': True},
+            ],
+            parent=parent,
+            close_result=False,
+        )
+
     @staticmethod
     def _close(window, result):
-        """關閉視窗並返回結果"""
         CustomMessageBox.result = result
         window.destroy()
+
+
+def _custom_messagebox_info(title=None, message=None, **options):
+    return CustomMessageBox.show_info(title or 'Info', message or '', parent=options.get('parent'))
+
+
+def _custom_messagebox_warning(title=None, message=None, **options):
+    return CustomMessageBox.show_warning(title or 'Warning', message or '', parent=options.get('parent'))
+
+
+def _custom_messagebox_error(title=None, message=None, **options):
+    return CustomMessageBox.show_error(title or 'Error', message or '', parent=options.get('parent'))
+
+
+def _custom_messagebox_askyesno(title=None, message=None, **options):
+    return CustomMessageBox.ask_yes_no(title or 'Confirm', message or '', parent=options.get('parent'))
+
+
+messagebox.showinfo = _custom_messagebox_info
+messagebox.showwarning = _custom_messagebox_warning
+messagebox.showerror = _custom_messagebox_error
+messagebox.askyesno = _custom_messagebox_askyesno
 
 class HealthMonitor:
     def get_text(self, key):
@@ -745,6 +770,8 @@ class HealthMonitor:
         _app_instance = self  # 保存全局引用
 
         self.root = root
+        self._startup_phase = True
+        self._startup_visual_refresh_pending = False
 
         self.root.title(self.get_text("window_title"))
         # 初始設定為中等大小的視窗，讓智能自適應功能根據分頁調整
@@ -962,31 +989,57 @@ class HealthMonitor:
         pyautogui.PAUSE = 0  # 移除按鍵間的預設延遲
 
         # 如果有已儲存的設定，自動載入預覽
-        self.auto_load_preview()
 
         # 監控狀態
         self.monitoring = False
         self.monitor_thread = None
 
-        # 快捷鍵設定
-        self.setup_hotkeys()
-
-        # 設置GUI關閉事件
+        # ??GUI????
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        # 設置右鍵中斷功能
-        self.setup_mouse_interrupt()
+        # ????????
+        self.close_loading_window()
+        self._startup_phase = False
+        self.root.after(10, self.finish_startup_tasks)
 
-        # 應用程式啟動完成訊息
-        self.update_loading_status("即將完成...")
+    def finish_startup_tasks(self):
+        """Run non-critical startup tasks after the main window is already visible."""
+        try:
+            self.auto_load_preview()
+        except Exception as e:
+            print(f"????????: {e}")
+
+        if self._startup_visual_refresh_pending:
+            self._startup_visual_refresh_pending = False
+            try:
+                self.refresh_visual_previews_after_load()
+            except Exception as e:
+                print(f"????????: {e}")
+
+        try:
+            self.setup_hotkeys()
+        except Exception as e:
+            print(f"???????: {e}")
+
+        try:
+            self.setup_mouse_interrupt()
+        except Exception as e:
+            print(f"?????????: {e}")
+
         self.add_status_message(self.get_text("tool_started_successfully"), "success")
         self.add_status_message(self.get_text("hotkey_info"), "info")
-        
-        # 設置使用時間顯示更新定時器（每分鐘更新一次）
         self.root.after(60000, self.update_usage_time_periodically)
 
-        # 關閉載入提示視窗
-        self.close_loading_window()
+    def refresh_visual_previews_after_load(self):
+        """Refresh heavier previews after startup so the main window appears sooner."""
+        if hasattr(self, 'ui_preview_canvas') and self.inventory_ui_region:
+            self.update_ui_preview()
+
+        if hasattr(self, 'interface_ui_preview_canvas') and self.interface_ui_region:
+            self.update_interface_ui_preview()
+
+        if self.inventory_region:
+            self.update_inventory_preview_from_current()
 
     def setup_mouse_interrupt(self):
         """設置滑鼠右鍵中斷功能"""
@@ -3101,27 +3154,37 @@ class HealthMonitor:
         self.monitor_thread.start()
 
     def stop_monitoring(self):
-        """停止監控並等待線程完全結束"""
+        """Stop monitoring without blocking the Tk main thread."""
         if not self.is_monitoring():
-            return  # 已經停止
-        
-        print("[STOP] 正在停止監控...")
-        # 線程安全地設置監控狀態
+            return
+
+        print("[STOP] ?????????...")
         self.set_monitoring(False)
-        
-        # 等待監控線程完全結束
-        self.wait_monitoring_stopped(timeout=2.0)
-        
+
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-
-        # 添加狀態訊息
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
 
-        # 停止監控時恢復正常狀態
-        self.root.attributes("-alpha", 1.0)  # 恢復完全不透明
-        self.manage_window_hierarchy(self.root, "MAIN")  # 恢復主視窗層級
-        print("[STOP] 監控已完全停止")
+        self.root.attributes("-alpha", 1.0)
+        self.manage_window_hierarchy(self.root, "MAIN")
+        self.root.after(10, self._wait_for_monitoring_stop_async)
+
+    def _wait_for_monitoring_stop_async(self, deadline=None):
+        """Wait for monitor thread exit without freezing the GUI."""
+        if deadline is None:
+            deadline = time.time() + 2.0
+
+        thread = self.monitor_thread
+        if not thread or not thread.is_alive():
+            self.monitor_thread = None
+            print("[STOP] ?????")
+            return
+
+        if time.time() >= deadline:
+            print("[STOP] ???????????????????")
+            return
+
+        self.root.after(25, lambda: self._wait_for_monitoring_stop_async(deadline))
 
     def restart_monitoring_silently(self):
         """靜默重新啟動血魔監控（用於全域暫停恢復）"""
@@ -4155,7 +4218,7 @@ class HealthMonitor:
                 foreground_title = buffer.value
 
                 # 檢查前台視窗標題是否包含GUI標題
-                gui_title = "Sid輔助工具 v1.0.6 - 血魔監控 + 一鍵清包 + 自動化工具"
+                gui_title = "Sid輔助工具 v1.0.7 - 血魔監控 + 一鍵清包 + 自動化工具"
                 return gui_title.lower() in foreground_title.lower()
             else:
                 return False
@@ -6453,7 +6516,10 @@ class HealthMonitor:
                 
                 # 更新UI預覽
                 if hasattr(self, 'ui_preview_canvas'):
-                    self.update_ui_preview()
+                    if self._startup_phase:
+                        self._startup_visual_refresh_pending = True
+                    else:
+                        self.update_ui_preview()
                 
                 return True
             else:
@@ -6485,7 +6551,10 @@ class HealthMonitor:
 
                 # 更新介面UI預覽
                 if hasattr(self, 'interface_ui_preview_canvas'):
-                    self.update_interface_ui_preview()
+                    if self._startup_phase:
+                        self._startup_visual_refresh_pending = True
+                    else:
+                        self.update_interface_ui_preview()
 
                 return True
             else:
@@ -8498,14 +8567,20 @@ class HealthMonitor:
                 self.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), background="lightgreen")
                 # 嘗試更新UI預覽（如果Canvas已創建）
                 if hasattr(self, 'ui_preview_canvas'):
-                    self.update_ui_preview()
+                    if self._startup_phase:
+                        self._startup_visual_refresh_pending = True
+                    else:
+                        self.update_ui_preview()
 
             # 更新介面UI記錄狀態顯示
             if hasattr(self, 'interface_ui_label') and self.interface_ui_region:
                 self.interface_ui_label.config(text=self.get_interface_ui_region_text(), background="lightgreen")
                 # 嘗試更新介面UI預覽（如果Canvas已創建）
                 if hasattr(self, 'interface_ui_preview_canvas'):
-                    self.update_interface_ui_preview()
+                    if self._startup_phase:
+                        self._startup_visual_refresh_pending = True
+                    else:
+                        self.update_interface_ui_preview()
 
             # 載入遊戲視窗標題
             if 'inventory_window_title' in self.config:
@@ -8670,7 +8745,10 @@ class HealthMonitor:
 
             # 更新UI
             self.update_offset_labels()
-            self.update_inventory_preview_from_current()
+            if self._startup_phase:
+                self._startup_visual_refresh_pending = True
+            else:
+                self.update_inventory_preview_from_current()
 
             # 更新區域顯示標籤
             if hasattr(self, 'region_label'):
