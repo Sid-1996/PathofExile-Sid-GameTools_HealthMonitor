@@ -153,6 +153,11 @@ class GameToolBuilder:
                 "--hidden-import", "tkinter.messagebox",
                 "--hidden-import", "_tkinter",
                 "--collect-data", "tkinter",
+                # 其他可能遺漏的依賴
+                "--hidden-import", "webbrowser",
+                "--hidden-import", "win32gui",
+                "--hidden-import", "traceback",
+                "--collect-data", "pywin32",
                 # 數據檔案
                 "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
                 source_file
