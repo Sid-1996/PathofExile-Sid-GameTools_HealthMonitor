@@ -160,6 +160,14 @@ hardware_info.json
 generated_registrars/
 auto_generated/
 
+# Local development (DO NOT COMMIT)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.windsurf/workflows/ai-work-summary.md
+LOCAL_DEVELOPMENT.md
+
 # Test files
 test_*.py
 *_test.py
