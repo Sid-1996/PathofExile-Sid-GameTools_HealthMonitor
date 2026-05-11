@@ -11,7 +11,9 @@ Built with Python + AutoHotkey + OCR / Image Recognition.
 
 ## 🌐 Language / 語言
 
-- [中文與英文](README.md)
+This README uses both Traditional Chinese and English.
+
+本 README 使用中英雙語撰寫。
 
 
 ---
