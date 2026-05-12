@@ -38,17 +38,44 @@ class ConfigManager:
             return False, f"載入設定檔案失敗: {e}"
     
     def save_config(self, config_data=None, show_message=True):
-        """儲存設定檔案"""
+        """儲存設定檔案（帶備份和異常恢復機制）"""
         try:
             if config_data is not None:
                 self.config = config_data
             
+            # 在保存前創建備份，防止配置文件被破壞
+            backup_file = self.config_file + '.backup'
+            if os.path.exists(self.config_file):
+                try:
+                    import shutil
+                    shutil.copy2(self.config_file, backup_file)
+                    print(f"[DEBUG] 配置文件備份已創建: {backup_file}")
+                except Exception as backup_error:
+                    print(f"[WARN] 創建備份失敗: {backup_error}")
+            
+            # 保存配置文件
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
             
+            print(f"[DEBUG] 配置文件已保存: {self.config_file}")
             return True, "設定檔案儲存成功"
         except Exception as e:
-            return False, f"儲存設定檔案失敗: {e}"
+            error_msg = f"儲存設定檔案失敗: {e}"
+            print(f"[ERROR] {error_msg}")
+            
+            # 嘗試從備份恢復
+            backup_file = self.config_file + '.backup'
+            if os.path.exists(backup_file):
+                try:
+                    import shutil
+                    shutil.copy2(backup_file, self.config_file)
+                    print(f"[WARN] 已從備份恢復配置文件")
+                    return False, f"{error_msg} - 已從備份恢復"
+                except Exception as restore_error:
+                    print(f"[ERROR] 從備份恢復失敗: {restore_error}")
+                    return False, f"{error_msg} - 備份恢復失敗"
+            
+            return False, error_msg
     
     def get_config_value(self, key, default=None):
         """獲取設定值"""

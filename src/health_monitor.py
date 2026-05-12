@@ -271,8 +271,11 @@ class HealthMonitor:
     def get_text(self, key):
         """獲取本地化文字"""
         try:
-            return get_localized_text(key)
-        except:
+            # 直接使用語言管理器，避免導入函數的問題
+            result = self.language_manager.get_text(key)
+            return result
+        except Exception as e:
+            print(f"[DEBUG] 主程序 get_text('{key}') 異常: {e}")
             return f"[{key}]"
 
     def load_usage_time_from_registry(self):
@@ -342,7 +345,7 @@ class HealthMonitor:
 
     def change_language(self, new_language):
         """切換語言"""
-        if new_language == self.language_manager.current_language:
+        if new_language == self.current_language:
             return  # 如果選擇的語言和當前語言相同，不做任何動作
 
         # 創建雙語確認訊息（已經包含重啟說明）
@@ -355,8 +358,12 @@ class HealthMonitor:
         if result:
             # 保存語言設定並重新啟動應用程式
             self.language_manager.change_language(new_language)
+            self.current_language = new_language  # 同步主程序的 current_language
             self.language_var.set(self.language_reverse_map.get(new_language, "繁體中文"))
             self.config['language'] = new_language
+
+            # 立即更新UI語言（在重啟前）
+            self.update_ui_language()
 
             # 保存設定，如果失敗則顯示錯誤訊息
             try:
@@ -375,19 +382,10 @@ class HealthMonitor:
                 print(f"重新啟動Python腳本: {sys.executable} {script_path}")
 
                 # 啟動新實例
-                subprocess.Popen(
-                    [sys.executable, script_path],
-                    cwd=current_dir,
-                    creationflags=subprocess.DETACHED_PROCESS,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL
-                )
+                subprocess.Popen([sys.executable, script_path], cwd=current_dir)
 
-                # 關閉當前實例
-                self.root.quit()
-                self.root.destroy()
-                os._exit(0)
+                # 關閉當前應用程式
+                self.close_app()
 
             except Exception as e:
                 print(f"Python腳本重新啟動失敗: {e}")
@@ -398,12 +396,14 @@ class HealthMonitor:
             self.language_var.set(display_name)
             print("使用者取消語言切換，保持原語言設定")
 
-    def update_ui_language(self):
-        """更新UI語言"""
+    def update_ui_text(self):
+        """全面更新所有UI元件的文字"""
         try:
+            print(f"[DEBUG] update_ui_text() 開始執行，語言: {self.language_manager.current_language}")
+            
             # 更新視窗標題
             self.root.title(self.get_text("window_title"))
-
+            
             # 更新分頁標題
             self.notebook.tab(0, text=self.get_text("tab_health_monitor"))
             self.notebook.tab(1, text=self.get_text("tab_inventory_clear"))
@@ -412,21 +412,10 @@ class HealthMonitor:
             self.notebook.tab(4, text=self.get_text("tab_help"))
             self.notebook.tab(5, text=self.get_text("tab_version"))
             self.notebook.tab(6, text=self.get_text("tab_about"))
-
-            # 更新Treeview標題
-            if hasattr(self, 'settings_tree'):
-                self.settings_tree.heading("type", text=self.get_text("type"))
-                self.settings_tree.heading("percent", text=self.get_text("percentage"))
-                self.settings_tree.heading("key", text=self.get_text("hotkey"))
-                self.settings_tree.heading("cooldown", text=self.get_text("cooldown_ms"))
-
+            
             # 更新控制面板的UI元素
             if hasattr(self, 'control_frame'):
-                # 更新控制面板標題
-                if hasattr(self, 'control_frame') and self.control_frame.winfo_exists():
-                    self.control_frame.config(text=self.get_text("control_panel"))
-
-                # 更新按鈕文字
+                self.control_frame.config(text=self.get_text("control_panel"))
                 if hasattr(self, 'start_btn'):
                     self.start_btn.config(text=self.get_text("start_monitoring"))
                 if hasattr(self, 'stop_btn'):
@@ -435,38 +424,59 @@ class HealthMonitor:
                     self.save_btn.config(text=self.get_text("save_settings"))
                 if hasattr(self, 'test_preview_btn'):
                     self.test_preview_btn.config(text=self.get_text("test_preview"))
-
-                # 更新標籤文字
                 if hasattr(self, 'check_freq_label'):
                     self.check_freq_label.config(text=self.get_text("check_frequency"))
                 if hasattr(self, 'ms_label'):
                     self.ms_label.config(text=self.get_text("ms"))
+                if hasattr(self, 'reminder_frame'):
+                    self.reminder_frame.config(text=self.get_text("important_reminder"))
+                if hasattr(self, 'reminder_label'):
+                    self.reminder_label.config(text=self.get_text("reminder_text"))
                 if hasattr(self, 'language_label'):
                     self.language_label.config(text=self.get_text("language"))
                 if hasattr(self, 'gui_settings_label'):
                     self.gui_settings_label.config(text=self.get_text("gui_settings"))
                 if hasattr(self, 'always_on_top_check'):
                     self.always_on_top_check.config(text=self.get_text("always_on_top"))
-
-                # 更新提醒區域
-                if hasattr(self, 'reminder_frame') and self.reminder_frame.winfo_exists():
-                    self.reminder_frame.config(text=self.get_text("important_reminder"))
-                    if hasattr(self, 'reminder_label'):
-                        self.reminder_label.config(text=self.get_text("reminder_text"))
-
-                # 更新預覽控制區域
-                if hasattr(self, 'preview_control_frame') and self.preview_control_frame.winfo_exists():
-                    if hasattr(self, 'preview_settings_label'):
-                        self.preview_settings_label.config(text=self.get_text("preview_settings"))
-                    if hasattr(self, 'enable_preview_check'):
-                        self.enable_preview_check.config(text=self.get_text("enable_preview"))
-                    if hasattr(self, 'preview_interval_label'):
-                        self.preview_interval_label.config(text=self.get_text("preview_interval"))
-                    if hasattr(self, 'preview_ms_label'):
-                        self.preview_ms_label.config(text=self.get_text("ms"))
-
-            # 更新右側狀態區域的UI元素
-            if hasattr(self, 'real_time_status_frame') and self.real_time_status_frame.winfo_exists():
+                if hasattr(self, 'preview_settings_label'):
+                    self.preview_settings_label.config(text=self.get_text("preview_settings"))
+                if hasattr(self, 'enable_preview_check'):
+                    self.enable_preview_check.config(text=self.get_text("enable_preview"))
+                if hasattr(self, 'preview_interval_label'):
+                    self.preview_interval_label.config(text=self.get_text("preview_interval"))
+                if hasattr(self, 'preview_ms_label'):
+                    self.preview_ms_label.config(text=self.get_text("ms"))
+            
+            # 更新遊戲視窗設定區域
+            if hasattr(self, 'window_frame'):
+                self.window_frame.config(text=self.get_text("game_window_settings"))
+                if hasattr(self, 'region_label'):
+                    self.region_label.config(text=self.get_region_text())
+                if hasattr(self, 'mana_region_label'):
+                    self.mana_region_label.config(text=self.get_mana_region_text())
+                if hasattr(self, 'interface_ui_label'):
+                    self.interface_ui_label.config(text=self.get_interface_ui_region_text())
+                if hasattr(self, 'select_health_btn'):
+                    self.select_health_btn.config(text=self.get_text("select_health_region"))
+                if hasattr(self, 'select_mana_btn'):
+                    self.select_mana_btn.config(text=self.get_text("select_mana_region"))
+                if hasattr(self, 'select_interface_ui_btn'):
+                    self.select_interface_ui_btn.config(text=self.get_text("select_interface_ui"))
+            
+            # 更新觸發設定區域
+            if hasattr(self, 'settings_frame'):
+                self.settings_frame.config(text=self.get_text("trigger_settings"))
+                if hasattr(self, 'remove_selected_btn'):
+                    self.remove_selected_btn.config(text=self.get_text("remove_selected"))
+                if hasattr(self, 'adjust_colors_btn'):
+                    self.adjust_colors_btn.config(text=self.get_text("adjust_colors"))
+                if hasattr(self, 'adjust_interface_ui_btn'):
+                    self.adjust_interface_ui_btn.config(text=self.get_text("adjust_interface_ui"))
+                if hasattr(self, 'multi_trigger_check'):
+                    self.multi_trigger_check.config(text=self.get_text("multiple_triggers"))
+            
+            # 更新即時狀態區域
+            if hasattr(self, 'real_time_status_frame'):
                 self.real_time_status_frame.config(text=self.get_text("real_time_status"))
                 if hasattr(self, 'current_health_label'):
                     self.current_health_label.config(text=self.get_text("current_health"))
@@ -476,41 +486,27 @@ class HealthMonitor:
                     self.main_color_label.config(text=self.get_text("main_color"))
                 if hasattr(self, 'trigger_status_label'):
                     self.trigger_status_label.config(text=self.get_text("trigger_status"))
-
-            # 更新預覽區域的UI元素
-            if hasattr(self, 'preview_frame') and self.preview_frame.winfo_exists():
+            
+            # 更新預覽區域
+            if hasattr(self, 'preview_frame'):
                 self.preview_frame.config(text=self.get_text("region_preview"))
                 if hasattr(self, 'health_preview_frame'):
                     self.health_preview_frame.config(text=self.get_text("health_preview"))
+                if hasattr(self, 'preview_label'):
+                    self.preview_label.config(text=self.get_text("select_health_region_first"))
                 if hasattr(self, 'mana_preview_frame'):
                     self.mana_preview_frame.config(text=self.get_text("mana_preview"))
-
-            # 更新狀態分頁的UI元素
-            if hasattr(self, 'status_frame'):
-                self.update_status_tab_language()
-
-            # 更新一鍵清包分頁的UI元素
-            if hasattr(self, 'inventory_frame'):
-                self.update_inventory_tab_language()
-
-            # 更新技能連段分頁的UI元素
-            if hasattr(self, 'combo_frame'):
-                self.update_combo_tab_language()
-
-            # 更新幫助分頁的UI元素
-            if hasattr(self, 'help_frame'):
-                self.update_help_tab_language()
-
-            # 更新版本分頁的UI元素
-            if hasattr(self, 'version_frame'):
-                self.update_version_tab_language()
-
-            # 更新關於分頁的UI元素
-            if hasattr(self, 'about_frame'):
-                self.update_about_tab_language()
-
+                if hasattr(self, 'mana_preview_label'):
+                    self.mana_preview_label.config(text=self.get_text("select_mana_region_first"))
+            
+            print(f"[DEBUG] update_ui_text() 完成")
+            
         except Exception as e:
-            print(f"更新UI語言時發生錯誤: {e}")
+            print(f"[DEBUG] update_ui_text() 異常: {e}")
+
+    def update_ui_language(self):
+        """更新UI語言（保持向後相容）"""
+        self.update_ui_text()
 
     def update_status_tab_language(self):
         """更新狀態分頁的語言"""
@@ -670,14 +666,31 @@ class HealthMonitor:
         self._startup_phase = True
         self._startup_visual_refresh_pending = False
 
-        self.root.title(self.get_text("window_title"))
-        # 初始設定為中等大小的視窗，讓智能自適應功能根據分頁調整
-        self.root.geometry("800x600")
-        self.root.minsize(650, 500)    # 設定最小尺寸防止內容被擠壓，降低最小值
-        # 移除預設的 -topmost 設定，讓設定載入時決定
-        self.root.attributes("-alpha", 1.0)  # 預設完全不透明        # 初始化配置管理器
+        # 【核心修正 1】優先初始化配置管理器，從源頭取得保存的語言設定
         self.config_manager = get_config_manager()
         self.config_file = self.config_manager.config_file
+
+        # 【核心修正 2】從配置或註冊表取得 saved_language，並初始化語言管理器
+        self.language_manager = get_language_manager()
+        
+        # 臨時載入設定以獲取語言偏好
+        success, message = self.config_manager.load_config()
+        temp_config = self.config_manager.config
+        
+        # 嘗試從 config 讀取語言，若無則預設為 'zh-tw'
+        saved_language = temp_config.get("language", "zh-tw")
+        self.language_manager.change_language(saved_language)
+        self.current_language = saved_language
+        
+        print(f"[DEBUG] 語系初始化成功！當前設定語系為: {self.current_language}")
+
+        # 【核心修正 3】這時候語言已經準備好了，才可以開始設定視窗標題與執行 get_text
+        self.root.title(self.get_text("window_title"))
+        
+        # 初始設定為中等大小的視窗
+        self.root.geometry("800x600")
+        self.root.minsize(650, 500)    
+        self.root.attributes("-alpha", 1.0)  
 
         # 記錄應用程式啟動時間
         self.start_time = datetime.now()
@@ -721,16 +734,6 @@ class HealthMonitor:
 
         # 初始化基本設定變數（在載入設定之前）
         self.config = {}
-
-        # 臨時載入設定以獲取語言偏好（在UI創建之前）
-        temp_config = self.config_manager.load_config()
-
-        # 初始化語言管理器
-        self.language_manager = get_language_manager()
-        
-        # 語言設定 - 使用儲存的語言或預設繁體中文
-        saved_language = temp_config.get('language', 'zh-tw')
-        self.language_manager.change_language(saved_language)
         
         # 獲取語言映射
         self.language_display_map = self.language_manager.get_language_display_map()
@@ -864,7 +867,8 @@ class HealthMonitor:
 
         # 在UI元件創建後載入設定
         self.update_loading_status("正在載入設定...")
-        self.config = self.config_manager.load_config()
+        success, message = self.config_manager.load_config()
+        self.config = self.config_manager.config
 
         # 將窗口置中於螢幕（如果沒有儲存的位置）
         self.update_loading_status("正在初始化視窗...")
@@ -899,6 +903,12 @@ class HealthMonitor:
     def finish_startup_tasks(self):
         """Run non-critical startup tasks after the main window is already visible."""
         try:
+            print(f"[DEBUG] finish_startup_tasks 開始執行")
+            # 確保UI語言正確更新 - 使用新的 update_ui_text() 方法
+            print(f"[DEBUG] 調用 update_ui_text()")
+            self.update_ui_text()
+            print(f"[DEBUG] update_ui_text() 完成")
+            
             self.auto_load_preview()
         except Exception as e:
             print(f"????????: {e}")
@@ -1037,15 +1047,24 @@ class HealthMonitor:
 
         # 第一個分頁：血魔監控
         self.monitor_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(self.monitor_frame, text=self.get_text("tab_health_monitor"))
+        print(f"[DEBUG] 準備調用 self.get_text('tab_health_monitor')")
+        tab_health_text = self.get_text("tab_health_monitor")
+        print(f"[DEBUG] 創建分頁1標題: '{tab_health_text}' (語言: {self.language_manager.current_language})")
+        self.notebook.add(self.monitor_frame, text=tab_health_text)
 
         # 第二個分頁：一鍵清包
         self.inventory_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(self.inventory_frame, text=self.get_text("tab_inventory_clear"))
+        print(f"[DEBUG] 準備調用 self.get_text('tab_inventory_clear')")
+        tab_inventory_text = self.get_text("tab_inventory_clear")
+        print(f"[DEBUG] 創建分頁2標題: '{tab_inventory_text}'")
+        self.notebook.add(self.inventory_frame, text=tab_inventory_text)
 
         # 第三個分頁：技能連段（插入到一鍵清包和使用說明之間）
         self.combo_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(self.combo_frame, text=self.get_text("tab_skill_combo"))
+        print(f"[DEBUG] 準備調用 self.get_text('tab_skill_combo')")
+        tab_combo_text = self.get_text("tab_skill_combo")
+        print(f"[DEBUG] 創建分頁3標題: '{tab_combo_text}'")
+        self.notebook.add(self.combo_frame, text=tab_combo_text)
 
         # 第四個分頁：執行狀態（新增）
         self.status_frame = ttk.Frame(self.notebook, padding="10")
@@ -1400,8 +1419,10 @@ class HealthMonitor:
         self.reminder_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         # 語言選擇
-        self.language_label = ttk.Label(self.control_frame, text=self.get_text("language"))
+        language_text = self.get_text("language")
+        self.language_label = ttk.Label(self.control_frame, text=language_text)
         self.language_label.grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
+        print(f"[DEBUG] 語言標籤文字: '{language_text}'")
         
         # 語言顯示名稱映射
         self.language_display_map = {
@@ -1409,11 +1430,13 @@ class HealthMonitor:
             "English": "en"
         }
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
-        
+
         # 設置下拉選單的顯示值
         display_values = list(self.language_display_map.keys())
         current_display = self.language_reverse_map.get(self.current_language, "繁體中文")
         self.language_var.set(current_display)
+        print(f"[DEBUG] 語言選擇器當前顯示: '{current_display}'")
+        print(f"[DEBUG] 可用語言選項: {display_values}")
         
         language_combo = ttk.Combobox(self.control_frame, textvariable=self.language_var,
                                      values=display_values, state="readonly", width=12)
@@ -8379,45 +8402,9 @@ class HealthMonitor:
         draw.text((text_x, text_y + 1), text, fill=(0, 0, 0), font=None)
         draw.text((text_x, text_y - 1), text, fill=(0, 0, 0), font=None)
 
-    def get_text(self, key):
-        """獲取當前語言的文字"""
-        try:
-            return LANGUAGE_PACKS.get(self.current_language, {}).get(key, key)
-        except:
-            return key
-
-    def update_ui_language(self):
-        """更新UI語言"""
-        try:
-            # 更新視窗標題
-            self.root.title(self.get_text("window_title"))
-
-            # 更新分頁標題
-            self.notebook.tab(0, text=self.get_text("tab_health_monitor"))
-            self.notebook.tab(1, text=self.get_text("tab_inventory_clear"))
-            self.notebook.tab(2, text=self.get_text("tab_skill_combo"))
-            self.notebook.tab(3, text=self.get_text("tab_status"))
-            self.notebook.tab(4, text=self.get_text("tab_help"))
-            self.notebook.tab(5, text=self.get_text("tab_version"))
-            self.notebook.tab(6, text=self.get_text("tab_about"))
-
-            # 更新Treeview標題
-            if hasattr(self, 'settings_tree'):
-                self.settings_tree.heading("type", text=self.get_text("type"))
-                self.settings_tree.heading("percent", text=self.get_text("percentage"))
-                self.settings_tree.heading("key", text=self.get_text("hotkey"))
-                self.settings_tree.heading("cooldown", text=self.get_text("cooldown_ms"))
-
-            # 更新使用說明分頁的標題和內容
-            if hasattr(self, 'help_frame'):
-                # 這裡可以添加更多動態更新的UI元素
-                pass
-
-        except Exception as e:
-            print(f"更新UI語言時發生錯誤: {e}")
-
     def load_config(self):
         """載入設定"""
+        print(f"[DEBUG] load_config 方法被調用")
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -8665,20 +8652,31 @@ class HealthMonitor:
                 self.update_pickup_coordinates_display()
 
             # 載入語言設定
-            self.current_language = self.config.get('language', 'zh-tw')
+            loaded_language = self.config.get('language', 'zh-tw')
+            print(f"[DEBUG] load_config 中載入的語言: {loaded_language}")
+            print(f"[DEBUG] load_config 前的語言管理器語言: {self.language_manager.current_language}")
+            
+            # 只有當配置中的語言與當前不同時才切換
+            if loaded_language != self.language_manager.current_language:
+                print(f"[DEBUG] 語言不同，需要切換: {self.language_manager.current_language} -> {loaded_language}")
+                self.language_manager.change_language(loaded_language)
+                self.current_language = loaded_language
+            else:
+                print(f"[DEBUG] 語言相同，無需切換: {loaded_language}")
+            
             display_name = self.language_reverse_map.get(self.current_language, "繁體中文")
             self.language_var.set(display_name)
+            print(f"[DEBUG] load_config 設置語言選擇器: '{display_name}'")
 
             # 更新UI語言
             self.update_ui_language()
 
         except Exception as e:
+            # 重要：不要清空已加載的配置！只記錄錯誤
+            error_msg = f"載入設定時發生錯誤: {e}"
+            print(f"[ERROR] {error_msg}")
             self.add_status_message(f"設定檔案載入失敗 - {str(e)}", "error")
-            print(f"載入設定時發生錯誤: {e}")
-            # 使用預設值
-            self.config = {}
-            self.add_status_message(f"設定檔案載入失敗 - {str(e)}", "error")
-            print(f"載入設定時發生錯誤: {e}")
+            # 注意：不清空 self.config，保留之前加載的配置
             # 使用預設值
             self.config = {}
 
@@ -8771,6 +8769,30 @@ class HealthMonitor:
                 self.config['combo_sets'] = self.combo_sets
             if hasattr(self, 'combo_enabled'):
                 self.config['combo_enabled'] = self.combo_enabled
+
+            # 儲存血魔監控設定
+            if hasattr(self, 'blood_magic_enabled'):
+                self.config['blood_magic_enabled'] = self.blood_magic_enabled
+            if hasattr(self, 'blood_magic_region') and self.blood_magic_region:
+                self.config['blood_magic_region'] = self.blood_magic_region
+            if hasattr(self, 'blood_magic_threshold'):
+                self.config['blood_magic_threshold'] = self.blood_magic_threshold
+            if hasattr(self, 'blood_magic_window_title'):
+                self.config['blood_magic_window_title'] = self.blood_magic_window_title
+
+            # 儲存自動清包設定
+            if hasattr(self, 'auto_clear_enabled'):
+                self.config['auto_clear_enabled'] = self.auto_clear_enabled
+            if hasattr(self, 'clear_interval'):
+                self.config['clear_interval'] = self.clear_interval
+
+            # 儲存取物座標設定
+            if hasattr(self, 'pickup_coordinates') and self.pickup_coordinates:
+                self.config['pickup_coordinates'] = self.pickup_coordinates
+
+            # 儲存背包視窗標題（區分於血魔監控視窗）
+            if hasattr(self, 'inventory_window_var'):
+                self.config['inventory_window_title'] = self.inventory_window_var.get()
 
             # 儲存監控間隔
             if hasattr(self, 'monitor_interval'):

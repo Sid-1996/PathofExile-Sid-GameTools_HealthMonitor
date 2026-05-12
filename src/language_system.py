@@ -23,11 +23,29 @@ def get_app_dir():
 def load_language_packs():
     """載入語言包"""
     try:
-        language_file = os.path.join(get_app_dir(), "language_packs.json")
+        app_dir = get_app_dir()
+        language_file = os.path.join(app_dir, "language_packs.json")
+        print(f"[DEBUG] 語言包載入 - 應用程式目錄: {app_dir}")
+        print(f"[DEBUG] 語言包載入 - 檔案路徑: {language_file}")
+        print(f"[DEBUG] 語言包載入 - 檔案存在: {os.path.exists(language_file)}")
+        
         with open(language_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            language_packs = json.load(f)
+            
+        print(f"[DEBUG] 語言包載入成功 - 可用語言: {list(language_packs.keys())}")
+        if 'zh-tw' in language_packs:
+            print(f"[DEBUG] zh-tw 語言包包含的鍵數量: {len(language_packs['zh-tw'])}")
+            sample_keys = ['tab_health_monitor', 'window_title', 'language']
+            for key in sample_keys:
+                if key in language_packs['zh-tw']:
+                    print(f"[DEBUG] zh-tw['{key}'] = '{language_packs['zh-tw'][key]}'")
+                else:
+                    print(f"[DEBUG] zh-tw 缺少鍵: {key}")
+        
+        return language_packs
     except Exception as e:
-        print(f"載入語言包失敗: {e}")
+        print(f"[DEBUG] 語言包載入失敗: {e}")
+        print(f"[DEBUG] 異常類型: {type(e)}")
         return {}
 
 
@@ -49,8 +67,12 @@ class LanguageManager:
     def get_text(self, key):
         """獲取本地化文字"""
         try:
-            return LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
+            result = LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
+            if key in ['window_title', 'tab_health_monitor', 'control_panel']:
+                print(f"[DEBUG] get_text('{key}') -> '{result}' (語言: {self.current_language})")
+            return result
         except:
+            print(f"[DEBUG] get_text('{key}') 異常 (語言: {self.current_language})")
             return f"[{key}]"
     
     def change_language_display(self, display_name):
@@ -60,11 +82,16 @@ class LanguageManager:
     
     def change_language(self, new_language):
         """切換語言"""
+        print(f"[DEBUG] 語言管理器 change_language 被調用: {new_language}")
+        print(f"[DEBUG] 當前語言管理器語言: {self.current_language}")
+        
         if new_language == self.current_language:
+            print(f"[DEBUG] 語言相同，無需切換")
             return False  # 如果選擇的語言和當前語言相同，不做任何動作
         
         old_language = self.current_language
         self.current_language = new_language
+        print(f"[DEBUG] 語言管理器語言已切換: {old_language} -> {new_language}")
         return True
     
     def get_current_display_name(self):
