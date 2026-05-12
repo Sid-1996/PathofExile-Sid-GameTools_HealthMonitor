@@ -30,84 +30,16 @@ import functools
 import winreg
 import atexit
 
-def emergency_cleanup():
-    """緊急清理函數 - 確保應用程序退出時清理資源"""
-    try:
-        # 清理鍵盤監聽器
-        keyboard.unhook_all()
-        print("鍵盤監聽器已清理")
-    except:
-        pass
-
-    try:
-        # 停止所有子進程
-        import psutil
-        current_process = psutil.Process()
-        for child in current_process.children(recursive=True):
-            try:
-                child.terminate()
-                child.wait(timeout=1)
-            except:
-                try:
-                    child.kill()
-                except:
-                    pass
-        print("子進程已清理")
-    except:
-        pass
-
-# 註冊退出時清理函數
-atexit.register(emergency_cleanup)
-
-def get_app_dir():
-    """獲取應用程式目錄，適用於開發環境和打包後的exe"""
-    if getattr(sys, 'frozen', False):
-        # 如果是打包後的exe
-        return os.path.dirname(sys.executable)
-    else:
-        # 如果是開發環境
-        return os.path.dirname(__file__)
-
-# 載入語言包
-def load_language_packs():
-    """載入語言包"""
-    try:
-        language_file = os.path.join(get_app_dir(), "language_packs.json")
-        with open(language_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"載入語言包失敗: {e}")
-        return {}
-
-LANGUAGE_PACKS = load_language_packs()
+# Import new modularized components
+from language_system import get_language_manager, get_text as get_localized_text
+from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler
+from custom_dialogs import setup_custom_messagebox
+from config_manager import get_config_manager
 
 # 版本資訊
 CURRENT_VERSION = "v1.0.7"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-
-# 全局緊急關閉變數
-_app_instance = None
-
-def global_f12_handler():
-    """全局F12處理器 - 在任何情況下都能關閉應用程序"""
-    global _app_instance
-    print("\n[STOP] F12緊急關閉被觸發")
-    try:
-        if _app_instance and hasattr(_app_instance, 'close_app'):
-            _app_instance.close_app()
-        else:
-            # 如果應用程序實例不可用，直接強制退出
-            emergency_cleanup()
-            os._exit(0)
-    except Exception as e:
-        print(f"F12緊急關閉處理失敗: {e}")
-        # 最後手段：直接退出
-        try:
-            emergency_cleanup()
-        except:
-            pass
-        os._exit(1)
 
 # Windows API 常數和函數
 user32 = ctypes.windll.user32
@@ -339,7 +271,7 @@ class HealthMonitor:
     def get_text(self, key):
         """獲取本地化文字"""
         try:
-            return LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
+            return get_localized_text(key)
         except:
             return f"[{key}]"
 
@@ -370,28 +302,16 @@ class HealthMonitor:
             # 保存使用時間值
             winreg.SetValueEx(key, "TotalUsageTime", 0, winreg.REG_DWORD, total_seconds)
             winreg.CloseKey(key)
-            print(f"已保存總使用時間: {self.format_usage_time(total_seconds)}")
+            print(f"已保存總使用時間: {format_usage_time(total_seconds)}")
         except Exception as e:
             print(f"保存使用時間失敗: {e}")
 
-    def format_usage_time(self, total_seconds):
-        """格式化使用時間顯示"""
-        hours = total_seconds // 3600
-        minutes = (total_seconds % 3600) // 60
-        seconds = total_seconds % 60
-
-        if hours > 0:
-            return f"{hours}小時{minutes}分鐘{seconds}秒"
-        elif minutes > 0:
-            return f"{minutes}分鐘{seconds}秒"
-        else:
-            return f"{seconds}秒"
-
+    
     def update_usage_time_display(self):
         """更新使用時間顯示"""
         try:
             if hasattr(self, 'usage_time_label'):
-                display_text = f"總使用時間: {self.format_usage_time(self.total_usage_time)}"
+                display_text = f"總使用時間: {format_usage_time(self.total_usage_time)}"
                 self.usage_time_label.config(text=display_text)
         except Exception as e:
             print(f"更新使用時間顯示失敗: {e}")
@@ -409,8 +329,8 @@ class HealthMonitor:
             # 保存到註冊表
             self.save_usage_time_to_registry(self.total_usage_time)
 
-            print(f"本次使用時間: {self.format_usage_time(session_duration)}")
-            print(f"累計總使用時間: {self.format_usage_time(self.total_usage_time)}")
+            print(f"本次使用時間: {format_usage_time(session_duration)}")
+            print(f"累計總使用時間: {format_usage_time(self.total_usage_time)}")
 
         except Exception as e:
             print(f"追蹤使用時間失敗: {e}")
@@ -422,7 +342,7 @@ class HealthMonitor:
 
     def change_language(self, new_language):
         """切換語言"""
-        if new_language == self.current_language:
+        if new_language == self.language_manager.current_language:
             return  # 如果選擇的語言和當前語言相同，不做任何動作
 
         # 創建雙語確認訊息（已經包含重啟說明）
@@ -434,70 +354,47 @@ class HealthMonitor:
 
         if result:
             # 保存語言設定並重新啟動應用程式
-            self.current_language = new_language
+            self.language_manager.change_language(new_language)
             self.language_var.set(self.language_reverse_map.get(new_language, "繁體中文"))
             self.config['language'] = new_language
 
             # 保存設定，如果失敗則顯示錯誤訊息
             try:
-                self.save_config(show_message=False)  # 不顯示成功訊息，因為我們要重新啟動
-                print(f"語言設定已保存: {new_language}")
+                self.config_manager.save_config(self.config)
+                print("語言設定已保存")
             except Exception as e:
                 print(f"保存語言設定失敗: {e}")
-                CustomMessageBox.show_error("錯誤", f"無法保存設定：{e}", self.root)
-                return  # 如果保存失敗，不進行重新啟動
 
-            print(f"使用者選擇重新啟動應用程式以應用新語言設定: {new_language}")
-
-            # 在重新啟動之前保存使用時間
+            # 重新啟動應用程式
             try:
-                print("語言切換重新啟動前保存使用時間...")
-                self.track_usage_time()
-                print("使用時間已保存")
-            except Exception as e:
-                print(f"保存使用時間時發生錯誤: {e}")
+                import subprocess
+                import sys
+                script_path = os.path.abspath(__file__)
+                current_dir = os.getcwd()
 
-            # 根據應用程式類型選擇重新啟動方式
-            if getattr(sys, 'frozen', False):
-                # 如果是打包後的EXE版本
-                CustomMessageBox.show_info(
-                    "語言設定已保存",
-                    "語言設定已保存完成!\n\n請使用「啟動工具.bat」重新啟動應用程式以應用新語言設定。\n\nLanguage settings have been saved successfully!\n\nPlease use \"啟動工具.bat\" to restart the application to apply the new language settings.",
-                    self.root
+                print(f"重新啟動Python腳本: {sys.executable} {script_path}")
+
+                # 啟動新實例
+                subprocess.Popen(
+                    [sys.executable, script_path],
+                    cwd=current_dir,
+                    creationflags=subprocess.DETACHED_PROCESS,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL
                 )
-                # 關閉應用程式
+
+                # 關閉當前實例
                 self.root.quit()
                 self.root.destroy()
                 os._exit(0)
-            else:
-                # 如果是Python腳本版本，自動重新啟動
-                try:
-                    script_path = os.path.abspath(__file__)
-                    current_dir = os.getcwd()
 
-                    print(f"重新啟動Python腳本: {sys.executable} {script_path}")
-
-                    # 啟動新實例
-                    subprocess.Popen(
-                        [sys.executable, script_path],
-                        cwd=current_dir,
-                        creationflags=subprocess.DETACHED_PROCESS,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        stdin=subprocess.DEVNULL
-                    )
-
-                    # 關閉當前實例
-                    self.root.quit()
-                    self.root.destroy()
-                    os._exit(0)
-
-                except Exception as e:
-                    print(f"Python腳本重新啟動失敗: {e}")
-                    CustomMessageBox.show_error("錯誤", f"無法重新啟動應用程式：{e}", self.root)
+            except Exception as e:
+                print(f"Python腳本重新啟動失敗: {e}")
+                CustomMessageBox.show_error("錯誤", f"無法重新啟動應用程式：{e}", self.root)
         else:
             # 使用者選擇取消，恢復語言選擇器到當前語言
-            display_name = self.language_reverse_map.get(self.current_language, "繁體中文")
+            display_name = self.language_manager.get_current_display_name()
             self.language_var.set(display_name)
             print("使用者取消語言切換，保持原語言設定")
 
@@ -778,8 +675,9 @@ class HealthMonitor:
         self.root.geometry("800x600")
         self.root.minsize(650, 500)    # 設定最小尺寸防止內容被擠壓，降低最小值
         # 移除預設的 -topmost 設定，讓設定載入時決定
-        self.root.attributes("-alpha", 1.0)  # 預設完全不透明        # 設定檔案路徑 - 使用應用程式目錄確保在打包後也能正確存取
-        self.config_file = os.path.join(get_app_dir(), "health_monitor_config.json")
+        self.root.attributes("-alpha", 1.0)  # 預設完全不透明        # 初始化配置管理器
+        self.config_manager = get_config_manager()
+        self.config_file = self.config_manager.config_file
 
         # 記錄應用程式啟動時間
         self.start_time = datetime.now()
@@ -787,7 +685,7 @@ class HealthMonitor:
 
         # 初始化使用時間追蹤
         self.total_usage_time = self.load_usage_time_from_registry()
-        print(f"載入總使用時間: {self.format_usage_time(self.total_usage_time)}")
+        print(f"載入總使用時間: {format_usage_time(self.total_usage_time)}")
 
         # 存儲原始 exe 路徑（用於 exe 重啟）
         self.original_exe_path = None
@@ -825,26 +723,21 @@ class HealthMonitor:
         self.config = {}
 
         # 臨時載入設定以獲取語言偏好（在UI創建之前）
-        temp_config = {}
-        if os.path.exists(self.config_file):
-            try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    temp_config = json.load(f)
-            except:
-                temp_config = {}
+        temp_config = self.config_manager.load_config()
 
-        # 語言設定 - 使用儲存的語言或預設繁體中文
-        self.current_language = temp_config.get('language', 'zh-tw')
+        # 初始化語言管理器
+        self.language_manager = get_language_manager()
         
-        # 創建語言映射（需要在語言變數之前）
-        self.language_display_map = {
-            "繁體中文": "zh-tw",
-            "English": "en"
-        }
-        self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
+        # 語言設定 - 使用儲存的語言或預設繁體中文
+        saved_language = temp_config.get('language', 'zh-tw')
+        self.language_manager.change_language(saved_language)
+        
+        # 獲取語言映射
+        self.language_display_map = self.language_manager.get_language_display_map()
+        self.language_reverse_map = self.language_manager.get_language_reverse_map()
         
         # 設置語言變數為顯示名稱
-        display_name = self.language_reverse_map.get(self.current_language, "繁體中文")
+        display_name = self.language_manager.get_current_display_name()
         self.language_var = tk.StringVar(value=display_name)
 
         # 創建載入提示視窗（在語言設定之後）
@@ -971,7 +864,7 @@ class HealthMonitor:
 
         # 在UI元件創建後載入設定
         self.update_loading_status("正在載入設定...")
-        self.load_config()
+        self.config = self.config_manager.load_config()
 
         # 將窗口置中於螢幕（如果沒有儲存的位置）
         self.update_loading_status("正在初始化視窗...")
@@ -1723,8 +1616,7 @@ class HealthMonitor:
             # 自動保存設定
             try:
                 self.config['always_on_top'] = is_topmost
-                with open(self.config_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, indent=2, ensure_ascii=False)
+                self.config_manager.save_config(self.config)
                 print("GUI最上方設定已自動保存")
             except Exception as save_error:
                 print(f"自動保存設定失敗: {save_error}")
@@ -8892,8 +8784,7 @@ class HealthMonitor:
                     self.config['monitor_interval'] = 0.1  # 預設100ms
 
             # 儲存到檔案
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            self.config_manager.save_config(self.config)
 
             self.add_status_message("設定檔案儲存成功", "success")
             if show_message:
@@ -10280,7 +10171,7 @@ class HealthMonitor:
                  font=('Microsoft YaHei', 12), foreground='#27ae60').pack(anchor=tk.W, pady=(0, 8))
         
         # 使用時間顯示
-        usage_time_text = self.format_usage_time(self.total_usage_time)
+        usage_time_text = format_usage_time(self.total_usage_time)
         self.usage_time_label = ttk.Label(info_card, text=self.get_text("total_usage_time").format(time=usage_time_text),
                                          font=('Microsoft YaHei', 12), foreground='#1976D2')
         self.usage_time_label.pack(anchor=tk.W, pady=(0, 8))
@@ -10409,7 +10300,7 @@ class HealthMonitor:
         """更新使用時間顯示"""
         try:
             if hasattr(self, 'usage_time_label'):
-                usage_time_text = self.format_usage_time(self.total_usage_time)
+                usage_time_text = format_usage_time(self.total_usage_time)
                 self.usage_time_label.config(text=self.get_text("total_usage_time").format(time=usage_time_text))
         except Exception as e:
             print(f"更新使用時間顯示時發生錯誤: {e}")
