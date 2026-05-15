@@ -732,10 +732,11 @@ class HealthMonitor:
                 except Exception as e2:
                     print(f"備用方法也失敗: {e2}")
 
-        # 初始化基本設定變數（在載入設定之前）
-        self.config = {}
-        
         # 獲取語言映射
+        self.config = {}
+        self._is_closing = False
+        self._silent_version_check_after_id = None
+        self._usage_time_after_id = None
         self.language_display_map = self.language_manager.get_language_display_map()
         self.language_reverse_map = self.language_manager.get_language_reverse_map()
         
@@ -869,6 +870,9 @@ class HealthMonitor:
         self.update_loading_status("正在載入設定...")
         success, message = self.config_manager.load_config()
         self.config = self.config_manager.config
+        
+        # 載入配置到各個變數
+        self.load_config()
 
         # 將窗口置中於螢幕（如果沒有儲存的位置）
         self.update_loading_status("正在初始化視窗...")
@@ -911,28 +915,28 @@ class HealthMonitor:
             
             self.auto_load_preview()
         except Exception as e:
-            print(f"????????: {e}")
+            print(f": {e}")
 
         if self._startup_visual_refresh_pending:
             self._startup_visual_refresh_pending = False
             try:
                 self.refresh_visual_previews_after_load()
             except Exception as e:
-                print(f"????????: {e}")
+                print(f": {e}")
 
         try:
             self.setup_hotkeys()
         except Exception as e:
-            print(f"???????: {e}")
+            print(f": {e}")
 
         try:
             self.setup_mouse_interrupt()
         except Exception as e:
-            print(f"?????????: {e}")
+            print(f": {e}")
 
         self.add_status_message(self.get_text("tool_started_successfully"), "success")
         self.add_status_message(self.get_text("hotkey_info"), "info")
-        self.root.after(60000, self.update_usage_time_periodically)
+        self._usage_time_after_id = self.root.after(60000, self.update_usage_time_periodically)
 
     def refresh_visual_previews_after_load(self):
         """Refresh heavier previews after startup so the main window appears sooner."""
@@ -953,6 +957,8 @@ class HealthMonitor:
 
     def monitor_mouse_interrupt(self):
         """監聽滑鼠右鍵事件用於中斷F3清包"""
+        if self._is_closing:
+            return
         self.add_status_message(self.get_text("mouse_interrupt_started"), "info")
         print(self.get_text("mouse_interrupt_started"))
 
@@ -960,7 +966,7 @@ class HealthMonitor:
         interrupt_threshold = 2.0  # 2秒閾值
         last_right_button_state = False  # 記錄上一次的右鍵狀態
 
-        while True:
+        while not self._is_closing:
             try:
                 # 使用GetKeyState檢查右鍵狀態，適用於持續按下檢測
                 VK_RBUTTON = 0x02  # 右鍵虛擬鍵碼
@@ -983,6 +989,8 @@ class HealthMonitor:
                 time.sleep(0.1)  # 每100ms檢查一次
 
             except Exception as e:
+                if self._is_closing:
+                    break
                 print(f"{self.get_text('mouse_interrupt_error')} {e}")
                 time.sleep(1)  # 錯誤時稍作延遲
 
@@ -1280,7 +1288,7 @@ class HealthMonitor:
         window_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
 
         ttk.Label(window_frame, text=self.get_text("game_window")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.window_var = tk.StringVar(value=self.config.get('window_title', ''))
+        self.window_var = tk.StringVar(value='')
         self.window_combo = ttk.Combobox(window_frame, textvariable=self.window_var, width=35)
         self.window_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
         ttk.Button(window_frame, text=self.get_text("refresh"), command=self.refresh_windows).grid(row=0, column=2, padx=(5, 0))
@@ -1714,7 +1722,7 @@ class HealthMonitor:
 
     def test_window_hierarchy(self):
         """測試視窗層級系統"""
-        print("🧪 測試視窗層級系統...")
+        print(" 測試視窗層級系統...")
 
         # 創建一個測試設定視窗
         test_settings = self.create_settings_window("測試設定視窗", "300x200")
@@ -1826,6 +1834,9 @@ class HealthMonitor:
         self.status_text_widget.tag_config("monitor", foreground="#00BCD4")
 
     def add_status_message(self, message, msg_type="info"):
+        if self._is_closing:
+            return
+
         """添加狀態訊息到顯示區域"""
         # 檢查是否重複訊息（簡單的重複檢測）
         if message == self.last_status_message:
@@ -1844,22 +1855,69 @@ class HealthMonitor:
         if len(self.status_log) > self.status_log_max_lines:
             self.status_log = self.status_log[-self.status_log_max_lines:]
             # 清空文字區域並重新載入
-            if self.status_text_widget:
-                self.refresh_status_display()
+            try:
+                if self.status_text_widget and self.status_text_widget.winfo_exists():
+                    self.refresh_status_display()
+                    return
+            except (RuntimeError, tk.TclError):
                 return
         
         # 如果文字區域存在，添加新訊息
-        if self.status_text_widget:
-            self.status_text_widget.config(state=tk.NORMAL)
-            self.status_text_widget.insert(tk.END, formatted_message, msg_type)
-            self.status_text_widget.config(state=tk.DISABLED)
+        try:
+            widget_exists = bool(self.status_text_widget and self.status_text_widget.winfo_exists())
+        except (RuntimeError, tk.TclError):
+            return
+
+        if widget_exists:
+            try:
+                self.status_text_widget.config(state=tk.NORMAL)
+                self.status_text_widget.insert(tk.END, formatted_message, msg_type)
+                self.status_text_widget.config(state=tk.DISABLED)
+            except (RuntimeError, tk.TclError):
+                return
             
             # 自動滾動到底部
-            if self.auto_scroll_var.get():
-                self.status_text_widget.see(tk.END)
+            try:
+                if self.auto_scroll_var.get():
+                    self.status_text_widget.see(tk.END)
+            except (RuntimeError, tk.TclError):
+                return
             
             # 更新統計
-            self.update_status_count()
+            try:
+                self.update_status_count()
+            except (RuntimeError, tk.TclError):
+                return
+
+    def schedule_ui_callback(self, callback, delay=0):
+        if self._is_closing:
+            return None
+
+        try:
+            if not self.root.winfo_exists():
+                return None
+        except (RuntimeError, tk.TclError):
+            return None
+
+        def guarded_callback():
+            if self._is_closing:
+                return
+
+            try:
+                if not self.root.winfo_exists():
+                    return
+            except (RuntimeError, tk.TclError):
+                return
+
+            try:
+                callback()
+            except (RuntimeError, tk.TclError):
+                return
+
+        try:
+            return self.root.after(delay, guarded_callback)
+        except (RuntimeError, tk.TclError):
+            return None
 
     def refresh_status_display(self):
         """重新刷新狀態顯示區域"""
@@ -3074,7 +3132,7 @@ class HealthMonitor:
         if not self.is_monitoring():
             return
 
-        print("[STOP] ?????????...")
+        print("[STOP] ...")
         self.set_monitoring(False)
 
         self.start_btn.config(state=tk.NORMAL)
@@ -3093,11 +3151,11 @@ class HealthMonitor:
         thread = self.monitor_thread
         if not thread or not thread.is_alive():
             self.monitor_thread = None
-            print("[STOP] ?????")
+            print("[STOP] ")
             return
 
         if time.time() >= deadline:
-            print("[STOP] ???????????????????")
+            print("[STOP] ")
             return
 
         self.root.after(25, lambda: self._wait_for_monitoring_stop_async(deadline))
@@ -3758,8 +3816,8 @@ class HealthMonitor:
                     current_time = time.time()
                     time_diff = current_time - last_trigger
 
-                    print(f"🎯 血量觸發檢查: {health_percent}% <= {setting['percent']}% (設定閾值)")
-                    print(f"🕐 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown/1000:.1f}秒")
+                    print(f" 血量觸發檢查: {health_percent}% <= {setting['percent']}% (設定閾值)")
+                    print(f" 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown/1000:.1f}秒")
 
                     if time_diff >= cooldown / 1000:  # 轉換為秒
                         try:
@@ -3767,24 +3825,24 @@ class HealthMonitor:
                             # 添加狀態訊息
                             self.add_status_message(self.get_text("health_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
                             self.press_key_sequence(setting['key'], setting['percent'])
-                            print(f"🎮 已完成按鍵序列: {setting['key']}")
+                            print(f" 已完成按鍵序列: {setting['key']}")
                         except Exception as e:
                             print(f"[ERROR] 按鍵觸發失敗: {e}")
                             pass
                     else:
                         remaining = cooldown - (time_diff) * 1000
-                        print(f"⏳ 冷卻中: 還需等待 {remaining:.0f}ms")
+                        print(f"冷卻中: 還需等待 {remaining:.0f}ms")
 
                     # 找到第一個匹配的設定後就停止，避免執行更高百分比的設定
                     # 但是如果啟用了多重觸發，則繼續檢查其他設定
                     if not self.multi_trigger_var.get():
-                        print(f"🚫 單一觸發模式: 停止檢查其他設定")
+                        print(f" 單一觸發模式: 停止檢查其他設定")
                         break
                     else:
-                        print(f"🔄 多重觸發模式: 繼續檢查其他設定")
+                        print(f" 多重觸發模式: 繼續檢查其他設定")
                         pass
                 else:
-                    print(f"⚪ 血量未達觸發條件: {health_percent}% > {setting['percent']}%")
+                    print(f" 血量未達觸發條件: {health_percent}% > {setting['percent']}%")
                     pass
 
         # 處理魔力設定
@@ -3820,28 +3878,28 @@ class HealthMonitor:
 
     def press_key_sequence(self, key_sequence, health_percent=None):
         """處理多鍵序列，按順序按下每個鍵 - 血魔監控專用"""
-        print(f"🩸 血魔監控開始執行按鍵序列: {key_sequence}")
+        print(f" 血魔監控開始執行按鍵序列: {key_sequence}")
         
         # 解析鍵序列（用 - 分隔）
         keys = [key.strip() for key in key_sequence.split('-')]
-        print(f"🩸 血魔監控解析後的按鍵列表: {keys}")
+        print(f" 血魔監控解析後的按鍵列表: {keys}")
 
         # 獲取遊戲窗口句柄
         game_hwnd = self.get_game_window_handle()
         if game_hwnd:
-            print(f"🩸 血魔監控使用全局發送到遊戲窗口: {game_hwnd}")
+            print(f" 血魔監控使用全局發送到遊戲窗口: {game_hwnd}")
             # 使用修復版本的按鍵發送（keyboard庫 + 防重複）
             for i, key in enumerate(keys):
                 vk_code = self.map_key_to_vk_code(key)
                 if vk_code:
-                    print(f"🩸 血魔按鍵 {i+1}/{len(keys)}: {key} -> VK_{vk_code}")
+                    print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> VK_{vk_code}")
                     self.send_key_to_window(game_hwnd, vk_code)  # 使用修復版本
                 else:
-                    print(f"🩸 血魔按鍵 {i+1}/{len(keys)}: {key} -> 無法映射鍵碼")
+                    print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> 無法映射鍵碼")
 
                 # 如果不是最後一個鍵，添加延遲
                 if i < len(keys) - 1:
-                    print(f"🩸 血魔按鍵間延遲: 25ms")
+                    print(f" 血魔按鍵間延遲: 25ms")
                     time.sleep(0.025)  # 25毫秒延遲
         else:
             print("使用全域鍵盤事件（無法獲取遊戲窗口）")
@@ -3938,7 +3996,7 @@ class HealthMonitor:
             if hasattr(self, '_last_key_send_times'):
                 last_send_time = self._last_key_send_times.get(key_id, 0)
                 if current_time - last_send_time < 0.2:  # 200毫秒防重複
-                    print(f"🚫 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time)*1000:.1f}ms)")
+                    print(f" 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time)*1000:.1f}ms)")
                     return
             else:
                 self._last_key_send_times = {}
@@ -3946,7 +4004,7 @@ class HealthMonitor:
             # 記錄發送時間
             self._last_key_send_times[key_id] = current_time
             
-            print(f"🩸 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
+            print(f" 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
             
             # 🔄 使用最穩定的方法: keyboard庫全局按鍵 + 激活窗口
             try:
@@ -3962,7 +4020,7 @@ class HealthMonitor:
                 # 使用keyboard庫發送按鍵 - 最穩定的方法
                 key_name = self.vk_to_key_name(vk_code)
                 if key_name:
-                    print(f"🎯 血魔使用keyboard庫發送: {key_name}")
+                    print(f" 血魔使用keyboard庫發送: {key_name}")
                     keyboard.press_and_release(key_name)
                     print(f"[OK] 血魔keyboard庫發送成功: {key_name}")
                 else:
@@ -4002,7 +4060,7 @@ class HealthMonitor:
             from ctypes import windll
             PostMessageW = windll.user32.PostMessageW
             
-            print(f"🔄 使用PostMessage備用方法: VK_{vk_code}")
+            print(f" 使用PostMessage備用方法: VK_{vk_code}")
             # 使用PostMessage (異步)
             result1 = PostMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
             time.sleep(0.1)  # 增加到100毫秒延遲
@@ -4745,8 +4803,8 @@ class HealthMonitor:
         
         if is_pausing:
             print("[STOP] 全域暫停已啟用 - 所有熱鍵功能已暫停")
-            print("💬 現在可以安全聊天，不會誤觸任何熱鍵")
-            print("🔄 再次按F9可恢復所有功能")
+            print(" 現在可以安全聊天，不會誤觸任何熱鍵")
+            print(" 再次按F9可恢復所有功能")
             
             # 添加狀態訊息
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
@@ -4755,7 +4813,7 @@ class HealthMonitor:
             if self.is_monitoring():
                 self.monitoring_was_active = True
                 self.stop_monitoring()
-                print("🛑 血魔監控已自動停止")
+                print(" 血魔監控已自動停止")
                 self.add_status_message(self.get_text("health_monitor_auto_stopped"), "info")
             else:
                 self.monitoring_was_active = False
@@ -4764,13 +4822,13 @@ class HealthMonitor:
             if self.is_combo_running():
                 self.combo_was_running = True
                 self.stop_combo_system()
-                print("🛑 技能連段已自動停止")
+                print(" 技能連段已自動停止")
                 self.add_status_message(self.get_text("combo_system_auto_stopped"), "info")
             else:
                 self.combo_was_running = False
                 
         else:
-            print("🟢 全域暫停已解除 - 自動恢復之前的功能")
+            print(" 全域暫停已解除 - 自動恢復之前的功能")
             
             # 添加狀態訊息
             self.add_status_message(self.get_text("global_pause_deactivated"), "success")
@@ -4784,7 +4842,7 @@ class HealthMonitor:
                     self.add_status_message(self.get_text("health_monitor_auto_restarted"), "success")
                 except Exception as e:
                     print(f"[WARN] 血魔監控自動重新啟動失敗: {e}")
-                    print("💡 請手動重新啟動血魔監控")
+                    print(" 請手動重新啟動血魔監控")
                     self.add_status_message(self.get_text("health_monitor_restart_failed").format(error=str(e)), "error")
             
             # 自動恢復技能連段（如果之前處於運行狀態）
@@ -4796,10 +4854,10 @@ class HealthMonitor:
                     self.add_status_message("技能連段已自動重新啟動", "success")
                 except Exception as e:
                     print(f"[WARN] 技能連段自動重新啟動失敗: {e}")
-                    print("💡 請手動重新啟動技能連段系統")
+                    print(" 請手動重新啟動技能連段系統")
                     self.add_status_message(f"技能連段自動重啟失敗: {str(e)}", "error")
             
-            print("⚡ 所有功能已完全恢復正常")
+            print(" 所有功能已完全恢復正常")
         
         # 更新UI顯示（如果有狀態標籤）
         self.update_pause_status_display()
@@ -6866,7 +6924,7 @@ class HealthMonitor:
 
                 if not available_positions:
                     if skipped_positions:
-                        print(f"🚫 所有剩餘物品都無法存放進倉庫（已跳過 {len(skipped_positions)} 個位置）")
+                        print(f" 所有剩餘物品都無法存放進倉庫（已跳過 {len(skipped_positions)} 個位置）")
                         self.add_status_message(self.get_text("inventory_full_cannot_continue"), "warning")
                     else:
                         print("重新辨識發現沒有需要清理的物品，結束")
@@ -8219,6 +8277,20 @@ class HealthMonitor:
 
     # Duplicate on_closing removed; actual on_closing is defined later.
     def close_app(self):
+        if self._is_closing:
+            return
+
+        self._is_closing = True
+
+        for after_attr in ("_silent_version_check_after_id", "_usage_time_after_id"):
+            after_id = getattr(self, after_attr, None)
+            if after_id:
+                try:
+                    self.root.after_cancel(after_id)
+                except Exception:
+                    pass
+                setattr(self, after_attr, None)
+
         # 計算並記錄運行時間
         end_time = datetime.now()
         runtime = end_time - self.start_time
@@ -8238,6 +8310,13 @@ class HealthMonitor:
         
         # 停止AHK自動點擊
         self.stop_auto_click_ahk()
+
+        mouse_interrupt_thread = getattr(self, 'mouse_interrupt_thread', None)
+        if mouse_interrupt_thread and mouse_interrupt_thread.is_alive():
+            try:
+                mouse_interrupt_thread.join(timeout=0.3)
+            except Exception:
+                pass
         
         # 清理鍵盤監聽器
         try:
@@ -8252,7 +8331,13 @@ class HealthMonitor:
         global _app_instance
         _app_instance = None
         
-        self.root.quit()
+        try:
+            self.root.quit()
+        finally:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
 
     def restart_app(self):
         """重新啟動應用程式"""
@@ -8403,93 +8488,77 @@ class HealthMonitor:
         draw.text((text_x, text_y - 1), text, fill=(0, 0, 0), font=None)
 
     def load_config(self):
-        """載入設定"""
-        print(f"[DEBUG] load_config 方法被調用")
+        """????"""
+        print("[DEBUG] load_config ")
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    self.config = json.load(f)
+            success, message = self.config_manager.load_config()
+            self.config = self.config_manager.config
+
+            if success:
                 self.add_status_message(self.get_text("config_loaded_successfully"), "success")
             else:
-                self.config = {}
                 self.add_status_message(self.get_text("config_file_not_found"), "info")
 
-            # 載入區域設定
             self.selected_region = self.config.get('region')
             self.selected_mana_region = self.config.get('mana_region')
             self.inventory_region = self.config.get('inventory_region')
             self.empty_inventory_colors = self.config.get('empty_inventory_colors', [])
-            self.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]  # 確保是tuple
+            self.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]
             self.grid_offset_x = self.config.get('grid_offset_x', 0)
             self.grid_offset_y = self.config.get('grid_offset_y', 0)
 
-            # 載入背包UI設定
             self.inventory_ui_region = self.config.get('inventory_ui_region')
-
-            # 如果有UI區域設定，嘗試從檔案載入UI截圖
             if self.inventory_ui_region:
                 self.load_ui_screenshot_from_file()
 
-            # 載入介面UI設定
             self.interface_ui_region = self.config.get('interface_ui_region')
-
-            # 如果有介面UI區域設定，嘗試從檔案載入介面UI截圖
             if self.interface_ui_region:
                 self.load_interface_ui_screenshot_from_file()
 
-            # 更新背包顏色記錄狀態顯示
             if hasattr(self, 'empty_color_label') and self.empty_inventory_colors:
                 recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
-                self.empty_color_label.config(text=self.get_text("recorded_colors_template").format(count=recorded_count), background="lightgreen")
+                self.empty_color_label.config(
+                    text=self.get_text("recorded_colors_template").format(count=recorded_count),
+                    background="lightgreen",
+                )
 
-            # 更新背包UI記錄狀態顯示
             if hasattr(self, 'inventory_ui_label') and self.inventory_ui_region:
                 self.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), background="lightgreen")
-                # 嘗試更新UI預覽（如果Canvas已創建）
                 if hasattr(self, 'ui_preview_canvas'):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
                     else:
                         self.update_ui_preview()
 
-            # 更新介面UI記錄狀態顯示
             if hasattr(self, 'interface_ui_label') and self.interface_ui_region:
                 self.interface_ui_label.config(text=self.get_interface_ui_region_text(), background="lightgreen")
-                # 嘗試更新介面UI預覽（如果Canvas已創建）
                 if hasattr(self, 'interface_ui_preview_canvas'):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
                     else:
                         self.update_interface_ui_preview()
 
-            # 載入遊戲視窗標題
             if 'inventory_window_title' in self.config:
                 self.inventory_window_var.set(self.config['inventory_window_title'])
             elif 'window_title' in self.config:
                 self.inventory_window_var.set(self.config['window_title'])
 
-            # 同時設定血魔監控的視窗變數（如果UI已創建）
-            if hasattr(self, 'window_var'):
-                if 'window_title' in self.config:
-                    self.window_var.set(self.config['window_title'])
+            if hasattr(self, 'window_var') and 'window_title' in self.config:
+                self.window_var.set(self.config['window_title'])
 
-            # 載入血魔監控設定
             self.blood_magic_enabled = self.config.get('blood_magic_enabled', False)
             self.blood_magic_region = self.config.get('blood_magic_region', None)
             self.blood_magic_threshold = self.config.get('blood_magic_threshold', 50)
             self.blood_magic_window_title = self.config.get('blood_magic_window_title', '')
 
-            # 載入其他設定
-            self.monitor_interval = self.config.get('monitor_interval', 0.1)  # 預設100ms
+            self.monitor_interval = self.config.get('monitor_interval', 0.1)
             self.auto_clear_enabled = self.config.get('auto_clear_enabled', False)
             self.clear_interval = self.config.get('clear_interval', 30)
 
-            # 更新檢查頻率UI元件（如果UI已創建）
             if hasattr(self, 'monitor_interval_var'):
                 interval_ms = int(self.monitor_interval * 1000)
                 self.monitor_interval_var.set(str(interval_ms))
 
-            # 載入預覽設定
             if hasattr(self, 'preview_enabled'):
                 preview_enabled = self.config.get('preview_enabled', True)
                 self.preview_enabled.set(preview_enabled)
@@ -8497,48 +8566,39 @@ class HealthMonitor:
                 preview_interval = self.config.get('preview_interval', 250)
                 self.preview_interval_var.set(str(preview_interval))
 
-            # 載入觸發設定
             if 'settings' in self.config:
-                print(f"載入觸發設定: {len(self.config['settings'])} 個設定")
-                # 遷移舊的設定格式 (health/mana -> HP/MP)
+                print(f": {len(self.config['settings'])} ")
                 migrated = False
                 for setting in self.config['settings']:
                     old_type = setting.get('type', 'HP')
                     if old_type in ['health', 'mana']:
-                        # 將舊格式轉換為新格式
                         new_type = 'HP' if old_type == 'health' else 'MP'
                         setting['type'] = new_type
                         migrated = True
-                        print(f"  遷移設定: {old_type} -> {new_type}")
-                
+                        print(f"  : {old_type} -> {new_type}")
+
                 if migrated:
-                    # 保存遷移後的設定
                     self.save_config(show_message=False)
-                    print("設定格式已遷移並儲存")
-                
+                    print("")
+
                 for setting in self.config['settings']:
                     print(f"  - {setting.get('type', 'HP')} {setting.get('percent', 0)}%: {setting.get('key', '')}")
             else:
-                print("沒有找到觸發設定")
+                print("")
 
-            # 載入顏色檢測參數 - 使用優化的預設值
-            self.health_threshold = self.config.get('health_threshold', 0.8)  # 優化預設值: 0.8
-            self.red_h_range = self.config.get('red_h_range', 5)  # 優化預設值: 5
+            self.health_threshold = self.config.get('health_threshold', 0.8)
+            self.red_h_range = self.config.get('red_h_range', 5)
             self.green_h_range = self.config.get('green_h_range', 40)
-            
-            # 載入新增的HSV參數
             self.red_saturation_min = self.config.get('red_saturation_min', 50)
             self.red_value_min = self.config.get('red_value_min', 50)
             self.green_saturation_min = self.config.get('green_saturation_min', 50)
             self.green_value_min = self.config.get('green_value_min', 50)
 
-            # 載入介面UI檢測參數
             self.interface_ui_mse_threshold = int(self.config.get('interface_ui_mse_threshold', 800))
             self.interface_ui_ssim_threshold = float(self.config.get('interface_ui_ssim_threshold', 0.6))
             self.interface_ui_hist_threshold = float(self.config.get('interface_ui_hist_threshold', 0.7))
             self.interface_ui_color_threshold = int(self.config.get('interface_ui_color_threshold', 35))
 
-            # 更新UI變數（如果UI已創建）
             if hasattr(self, 'mse_threshold_var'):
                 self.mse_threshold_var.set(str(self.interface_ui_mse_threshold))
             if hasattr(self, 'ssim_threshold_var'):
@@ -8548,136 +8608,111 @@ class HealthMonitor:
             if hasattr(self, 'color_threshold_var'):
                 self.color_threshold_var.set(str(self.interface_ui_color_threshold))
 
-            # 載入觸發選項
             self.multi_trigger_var.set(self.config.get('multi_trigger', False))
 
-            # 載入GUI最上方設定
-            always_on_top = self.config.get('always_on_top', False)  # 預設為False，不自動置頂
+            always_on_top = self.config.get('always_on_top', False)
             self.always_on_top_var.set(always_on_top)
-            # 移除自動置頂，讓用戶手動控制
-            # self.root.attributes("-topmost", always_on_top)
 
-            # 如果設定檔案中沒有always_on_top設定，保存預設值
             if 'always_on_top' not in self.config:
                 self.config['always_on_top'] = always_on_top
                 try:
                     with open(self.config_file, 'w', encoding='utf-8') as f:
                         json.dump(self.config, f, indent=2, ensure_ascii=False)
-                    print("已保存預設的GUI最上方設定")
+                    print("GUI")
                 except Exception as save_error:
-                    print(f"保存預設設定失敗: {save_error}")
+                    print(f": {save_error}")
 
-            # 載入窗口位置和大小
             if 'window_geometry' in self.config:
                 try:
                     saved_geometry = self.config['window_geometry']
                     self.root.geometry(saved_geometry)
-                    print(f"已恢復窗口位置: {saved_geometry}")
+                    print(f": {saved_geometry}")
                 except Exception as e:
-                    print(f"恢復窗口位置失敗: {e}")
+                    print(f": {e}")
 
-            # 載入F6一鍵取物座標
             self.pickup_coordinates = self.config.get('pickup_coordinates', [])
-            print(f"載入F6取物座標: {len(self.pickup_coordinates)} 個座標")
-            
-            # 確保pickup_coordinates有5個位置
+            print(f"F6: {len(self.pickup_coordinates)} ")
             while len(self.pickup_coordinates) < 5:
                 self.pickup_coordinates.append([0, 0])
-            
-            # 更新取物狀態顯示
             if hasattr(self, 'pickup_coords_label'):
                 self.update_pickup_status()
 
-            # 載入連段設定
             if 'combo_sets' in self.config:
                 self.combo_sets = self.config['combo_sets']
-                # 確保向後相容性，為舊配置添加缺失的字段
                 for combo_set in self.combo_sets:
                     if 'trigger_delay' not in combo_set:
                         combo_set['trigger_delay'] = ''
                     if 'stationary_attacks' not in combo_set:
                         combo_set['stationary_attacks'] = [False, False, False, False, False]
-                
-                # 確保combo_sets長度正確
+
                 while len(self.combo_sets) < 3:
                     self.combo_sets.append({
                         'trigger_key': 'Q' if len(self.combo_sets) == 0 else 'W' if len(self.combo_sets) == 1 else 'E',
                         'trigger_delay': '',
                         'combo_keys': ['', '', '', '', ''],
                         'delays': ['', '', '', '', ''],
-                        'stationary_attacks': [False, False, False, False, False]
+                        'stationary_attacks': [False, False, False, False, False],
                     })
-                self.combo_sets = self.combo_sets[:3]  # 確保不超過3個
-                
-                print(f"載入連段設定: {len(self.combo_sets)} 個套組")
+                self.combo_sets = self.combo_sets[:3]
+                print(f": {len(self.combo_sets)} ")
+
             if 'combo_enabled' in self.config:
                 self.combo_enabled = self.config['combo_enabled']
-                # 確保combo_enabled長度正確
                 while len(self.combo_enabled) < 3:
                     self.combo_enabled.append(False)
-                self.combo_enabled = self.combo_enabled[:3]  # 確保不超過3個
-                print(f"載入連段啟用狀態: {self.combo_enabled}")
+                self.combo_enabled = self.combo_enabled[:3]
+                print(f": {self.combo_enabled}")
             else:
-                # 如果配置文件中沒有combo_enabled，重置為預設值
                 self.combo_enabled = [False, False, False]
-            
-            # 更新組合UI元件
-            self.update_combo_ui_from_config()
 
-            # 更新UI
+            self.update_combo_ui_from_config()
             self.update_offset_labels()
             if self._startup_phase:
                 self._startup_visual_refresh_pending = True
             else:
                 self.update_inventory_preview_from_current()
 
-            # 更新區域顯示標籤
             if hasattr(self, 'region_label'):
-                self.region_label.config(text=self.get_region_text(), 
-                                       background="lightgreen" if self.config.get('region') else "lightgray")
+                self.region_label.config(
+                    text=self.get_region_text(),
+                    background="lightgreen" if self.config.get('region') else "lightgray",
+                )
             if hasattr(self, 'mana_region_label'):
-                self.mana_region_label.config(text=self.get_mana_region_text(), 
-                                            background="lightgreen" if self.config.get('mana_region') else "lightgray")
+                self.mana_region_label.config(
+                    text=self.get_mana_region_text(),
+                    background="lightgreen" if self.config.get('mana_region') else "lightgray",
+                )
 
-            # 更新觸發設定列表
             if hasattr(self, 'load_settings_to_tree'):
                 self.load_settings_to_tree()
 
-            # 確保UI預覽被正確更新
             if hasattr(self, 'ui_preview_canvas'):
                 self.update_ui_preview()
 
-            # 更新取物座標顯示
             if hasattr(self, 'update_pickup_coordinates_display'):
                 self.update_pickup_coordinates_display()
 
-            # 載入語言設定
             loaded_language = self.config.get('language', 'zh-tw')
-            print(f"[DEBUG] load_config 中載入的語言: {loaded_language}")
-            print(f"[DEBUG] load_config 前的語言管理器語言: {self.language_manager.current_language}")
-            
-            # 只有當配置中的語言與當前不同時才切換
+            print(f"[DEBUG] load_config : {loaded_language}")
+            print(f"[DEBUG] load_config : {self.language_manager.current_language}")
+
             if loaded_language != self.language_manager.current_language:
-                print(f"[DEBUG] 語言不同，需要切換: {self.language_manager.current_language} -> {loaded_language}")
+                print(f"[DEBUG]  {self.language_manager.current_language} -> {loaded_language}")
                 self.language_manager.change_language(loaded_language)
                 self.current_language = loaded_language
             else:
-                print(f"[DEBUG] 語言相同，無需切換: {loaded_language}")
-            
-            display_name = self.language_reverse_map.get(self.current_language, "繁體中文")
-            self.language_var.set(display_name)
-            print(f"[DEBUG] load_config 設置語言選擇器: '{display_name}'")
+                print(f"[DEBUG] : {loaded_language}")
 
-            # 更新UI語言
+            display_name = self.language_reverse_map.get(self.current_language, '????')
+            self.language_var.set(display_name)
+            print(f"[DEBUG] load_config  '{display_name}'")
+
             self.update_ui_language()
 
         except Exception as e:
-            # 重要：不要清空已加載的配置！只記錄錯誤
-            error_msg = f"載入設定時發生錯誤: {e}"
+            error_msg = f"?????????: {e}"
             print(f"[ERROR] {error_msg}")
-            self.add_status_message(f"設定檔案載入失敗 - {str(e)}", "error")
-            # 注意：不清空 self.config，保留之前加載的配置
-            # 使用預設值
+            self.add_status_message(f"??????- {str(e)}", "error")
             self.config = {}
 
     def save_config(self, show_message=True):
@@ -8871,9 +8906,9 @@ class HealthMonitor:
                         None, 
                         1
                     )
-                    print("🟢 AHK自動點擊(EXE版)已以管理員權限啟動")
-                    print("💡 現在可以直接使用 CTRL+左鍵 進行自動連點")
-                    print("💡 當主程式退出時，AHK腳本會自動關閉")
+                    print(" AHK自動點擊(EXE版)已以管理員權限啟動")
+                    print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
+                    print(" 當主程式退出時，AHK腳本會自動關閉")
                 except Exception as admin_error:
                     print(f"管理員權限啟動失敗，嘗試普通啟動: {admin_error}")
                     # 如果管理員權限啟動失敗，則使用普通方式
@@ -8881,7 +8916,7 @@ class HealthMonitor:
                         self.auto_click_exe_path,
                         process_name
                     ], creationflags=subprocess.CREATE_NO_WINDOW)
-                    print("🟢 AHK自動點擊(EXE版)已啟動")
+                    print(" AHK自動點擊(EXE版)已啟動")
                 return
             
             # 如果沒有EXE版本，檢查AHK腳本
@@ -8913,9 +8948,9 @@ class HealthMonitor:
                     process_name
                 ], creationflags=subprocess.CREATE_NO_WINDOW)
                 
-                print("🟢 AHK自動點擊已啟動")
-                print("💡 現在可以直接使用 CTRL+左鍵 進行自動連點")
-                print("💡 當主程式退出時，AHK腳本會自動關閉")
+                print(" AHK自動點擊已啟動")
+                print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
+                print(" 當主程式退出時，AHK腳本會自動關閉")
                 
             else:
                 print("[ERROR] 未找到AHK腳本或EXE文件")
@@ -8975,7 +9010,7 @@ class HealthMonitor:
             print("[STOP] 自動點擊已停止（Ctrl+Shift+X）")
         else:
             self.start_auto_click()
-            print("🟢 自動點擊已啟動（Ctrl+Shift+X再次按下可停止）")
+            print(" 自動點擊已啟動（Ctrl+Shift+X再次按下可停止）")
 
     def toggle_auto_click(self):
         """切換自動點擊狀態（備用方案）"""
@@ -8984,7 +9019,7 @@ class HealthMonitor:
             print("[STOP] 自動點擊已停止（Ctrl+Shift+Z）")
         else:
             self.start_auto_click()
-            print("🟢 自動點擊已啟動（Ctrl+Shift+Z再次按下可停止）")
+            print(" 自動點擊已啟動（Ctrl+Shift+Z再次按下可停止）")
 
     def on_ctrl_press(self, event=None):
         """CTRL鍵按下事件（保留作為備用）"""
@@ -9185,7 +9220,7 @@ class HealthMonitor:
         self.test_connection_btn.pack(side=tk.LEFT)
         
         # 自動靜默檢查版本（只在有新版本時彈出提醒）
-        self.root.after(2000, self.silent_version_check)
+        self._silent_version_check_after_id = self.root.after(2000, self.silent_version_check)
 
     def create_combo_tab(self):
         """創建技能連段分頁 - 橫向寬敞佈局"""
@@ -9983,6 +10018,10 @@ class HealthMonitor:
         self.release_notes_text.config(state='disabled')
 
     def silent_version_check(self):
+        self._silent_version_check_after_id = None
+        if self._is_closing:
+            return
+
         """靜默檢查版本，更新UI顯示並在有新版本時彈出提醒"""
         def _silent_check():
             try:
@@ -10020,7 +10059,7 @@ class HealthMonitor:
                         except Exception as e:
                             print(f"UI更新失敗: {e}")
 
-                    self.root.after(0, update_ui)
+                    self.schedule_ui_callback(update_ui)
 
                 else:
                     # 連接失敗時的UI更新
@@ -10032,7 +10071,7 @@ class HealthMonitor:
                         except Exception as e:
                             print(f"錯誤UI更新失敗: {e}")
 
-                    self.root.after(0, update_error_ui)
+                    self.schedule_ui_callback(update_error_ui)
 
             except requests.exceptions.Timeout:
                 def update_timeout_ui():
@@ -10043,7 +10082,7 @@ class HealthMonitor:
                     except Exception as e:
                         print(f"超時UI更新失敗: {e}")
 
-                self.root.after(0, update_timeout_ui)
+                self.schedule_ui_callback(update_timeout_ui)
 
             except requests.exceptions.ConnectionError:
                 def update_connection_ui():
@@ -10054,7 +10093,7 @@ class HealthMonitor:
                     except Exception as e:
                         print(f"連接UI更新失敗: {e}")
 
-                self.root.after(0, update_connection_ui)
+                self.schedule_ui_callback(update_connection_ui)
 
             except Exception as e:
                 def update_exception_ui():
@@ -10065,7 +10104,7 @@ class HealthMonitor:
                     except Exception as e2:
                         print(f"異常UI更新失敗: {e2}")
 
-                self.root.after(0, update_exception_ui)
+                self.schedule_ui_callback(update_exception_ui)
 
         # 在後台線程中執行檢查
         threading.Thread(target=_silent_check, daemon=True).start()
@@ -10328,13 +10367,17 @@ class HealthMonitor:
             print(f"更新使用時間顯示時發生錯誤: {e}")
 
     def update_usage_time_periodically(self):
+        if self._is_closing:
+            self._usage_time_after_id = None
+            return
+
         """定期更新使用時間顯示"""
         try:
             # 更新顯示
             self.update_usage_time_display()
 
             # 每分鐘再次調度
-            self.root.after(60000, self.update_usage_time_periodically)
+            self._usage_time_after_id = self.root.after(60000, self.update_usage_time_periodically)
         except Exception as e:
             print(f"定期更新使用時間時發生錯誤: {e}")
 
@@ -10441,7 +10484,7 @@ if __name__ == "__main__":
         """全局異常處理器 - 捕獲所有未處理的異常"""
         import traceback
         print(f"\n[ERROR] 發生未捕獲的異常: {exc_type.__name__}: {exc_value}")
-        print("📋 異常追蹤:")
+        print("[TRACEBACK]")
         traceback.print_exception(exc_type, exc_value, exc_traceback)
 
         # 嘗試緊急關閉應用程序
@@ -10459,10 +10502,10 @@ if __name__ == "__main__":
         app = HealthMonitor(root)
         root.mainloop()
     except KeyboardInterrupt:
-        print("\n🛑 收到鍵盤中斷信號，正在關閉...")
+        print("\n[INTERRUPT] 收到鍵盤中斷信號，正在關閉...")
         emergency_exit_handler()
     except Exception as e:
-        print(f"\n💥 主程序發生異常: {e}")
+        print(f"\n[FATAL] 主程序發生異常: {e}")
         import traceback
         traceback.print_exc()
         emergency_exit_handler()
