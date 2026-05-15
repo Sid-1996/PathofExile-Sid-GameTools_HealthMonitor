@@ -2,26 +2,6 @@
 
 This file is for future AI/code agents to understand the project quickly and avoid breaking release flow.
 
-## Git Push Lock - Pending Final Review
-
-`src/health_monitor.py` has completed the current modularization recovery pass and the latest smoke-test round passed, but **git push is still locked** until final review is explicitly completed.
-
-**DO NOT run `git push` under any circumstances until the lock is removed.**
-
-Allowed during review:
-- `git add` / `git commit` locally
-- Reading and editing files in `src/`
-- Documentation updates that reflect the current verified state
-
-Forbidden during review:
-- `git push`
-- `git merge`
-- Creating or publishing any release
-
-This lock should only be removed after the maintainer explicitly confirms final review is complete.
-
----
-
 ## Project Goal
 
 Windows automation tool for Path of Exile workflows:

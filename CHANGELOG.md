@@ -1,9 +1,35 @@
-## [1.0.7] - 2026-04-29# 📋 更新日誌
+# 📋 更新日誌
 
 所有重要的變更將記錄在此文件中。
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
+
+## [1.0.8] - 2026-05-15
+
+### 🐛 修復
+
+- 修復模組化拆分過程中 `load_config()` 縮排錯誤導致程式無法啟動的問題
+- 修復 `self.config` 初始化順序，避免 `create_widgets()` 執行期間發生 AttributeError
+- 修復關閉流程：正確取消 `after(...)` callback，防止視窗銷毀後殘留排程觸發
+- 修復背景執行緒在關閉後仍嘗試操作 Tk widget 導致 RuntimeError 的問題
+- 清除 36 處含 emoji 的 `print()` 輸出，修復 Windows cp950 終端機 UnicodeEncodeError
+- 框選背包 UI 完成流程對齊其他框選按鈕，統一由 `finalize_selection_restore_gui()` 負責反饋
+- 所有共享彈出視窗新增 `Return` / `KP_Enter` 熱鍵支援與預設按鈕高亮
+- 修復拾取座標儲存後焦點未回到 GUI 的問題
+- 修復單點座標擷取結束後設定視窗未重新取得 modal 狀態的問題
+- 更新示範影片連結
+
+### 📚 文檔
+
+- 全面更新 `AGENTS.md`、`PROJECT_STRUCTURE.md`、`DEVELOPER_HANDBOOK.md` 至現況
+- 更新 `.windsurf/workflows/` 所有 SOP 文件，反映模組化修復後的架構與驗證標準
+- 新增 `modularization-recovery.md` 與 `safe-modularization.md` 作為後續維護參考
+
+### 🏗️ 內部整理
+
+- 清理 `tools/build.py` dead code，版本號更新至 1.0.8
+- 整理 `src for DEVELOPER/`，移除與 `src/` 重複的檔案
 
 ## [1.0.7] - 2026-04-29
 
@@ -13,7 +39,6 @@
 - Fixed the continuous pickup-coordinate setup flow after dialog parenting changes.
 - Reduced perceived startup delay by deferring preview loading, hotkey setup, and heavy visual refresh work until after the main window is shown.
 - Improved `Stop Monitoring` responsiveness by making the shutdown wait non-blocking for the Tk main thread.
-
 
 ### ✨ 新增
 - 新增可中斷睡眠機制，提升停止響應速度
