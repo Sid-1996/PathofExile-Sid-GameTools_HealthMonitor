@@ -155,6 +155,7 @@ class CustomMessageBox:
             )
             btn.pack(side=tk.RIGHT, padx=(8, 0))
             if button.get('default') and focus_button is None:
+                btn.configure(default=tk.ACTIVE)
                 focus_button = btn
 
         if focus_button is not None:
@@ -162,6 +163,7 @@ class CustomMessageBox:
 
         default_result = next((button['result'] for button in buttons if button.get('default')), True)
         window.bind('<Return>', lambda e: CustomMessageBox._close(window, default_result))
+        window.bind('<KP_Enter>', lambda e: CustomMessageBox._close(window, default_result))
         window.bind('<Escape>', lambda e: CustomMessageBox._close(window, close_result))
         window.protocol('WM_DELETE_WINDOW', lambda: CustomMessageBox._close(window, close_result))
 
@@ -1996,7 +1998,7 @@ class HealthMonitor:
         video_frame.pack(pady=(0, 10))
 
         video_button = ttk.Button(video_frame, text=self.get_text("watch_demo_video"),
-                                 command=lambda: self.open_video_link("https://www.facebook.com/talksometingshit/"))
+                                 command=lambda: self.open_video_link("https://dai.ly/xa9cau2"))
         video_button.pack()
 
         video_note_label = ttk.Label(video_frame, text=self.get_text("video_recommendation"),
@@ -6256,6 +6258,7 @@ class HealthMonitor:
                 # 移除全局ESC監聽
                 self.remove_global_esc_listener_for_inventory_ui()
 
+
                 # 統一的GUI恢復和訊息顯示
                 self.finalize_selection_restore_gui("inventory_ui_region_set", {
                     'x': self.inventory_ui_region['x'], 
@@ -7873,6 +7876,8 @@ class HealthMonitor:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
             print("取物座標已儲存")
             messagebox.showinfo(self.get_text("success"), self.get_text("pickup_coordinates_saved"))
+            self.root.lift()
+            self.root.focus_force()
             
             # 重新激活主視窗而不是設定視窗
             if parent_window:
@@ -8158,6 +8163,8 @@ class HealthMonitor:
             # 恢復視窗顯示
             self.root.deiconify()
             parent_window.deiconify()
+            self.root.focus_force()
+            parent_window.grab_set()
 
     def clear_pickup_coordinate(self, index):
         """清除指定索引的取物座標"""

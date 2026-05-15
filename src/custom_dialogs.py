@@ -94,6 +94,7 @@ class CustomMessageBox:
             )
             btn.pack(side=tk.RIGHT, padx=(8, 0))
             if button.get('default') and focus_button is None:
+                btn.configure(default=tk.ACTIVE)
                 focus_button = btn
 
         if focus_button is not None:
@@ -101,6 +102,7 @@ class CustomMessageBox:
 
         default_result = next((button['result'] for button in buttons if button.get('default')), True)
         window.bind('<Return>', lambda e: CustomMessageBox._close(window, default_result))
+        window.bind('<KP_Enter>', lambda e: CustomMessageBox._close(window, default_result))
         window.bind('<Escape>', lambda e: CustomMessageBox._close(window, close_result))
         window.protocol('WM_DELETE_WINDOW', lambda: CustomMessageBox._close(window, close_result))
 
