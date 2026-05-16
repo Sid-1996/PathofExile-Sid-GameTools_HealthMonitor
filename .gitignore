@@ -209,3 +209,5 @@ Icon
 .directory
 .Trash-*
 .nfs*
+src/llm_report.txt
+src/skeleton.txt

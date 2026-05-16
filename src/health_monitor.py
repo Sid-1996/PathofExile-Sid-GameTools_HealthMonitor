@@ -31,6 +31,7 @@ import winreg
 import atexit
 
 # Import new modularized components
+from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
 from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler
 from custom_dialogs import setup_custom_messagebox
@@ -654,9 +655,9 @@ class HealthMonitor:
     def update_combo_tab_language(self):
         """更新技能連段分頁的語言"""
         try:
-            # 更新技能連段分頁的UI元素
-            # 這裡可以添加技能連段分頁的動態語言更新邏輯
-            pass
+            # 更新技能計時器按鈕文字
+            if hasattr(self, 'skill_timer'):
+                self.skill_timer.refresh_language()
         except Exception as e:
             print(f"更新技能連段分頁語言時發生錯誤: {e}")
 
@@ -9416,6 +9417,17 @@ class HealthMonitor:
         skills_frame.columnconfigure(4, weight=0)
         skills_frame.columnconfigure(5, weight=1)
 
+        # ── 技能計時器模組（掛在 combo_frame 底部）──
+        # 只在第一次建立時初始化，避免重複建立
+        if not hasattr(self, 'skill_timer'):
+            self.skill_timer = SkillTimerModule(
+                parent=self.combo_frame,
+                max_slots=4,
+                on_log=self.add_status_message,
+                get_text=self.get_text
+            )
+            self.skill_timer.frame.pack(fill="x", padx=5, pady=(10, 5))
+
     def toggle_combo_set(self, set_index, enabled_var, event=None):
         """切換連段套組的啟用狀態"""
         self.combo_enabled[set_index] = enabled_var.get()
@@ -9804,10 +9816,14 @@ class HealthMonitor:
             # 更新連段設定
             existing_config.update(config)
             
+            # 儲存技能計時器設定
+            if hasattr(self, 'skill_timer'):
+                existing_config['skill_timer'] = self.skill_timer.get_config()
+
             # 儲存設定
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(existing_config, f, indent=4, ensure_ascii=False)
-            
+
             messagebox.showinfo("成功", "連段設定已儲存")
             print("連段設定已儲存")
             
@@ -9857,7 +9873,11 @@ class HealthMonitor:
             
             # 更新UI以反映載入的設定
             self.update_combo_ui_from_config()
-            
+
+            # 載入技能計時器設定
+            if hasattr(self, 'skill_timer') and 'skill_timer' in config:
+                self.skill_timer.load_config(config['skill_timer'])
+
             messagebox.showinfo("成功", "連段設定已載入")
             print("連段設定已載入")
             
@@ -10361,6 +10381,10 @@ class HealthMonitor:
             print("使用時間已保存")
         except Exception as e:
             print(f"保存使用時間時發生錯誤: {e}")
+
+        # 停止技能計時器
+        if hasattr(self, 'skill_timer'):
+            self.skill_timer.stop_all()
 
         self.close_app()
 
