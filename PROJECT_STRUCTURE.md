@@ -23,7 +23,6 @@ Python POE/
 │  ├─ health_monitor_config.json.backup
 │  ├─ screenshots/                  # Runtime-generated screenshots and previews
 │  └─ __pycache__/
-├─ src for DEVELOPER/               # Compatibility layer for legacy packaging flow
 ├─ tools/                           # Build pipeline and icon
 ├─ AGENTS.md                        # AI contributor quick guide
 ├─ CHANGELOG.md                     # Change history
@@ -39,7 +38,7 @@ Python POE/
 ## Canonical Source Rules
 
 - Edit runtime code in `src/`.
-- Treat `src for DEVELOPER/` as a compatibility layer, not the primary source of truth.
+- Treat `src/` as the single source of truth.
 - Do not assume runtime-generated files under `src/` are stable source files.
 
 ## Important Runtime Files
@@ -79,7 +78,7 @@ Python POE/
 
 ## Packaging Notes
 
-- Build flow still depends on `src for DEVELOPER/` for backward compatibility.
+- Packaging is driven solely by `tools/build.py` sourcing from `src/`.
 - Expected packaged assets include:
   - `GameTools_HealthMonitor.exe`
   - `auto_click.exe`

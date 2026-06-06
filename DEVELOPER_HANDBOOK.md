@@ -34,9 +34,8 @@ The project is still centered around `src/health_monitor.py`, but part of the co
 
 ### Project State
 
-- `src/` is the canonical source of truth.
-- `src for DEVELOPER/` still exists for packaging compatibility and legacy workflows.
-- `tools/build.py` still depends on compatibility behavior and cannot yet assume a pure single-source build.
+- `src/` is the single source of truth.
+- `tools/build.py` sources all assets from `src/`.
 
 ## Main Application Structure
 
@@ -97,8 +96,7 @@ Packaging is driven by `tools/build.py`.
 
 Current packaging assumptions:
 
-- prefer `src/`
-- fallback to `src for DEVELOPER/` where needed
+- all assets sourced from `src/`
 - package expected release assets such as:
   - `GameTools_HealthMonitor.exe`
   - `auto_click.exe`
@@ -190,10 +188,8 @@ When modularization or cleanup code is touched, also verify:
 
 ## Source of Truth Rules
 
-- edit `src/` first
-- treat `src for DEVELOPER/` as compatibility-only
-- do not overwrite `src/` from `src for DEVELOPER/` casually
-- do not stage unrelated runtime-generated files in mixed worktrees
+- `src/` is the single source of truth.
+- Do not stage unrelated runtime-generated files in mixed worktrees.
 
 Examples of runtime-generated or user-state files that need extra care:
 

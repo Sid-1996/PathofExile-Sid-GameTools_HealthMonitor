@@ -14,13 +14,6 @@ if not exist "tools\build.py" (
     exit /b 1
 )
 
-if exist "src\health_monitor.py" (
-    copy /Y "src\health_monitor.py" "src for DEVELOPER\health_monitor.py" >nul
-)
-if exist "src\language_packs.json" (
-    copy /Y "src\language_packs.json" "src for DEVELOPER\language_packs.json" >nul
-)
-
 if exist "build\GameTools_HealthMonitor" (
     attrib -R "build\GameTools_HealthMonitor\*" /S /D >nul 2>nul
     rmdir /s /q "build\GameTools_HealthMonitor" >nul 2>nul

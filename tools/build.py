@@ -18,8 +18,6 @@ class GameToolBuilder:
         self.project_dir = os.path.dirname(os.path.dirname(__file__))
         # Canonical source directory.
         self.src_dir = os.path.join(self.project_dir, "src")
-        # Backward-compatible source directory used by older workflows.
-        self.compat_src_dir = os.path.join(self.project_dir, "src for DEVELOPER")
         self.tools_dir = os.path.join(self.project_dir, "tools")
         self.build_dir = os.path.join(self.project_dir, "build")
         self.dist_dir = os.path.join(self.project_dir, "dist")
@@ -77,23 +75,14 @@ class GameToolBuilder:
         return True
 
     def build_main_tool(self):
-        """瑽遣銝餃極??- 雿輻摰靘陷??"""
-        source_file = self._first_existing_path(
-            os.path.join(self.src_dir, "health_monitor.py"),
-            os.path.join(self.compat_src_dir, "health_monitor.py"),
-        )
+        """Build the main GameTools_HealthMonitor executable."""
+        source_file = os.path.join(self.src_dir, "health_monitor.py")
         if not os.path.exists(source_file):
             self.log("health_monitor.py not found")
             return False
 
-        language_pack_file = self._first_existing_path(
-            os.path.join(self.src_dir, "language_packs.json"),
-            os.path.join(self.compat_src_dir, "language_packs.json"),
-        )
-        auto_click_exe_file = self._first_existing_path(
-            os.path.join(self.src_dir, "auto_click.exe"),
-            os.path.join(self.compat_src_dir, "auto_click.exe"),
-        )
+        language_pack_file = os.path.join(self.src_dir, "language_packs.json")
+        auto_click_exe_file = os.path.join(self.src_dir, "auto_click.exe")
 
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
         os.makedirs(package_dir, exist_ok=True)
@@ -268,24 +257,15 @@ class GameToolBuilder:
         # 銴ˊ敹?瑼?
         files_to_copy = [
             (
-                self._first_existing_path(
-                    os.path.join(self.src_dir, "auto_click.exe"),
-                    os.path.join(self.compat_src_dir, "auto_click.exe"),
-                ),
+                os.path.join(self.src_dir, "auto_click.exe"),
                 "auto_click.exe",
             ),
             (
-                self._first_existing_path(
-                    os.path.join(self.src_dir, "雿輻隤芣?.md"),
-                    os.path.join(self.compat_src_dir, "雿輻隤芣?.md"),
-                ),
-                "雿輻隤芣?.md",
+                os.path.join(self.src_dir, "使用說明.md"),
+                "使用說明.md",
             ),
             (
-                self._first_existing_path(
-                    os.path.join(self.src_dir, "language_packs.json"),
-                    os.path.join(self.compat_src_dir, "language_packs.json"),
-                ),
+                os.path.join(self.src_dir, "language_packs.json"),
                 "language_packs.json",
             ),
         ]

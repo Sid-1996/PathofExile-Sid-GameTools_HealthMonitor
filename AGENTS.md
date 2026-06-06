@@ -13,8 +13,7 @@ Windows automation tool for Path of Exile workflows:
 ## Canonical Structure
 
 - `src/`: canonical source of truth for runtime code and language packs
-- `src/config_manager.py`, `src/language_system.py`, `src/utils.py`, `src/custom_dialogs.py`: modularized support components used by `src/health_monitor.py`
-- `src for DEVELOPER/`: compatibility layer for legacy scripts/releases
+- `src/config_manager.py`, `src/language_system.py`, `src/utils.py`, `src/custom_dialogs.py`, `src/skill_timer.py`: modularized components used by `src/health_monitor.py`
 - `scripts/`: one-click local workflows
 - `tools/build.py`: packaging pipeline (PyInstaller + package assembly)
 - `docs/`: user/developer documentation
@@ -36,7 +35,7 @@ Windows automation tool for Path of Exile workflows:
   - `使用說明.md`
   - `啟動工具.bat`
   - `README.txt`
-- `tools/build.py` must prefer `src/` and fallback to `src for DEVELOPER/`.
+- `tools/build.py` sources all assets from `src/`.
 - If PyInstaller cache is locked on Windows (`WinError 5`), clear `build/GameTools_HealthMonitor` and rebuild.
 
 ## Safety/Review Checklist Before Commit
@@ -55,5 +54,4 @@ Windows automation tool for Path of Exile workflows:
 
 ## Notes for Future Refactor
 
-- `src for DEVELOPER/` can be removed only after all packaging and release scripts stop depending on it.
 - Do not assume `README_EN.md` exists today. If bilingual public docs are required again, add or restore the English counterpart first.
