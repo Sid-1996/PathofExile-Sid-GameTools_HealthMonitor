@@ -17,6 +17,7 @@ Python POE/
 │  ├─ language_system.py            # Language pack loading and translation helpers
 │  ├─ utils.py                      # Shared runtime utilities and F12 cleanup helpers
 │  ├─ custom_dialogs.py             # Shared dialog helpers
+│  ├─ skill_timer.py                # Skill timer module with bilingual support
 │  ├─ language_packs.json           # Bilingual UI strings
 │  ├─ health_monitor_config.json    # User config (runtime-generated)
 │  ├─ health_monitor_config.json.backup
@@ -73,8 +74,8 @@ Python POE/
 
 ## Version Notes
 
-- Current verified app version is `v1.0.7` in `src/health_monitor.py`.
-- Current packaging version is `1.0.7` in `tools/build.py`.
+- Current verified app version is `v1.0.8` in `src/health_monitor.py`.
+- Current packaging version is `1.0.8` in `tools/build.py`.
 
 ## Packaging Notes
 
@@ -87,8 +88,9 @@ Python POE/
   - `啟動工具.bat`
   - `README.txt`
 
-## Current Recovery Status
+## Current Status
 
-- The current modularization recovery pass is functionally restored.
+- Modularization recovery completed — all helper modules are functionally independent.
+- 29 commits squashed to 9 themed commits for clean history.
 - Smoke tests passed in the latest verified round.
 - `git push` remains locked pending final review.

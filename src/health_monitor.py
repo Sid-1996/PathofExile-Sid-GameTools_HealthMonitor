@@ -28,7 +28,6 @@ import psutil
 import requests
 import functools
 import winreg
-import atexit
 
 # Import new modularized components
 from skill_timer import SkillTimerModule
@@ -38,7 +37,7 @@ from custom_dialogs import setup_custom_messagebox
 from config_manager import get_config_manager
 
 # 版本資訊
-CURRENT_VERSION = "v1.0.7"
+CURRENT_VERSION = "v1.0.8"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -278,7 +277,7 @@ class HealthMonitor:
             result = self.language_manager.get_text(key)
             return result
         except Exception as e:
-            print(f"[DEBUG] 主程序 get_text('{key}') 異常: {e}")
+            # print(f"[DEBUG] 主程序 get_text('{key}') 異常: {e}")
             return f"[{key}]"
 
     def load_usage_time_from_registry(self):
@@ -313,15 +312,6 @@ class HealthMonitor:
             print(f"保存使用時間失敗: {e}")
 
     
-    def update_usage_time_display(self):
-        """更新使用時間顯示"""
-        try:
-            if hasattr(self, 'usage_time_label'):
-                display_text = f"總使用時間: {format_usage_time(self.total_usage_time)}"
-                self.usage_time_label.config(text=display_text)
-        except Exception as e:
-            print(f"更新使用時間顯示失敗: {e}")
-
     def track_usage_time(self):
         """追蹤並保存使用時間"""
         try:
@@ -402,7 +392,7 @@ class HealthMonitor:
     def update_ui_text(self):
         """全面更新所有UI元件的文字"""
         try:
-            print(f"[DEBUG] update_ui_text() 開始執行，語言: {self.language_manager.current_language}")
+            # print(f"[DEBUG] update_ui_text() 開始執行，語言: {self.language_manager.current_language}")
             
             # 更新視窗標題
             self.root.title(self.get_text("window_title"))
@@ -502,10 +492,10 @@ class HealthMonitor:
                 if hasattr(self, 'mana_preview_label'):
                     self.mana_preview_label.config(text=self.get_text("select_mana_region_first"))
             
-            print(f"[DEBUG] update_ui_text() 完成")
+            # print(f"[DEBUG] update_ui_text() 完成")
             
         except Exception as e:
-            print(f"[DEBUG] update_ui_text() 異常: {e}")
+            pass
 
     def update_ui_language(self):
         """更新UI語言（保持向後相容）"""
@@ -685,7 +675,7 @@ class HealthMonitor:
         self.language_manager.change_language(saved_language)
         self.current_language = saved_language
         
-        print(f"[DEBUG] 語系初始化成功！當前設定語系為: {self.current_language}")
+        # print(f"[DEBUG] 語系初始化成功！當前設定語系為: {self.current_language}")
 
         # 【核心修正 3】這時候語言已經準備好了，才可以開始設定視窗標題與執行 get_text
         self.root.title(self.get_text("window_title"))
@@ -910,11 +900,11 @@ class HealthMonitor:
     def finish_startup_tasks(self):
         """Run non-critical startup tasks after the main window is already visible."""
         try:
-            print(f"[DEBUG] finish_startup_tasks 開始執行")
+            # print(f"[DEBUG] finish_startup_tasks 開始執行")
             # 確保UI語言正確更新 - 使用新的 update_ui_text() 方法
-            print(f"[DEBUG] 調用 update_ui_text()")
+            # print(f"[DEBUG] 調用 update_ui_text()")
             self.update_ui_text()
-            print(f"[DEBUG] update_ui_text() 完成")
+            # print(f"[DEBUG] update_ui_text() 完成")
             
             self.auto_load_preview()
         except Exception as e:
@@ -1058,23 +1048,23 @@ class HealthMonitor:
 
         # 第一個分頁：血魔監控
         self.monitor_frame = ttk.Frame(self.notebook, padding="10")
-        print(f"[DEBUG] 準備調用 self.get_text('tab_health_monitor')")
+        # print(f"[DEBUG] 準備調用 self.get_text('tab_health_monitor')")
         tab_health_text = self.get_text("tab_health_monitor")
-        print(f"[DEBUG] 創建分頁1標題: '{tab_health_text}' (語言: {self.language_manager.current_language})")
+        # print(f"[DEBUG] 創建分頁1標題: '{tab_health_text}' (語言: {self.language_manager.current_language})")
         self.notebook.add(self.monitor_frame, text=tab_health_text)
 
         # 第二個分頁：一鍵清包
         self.inventory_frame = ttk.Frame(self.notebook, padding="10")
-        print(f"[DEBUG] 準備調用 self.get_text('tab_inventory_clear')")
+        # print(f"[DEBUG] 準備調用 self.get_text('tab_inventory_clear')")
         tab_inventory_text = self.get_text("tab_inventory_clear")
-        print(f"[DEBUG] 創建分頁2標題: '{tab_inventory_text}'")
+        # print(f"[DEBUG] 創建分頁2標題: '{tab_inventory_text}'")
         self.notebook.add(self.inventory_frame, text=tab_inventory_text)
 
         # 第三個分頁：技能連段（插入到一鍵清包和使用說明之間）
         self.combo_frame = ttk.Frame(self.notebook, padding="10")
-        print(f"[DEBUG] 準備調用 self.get_text('tab_skill_combo')")
+        # print(f"[DEBUG] 準備調用 self.get_text('tab_skill_combo')")
         tab_combo_text = self.get_text("tab_skill_combo")
-        print(f"[DEBUG] 創建分頁3標題: '{tab_combo_text}'")
+        # print(f"[DEBUG] 創建分頁3標題: '{tab_combo_text}'")
         self.notebook.add(self.combo_frame, text=tab_combo_text)
 
         # 第四個分頁：執行狀態（新增）
@@ -1433,7 +1423,7 @@ class HealthMonitor:
         language_text = self.get_text("language")
         self.language_label = ttk.Label(self.control_frame, text=language_text)
         self.language_label.grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
-        print(f"[DEBUG] 語言標籤文字: '{language_text}'")
+        # print(f"[DEBUG] 語言標籤文字: '{language_text}'")
         
         # 語言顯示名稱映射
         self.language_display_map = {
@@ -1446,8 +1436,8 @@ class HealthMonitor:
         display_values = list(self.language_display_map.keys())
         current_display = self.language_reverse_map.get(self.current_language, "繁體中文")
         self.language_var.set(current_display)
-        print(f"[DEBUG] 語言選擇器當前顯示: '{current_display}'")
-        print(f"[DEBUG] 可用語言選項: {display_values}")
+        # print(f"[DEBUG] 語言選擇器當前顯示: '{current_display}'")
+        # print(f"[DEBUG] 可用語言選項: {display_values}")
         
         language_combo = ttk.Combobox(self.control_frame, textvariable=self.language_var,
                                      values=display_values, state="readonly", width=12)
@@ -1662,11 +1652,6 @@ class HealthMonitor:
         """檢查是否應該保持GUI在最上方（根據用戶設定）"""
         return self.always_on_top_var.get()
 
-    def set_topmost_if_enabled(self):
-        """如果用戶啟用了永遠在最上方，則設定為置頂"""
-        if self.should_keep_topmost():
-            self.root.attributes("-topmost", True)
-
     def manage_window_hierarchy(self, window, level="SETTINGS"):
         """
         管理視窗層級系統
@@ -1739,11 +1724,6 @@ class HealthMonitor:
             test_settings.lift()
             test_settings.focus_force()
             test_settings.attributes("-topmost", True)
-
-        ttk.Button(test_settings, text=self.get_text("test_reset_function"), command=test_reset_function).pack(pady=10)
-        ttk.Button(test_settings, text=self.get_text("close_settings_window"), command=test_settings.destroy).pack(pady=10)
-
-        print("[OK] 視窗層級測試完成 - 請測試重置功能是否會重新激活父視窗")
 
     def activate_game_window(self):
         """激活遊戲視窗"""
@@ -4195,7 +4175,7 @@ class HealthMonitor:
                 foreground_title = buffer.value
 
                 # 檢查前台視窗標題是否包含GUI標題
-                gui_title = "Sid輔助工具 v1.0.7 - 血魔監控 + 一鍵清包 + 自動化工具"
+                gui_title = f"Sid輔助工具 {CURRENT_VERSION} - 血魔監控 + 一鍵清包 + 自動化工具"
                 return gui_title.lower() in foreground_title.lower()
             else:
                 return False
@@ -6470,11 +6450,6 @@ class HealthMonitor:
         # 統一的GUI恢復
         self.finalize_selection_restore_gui()
 
-    def save_ui_screenshot_to_file(self):
-        """將UI截圖保存為PNG文件 - 此函數現在不再需要，因為已在截圖時直接保存"""
-        # 這個函數現在不需要了，因為我們在 end_inventory_ui_selection 中直接保存
-        pass
-
     def load_ui_screenshot_from_file(self):
         """從PNG文件載入UI截圖 - 使用血魔檢測的方式"""
         try:
@@ -6782,19 +6757,6 @@ class HealthMonitor:
                 self.interface_ui_preview_canvas.delete("all")
                 self.interface_ui_preview_canvas.create_text(75, 50, text="預覽載入失敗",
                                                            fill="red", font=("Arial", 8))
-
-    def get_inventory_main_color(self, img):
-        """獲取背包區域的主要顏色"""
-        pixels = img.reshape(-1, 3)
-        pixels = np.float32(pixels)
-
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        K = 1  # 只取一個主要顏色
-        _, labels, centers = cv2.kmeans(pixels, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-        # 轉換為RGB
-        center = centers[0]
-        return (int(center[2]), int(center[1]), int(center[0]))  # BGR to RGB
 
     def should_clear_inventory(self, img, skip_slots=None, current_slot=None):
         """判斷是否需要清空背包 - 檢查60個格子，可選擇跳過指定格子和之前的格子"""
@@ -8127,56 +8089,6 @@ class HealthMonitor:
         # 更新主界面狀態
         self.update_pickup_status()
 
-    def capture_pickup_coordinate(self, index, parent_window):
-        """截取指定索引的取物座標"""
-        try:
-            # 隱藏設定視窗
-            parent_window.withdraw()
-            self.root.withdraw()
-            
-            # 等待一段時間讓視窗完全隱藏
-            time.sleep(0.5)
-            
-            # 顯示提示對話框
-            result = messagebox.askyesno(self.get_text("coordinate_setup"),
-                self.get_text("move_mouse_instruction").format(position=index+1))
-            
-            if result:
-                # 獲取滑鼠位置
-                x, y = pyautogui.position()
-                self.pickup_coordinates[index] = [x, y]
-                
-                print(f"設定取物座標 {index+1}: ({x}, {y})")
-                
-                # 更新標籤顯示
-                if hasattr(self, 'coord_labels') and index < len(self.coord_labels):
-                    self.coord_labels[index].config(text=f"({x}, {y})")
-                
-                # 更新設定視窗中的座標顯示
-                self.update_coordinate_display()
-                
-                messagebox.showinfo(self.get_text("success"), self.get_text("pickup_coordinate_set").format(position=index+1, x=x, y=y))
-            
-        except Exception as e:
-            print(f"截取座標失敗: {str(e)}")
-            messagebox.showerror("錯誤", f"截取座標失敗: {str(e)}")
-        finally:
-            # 恢復視窗顯示
-            self.root.deiconify()
-            parent_window.deiconify()
-            self.root.focus_force()
-            parent_window.grab_set()
-
-    def clear_pickup_coordinate(self, index):
-        """清除指定索引的取物座標"""
-        if 0 <= index < len(self.pickup_coordinates):
-            self.pickup_coordinates[index] = [0, 0]
-            if hasattr(self, 'coord_labels') and index < len(self.coord_labels):
-                self.coord_labels[index].config(text="(0, 0)")
-            # 更新設定視窗中的座標顯示
-            self.update_coordinate_display()
-            print(f"已清除取物座標 {index+1}")
-
     def clear_all_coordinates(self):
         """清除所有取物座標"""
         if messagebox.askyesno(self.get_text("confirm"), self.get_text("confirm_clear_coordinates")):
@@ -8261,15 +8173,6 @@ class HealthMonitor:
             print(f"測試取物功能失敗: {e}")
             # 測試模式：在異常情況下也不恢復GUI視窗
             print("F6: 測試模式 - 異常處理時不恢復GUI視窗")
-            # 在異常情況下確保GUI正常（f6_pickup_items可能沒有正確恢復） - 測試時註釋掉
-            # try:
-            #     if self.root.state() != 'normal':
-            #         self.root.deiconify()  # 恢復視窗
-            #         self.root.update_idletasks()  # 處理待處理的事件
-            #         self.root.focus_force()  # 確保獲得焦點
-            #         print("測試異常處理 - GUI已恢復")
-            # except Exception as restore_e:
-            #     print(f"測試異常處理 - 恢復GUI失敗: {restore_e}")
             messagebox.showerror("錯誤", f"測試取物功能失敗: {str(e)}")
 
     def update_pickup_status(self):
@@ -8701,19 +8604,18 @@ class HealthMonitor:
                 self.update_pickup_coordinates_display()
 
             loaded_language = self.config.get('language', 'zh-tw')
-            print(f"[DEBUG] load_config : {loaded_language}")
-            print(f"[DEBUG] load_config : {self.language_manager.current_language}")
+            # print(f"[DEBUG] load_config : {loaded_language}")
+            # print(f"[DEBUG] load_config : {self.language_manager.current_language}")
 
             if loaded_language != self.language_manager.current_language:
-                print(f"[DEBUG]  {self.language_manager.current_language} -> {loaded_language}")
+                # print(f"[DEBUG]  {self.language_manager.current_language} -> {loaded_language}")
                 self.language_manager.change_language(loaded_language)
                 self.current_language = loaded_language
             else:
-                print(f"[DEBUG] : {loaded_language}")
+                pass
 
             display_name = self.language_reverse_map.get(self.current_language, '????')
             self.language_var.set(display_name)
-            print(f"[DEBUG] load_config  '{display_name}'")
 
             self.update_ui_language()
 
@@ -8987,39 +8889,6 @@ class HealthMonitor:
         finally:
             self.auto_click_process = None
 
-    def on_mouse_click(self, x, y, button, pressed):
-        """滑鼠點擊事件處理"""
-        try:
-            from pynput import mouse
-            
-            # 添加調試輸出
-            if button == mouse.Button.left:
-                self.left_button_pressed = pressed
-                print(f"滑鼠左鍵事件: pressed={pressed}, ctrl_pressed={self.ctrl_pressed}")
-                
-                # 檢查是否滿足CTRL+左鍵條件
-                if self.ctrl_pressed and self.left_button_pressed:
-                    if not self.auto_click_active:
-                        print("檢測到 CTRL+左鍵組合，開始自動點擊")
-                        self.start_auto_click()
-                else:
-                    # 任一鍵釋放都停止自動點擊
-                    if self.auto_click_active:
-                        print("CTRL+左鍵組合中斷，停止自動點擊")
-                        self.stop_auto_click()
-                    
-        except Exception as e:
-            print(f"滑鼠點擊事件處理錯誤: {e}")
-
-    def toggle_auto_click_mode(self):
-        """切換自動點擊模式（主要方案）"""
-        if self.auto_click_active:
-            self.stop_auto_click()
-            print("[STOP] 自動點擊已停止（Ctrl+Shift+X）")
-        else:
-            self.start_auto_click()
-            print(" 自動點擊已啟動（Ctrl+Shift+X再次按下可停止）")
-
     def toggle_auto_click(self):
         """切換自動點擊狀態（備用方案）"""
         if self.auto_click_active:
@@ -9028,14 +8897,6 @@ class HealthMonitor:
         else:
             self.start_auto_click()
             print(" 自動點擊已啟動（Ctrl+Shift+Z再次按下可停止）")
-
-    def on_ctrl_press(self, event=None):
-        """CTRL鍵按下事件（保留作為備用）"""
-        pass
-
-    def on_ctrl_release(self, event=None):
-        """CTRL鍵釋放事件（保留作為備用）"""
-        pass
 
     def start_auto_click(self):
         """開始自動點擊"""

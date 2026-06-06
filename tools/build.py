@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-?芸???撱箏????單 - 摰靽桀儔?
-蝣箔? exe ???甇?虜嚗蒂?????閬?鞈?
+GameTools Health Monitor - Build Script
+Builds GameTools_HealthMonitor.exe via PyInstaller and assembles the release package.
 """
 
 import os

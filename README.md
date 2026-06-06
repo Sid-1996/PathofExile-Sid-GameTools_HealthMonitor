@@ -92,8 +92,20 @@ Ctrl + Left Click Toggle
 
 ---
 
-## ⏸️ Global Controls  
-全域控制
+## ⏱️ Skill Timer  
+技能計時器
+
+- Custom skill slot configuration
+- Millisecond-precision intervals
+- Single key and modifier+key support
+
+- 自訂技能槽位配置
+- 毫秒級精度間隔
+- 支援單鍵與組合鍵
+
+---
+
+## ⏸️ Global Controls / 全域控制
 
 ```txt
 F9  = Pause / Resume
@@ -121,7 +133,7 @@ F12 = Exit
 ## Install Dependencies / 安裝依賴
 
 ```bat
-scripts/install_dependencies.bat
+scripts\install_dependencies.bat
 ```
 
 ---
@@ -129,7 +141,7 @@ scripts/install_dependencies.bat
 ## Run / 執行
 
 ```bat
-scripts/run_monitor.bat
+scripts\run_monitor.bat
 ```
 
 ---
@@ -137,7 +149,7 @@ scripts/run_monitor.bat
 ## Build EXE / 打包 EXE
 
 ```bat
-scripts/build_exe.bat
+scripts\build_exe.bat
 ```
 
 ---
@@ -145,7 +157,7 @@ scripts/build_exe.bat
 ## Test Built EXE / 測試 EXE
 
 ```bat
-scripts/test_built_exe.bat
+scripts\test_built_exe.bat
 ```
 
 ---
@@ -154,9 +166,16 @@ scripts/test_built_exe.bat
 
 ```txt
 src/
-scripts/
-docs/
-tools/
+  health_monitor.py      # Main application
+  config_manager.py      # Config load/save
+  language_system.py     # Translation system
+  custom_dialogs.py      # Shared dialogs
+  utils.py               # Runtime utilities
+  skill_timer.py         # Skill timer module
+  language_packs.json    # UI strings
+scripts/                 # One-click workflows
+tools/                   # Build pipeline
+docs/                    # User/developer docs
 ```
 
 ---
