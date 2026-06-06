@@ -1549,6 +1549,7 @@ class HealthMonitor:
         self.last_health_percent = -1
         self.last_mana_percent = -1
         self.last_mana_preview_update = 0
+        self._preview_placeholder_shown = False
 
     def on_type_changed(self, event=None):
         """當類型選擇改變時更新預設值"""
@@ -2579,6 +2580,11 @@ class HealthMonitor:
         if not self.selected_mana_region:
             return
 
+        if not self._is_game_window_active():
+            if hasattr(self, 'mana_preview_label'):
+                self.mana_preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
+            return
+
         try:
             # 獲取遊戲視窗位置
             window = gw.getWindowsWithTitle(self.window_var.get())[0]
@@ -2617,6 +2623,11 @@ class HealthMonitor:
         if not self.selected_region:
             return
 
+        if not self._is_game_window_active():
+            if hasattr(self, 'preview_label'):
+                self.preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
+            return
+
         try:
             # 獲取遊戲視窗位置
             window = gw.getWindowsWithTitle(self.window_var.get())[0]
@@ -2653,6 +2664,10 @@ class HealthMonitor:
 
     def capture_preview_async(self):
         """非同步擷取預覽圖，避免阻塞UI線程"""
+        if not self._is_game_window_active():
+            self.root.after(0, lambda: hasattr(self, 'preview_label') and self.preview_label.config(text=self.get_text("waiting_for_game_window"), image=""))
+            return
+
         def _capture():
             if not self.selected_region:
                 return
@@ -2729,6 +2744,10 @@ class HealthMonitor:
 
     def capture_mana_preview_async(self):
         """非同步擷取魔力預覽圖片，避免阻塞UI"""
+        if not self._is_game_window_active():
+            self.root.after(0, lambda: hasattr(self, 'mana_preview_label') and self.mana_preview_label.config(text=self.get_text("waiting_for_game_window"), image=""))
+            return
+
         def _capture():
             if not self.selected_mana_region:
                 return
@@ -3209,31 +3228,23 @@ class HealthMonitor:
                         continue
 
                     window = windows[0]
-                    if window.isMinimized:
-                        self.update_status("--", "--", "視窗最小化", "")
-                        self.add_status_message(self.get_text("game_window_minimized"), "warning")
-                        self._interruptible_sleep(1.0)
-                        continue
 
-                    # 檢查遊戲視窗是否在前台（處於焦點）
-                    if not window.isActive:
-                        self.update_status("--", "--", self.get_text("waiting_for_game_window"), "")
-                        self.add_status_message(self.get_text("game_window_lost_focus"), "warning")
-                        # 等待遊戲視窗重新激活，每500ms檢查一次
-                        while self.is_monitoring() and not window.isActive:
-                            self._interruptible_sleep(0.5)
-                            # 重新獲取視窗狀態（因為視窗可能已經關閉或改變）
-                            windows = gw.getWindowsWithTitle(self.window_var.get())
-                            if not windows:
-                                break
-                            window = windows[0]
-                            if window.isMinimized:
-                                break
-                        # 如果監控被停止或視窗不存在，跳出循環
-                        if not self.is_monitoring() or not windows or window.isMinimized:
-                            continue
-                        # 遊戲視窗重新激活，繼續監控
-                        print("遊戲視窗已激活，繼續血魔監控")
+                    # 檢查遊戲視窗是否在前台且非最小化
+                    if window.isMinimized or not window.isActive:
+                        if window.isMinimized:
+                            self.update_status("--", "--", self.get_text("game_window_minimized"), "")
+                        else:
+                            self.update_status("--", "--", self.get_text("waiting_for_game_window"), "")
+                        if not self._preview_placeholder_shown:
+                            self._preview_placeholder_shown = True
+                            msg_key = "game_window_minimized" if window.isMinimized else "game_window_lost_focus"
+                            self.add_status_message(self.get_text(msg_key), "warning")
+                            self.root.after(0, self._show_health_preview_placeholder)
+                            self.root.after(0, self._show_mana_preview_placeholder)
+                        self._interruptible_sleep(0.5)
+                        continue
+                    if self._preview_placeholder_shown:
+                        self._preview_placeholder_shown = False
                         self.add_status_message(self.get_text("game_window_regained_focus"), "success")
 
                     # 計算區域在螢幕上的絕對位置
@@ -4182,6 +4193,27 @@ class HealthMonitor:
         except Exception as e:
             print(f"檢查GUI前台狀態失敗: {e}")
             return False
+
+    def _is_game_window_active(self):
+        """檢查遊戲視窗是否在前台且可用（非最小化）"""
+        try:
+            windows = gw.getWindowsWithTitle(self.window_var.get())
+            if not windows:
+                return False
+            w = windows[0]
+            return not w.isMinimized and w.isActive
+        except:
+            return False
+
+    def _show_health_preview_placeholder(self):
+        """在血量預覽上顯示等待激活提示（主線程呼叫）"""
+        if hasattr(self, 'preview_label'):
+            self.preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
+
+    def _show_mana_preview_placeholder(self):
+        """在魔力預覽上顯示等待激活提示（主線程呼叫）"""
+        if hasattr(self, 'mana_preview_label'):
+            self.mana_preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
 
     def adjust_colors(self):
         """調整顏色檢測參數"""
@@ -5523,8 +5555,8 @@ class HealthMonitor:
         self.reset_offset_btn = ttk.Button(offset_frame, text=self.get_text("reset"), command=self.reset_grid_offset)
         self.reset_offset_btn.grid(row=1, column=8, padx=(10, 0))
 
-        self.inventory_preview_label = tk.Canvas(preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2)
-        self.inventory_preview_label.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(5, 0))
+        self.inventory_preview_label = tk.Canvas(preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
+        self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0))
         self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self.get_text("select_inventory_region_first"), anchor='nw', fill='gray')
         self.inventory_preview_label.bind('<Button-1>', self._on_preview_click)
         self._preview_has_image = False
@@ -5627,6 +5659,9 @@ class HealthMonitor:
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
+            if not self._is_game_window_active():
+                return
+
             # 使用血魔監控的遊戲視窗
             window_title = self.window_var.get()
             if not window_title:
@@ -7109,6 +7144,26 @@ class HealthMonitor:
                 occupied_positions.append(self.inventory_grid_positions[index])
         return occupied_positions
 
+    def _draw_exclusion_overlay(self):
+        """在 Canvas 上繪製排除格子的藍色疊加層（獨立於底圖，刷新後仍保留）"""
+        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
+            return
+        canvas = self.inventory_preview_label
+        canvas.delete('exclusion')
+        meta = self._preview_meta
+        cell_w, cell_h = meta['cell_w'], meta['cell_h']
+        off_x, off_y = meta['offset_x'], meta['offset_y']
+        for idx in self.excluded_inventory_slots:
+            row = idx // 12
+            col = idx % 12
+            x1 = col * cell_w + off_x
+            y1 = row * cell_h + off_y
+            x2 = x1 + cell_w
+            y2 = y1 + cell_h
+            canvas.create_rectangle(x1, y1, x2, y2, outline='blue', width=2, tags='exclusion')
+            canvas.create_line(x1, y1, x2, y2, fill='blue', width=1, tags='exclusion')
+            canvas.create_line(x2, y1, x1, y2, fill='blue', width=1, tags='exclusion')
+
     def _on_preview_click(self, event):
         """點擊背包預覽切換格子的排除狀態"""
         if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
@@ -7128,11 +7183,8 @@ class HealthMonitor:
             self.excluded_inventory_slots.discard(idx)
         else:
             self.excluded_inventory_slots.add(idx)
-        # 立即重新繪製預覽以反映排除狀態
-        if hasattr(self, '_last_preview_img') and self._last_preview_img is not None:
-            self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
+        self._draw_exclusion_overlay()
         self.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
-        # 儲存設定
         self.save_config(show_message=False)
 
     def update_inventory_preview_with_items(self, img, occupied_slots):
@@ -7197,16 +7249,7 @@ class HealthMonitor:
                         # 繪製綠色圓點表示空置
                         cv2.circle(display_img, (center_x, center_y), 2, (0, 255, 0), -1)
 
-                    # 標記排除的格子（藍色底線和邊框）
-                    if grid_index in self.excluded_inventory_slots:
-                        x1 = col * cell_width + offset_x
-                        y1 = row * cell_height + offset_y
-                        x2 = x1 + cell_width
-                        y2 = y1 + cell_height
-                        cv2.rectangle(display_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                        cv2.line(display_img, (x1, y1), (x2, y2), (255, 0, 0), 1)
-                        cv2.line(display_img, (x2, y1), (x1, y2), (255, 0, 0), 1)
-
+            # 排除標記改由 Canvas 疊加層處理（_draw_exclusion_overlay）
             # 移除圖片上的統計文字（移到外面顯示）
             # cv2.putText(display_img, f"Occupied: {occupied_count}/60", (10, 20),
             #            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
@@ -7225,21 +7268,20 @@ class HealthMonitor:
                     max_width = max(300, current_gui_width - 100)  # 為側邊欄預留空間
                     max_height = max(200, current_gui_height - 200)  # 為統計和控制區域預留空間
                 else:  # 正常GUI尺寸
-                    max_width = 500
-                    max_height = 400
+                    max_width = 700
+                    max_height = 500
             except:
                 # 如果獲取GUI尺寸失敗，使用預設值
-                max_width = 500
-                max_height = 400
+                max_width = 700
+                max_height = 500
 
             # 計算縮放比例，保持長寬比
-            scale = min(max_width / width, max_height / height, 1.0)  # 不超過1.0（不放大）
+            scale = min(max_width / width, max_height / height, 1.0)
 
-            if scale < 1.0:  # 只在需要縮小時調整
+            if scale < 1.0:
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 display_img = cv2.resize(display_img, (new_width, new_height))
-                print(f"背包預覽已縮放: {width}x{height} -> {new_width}x{new_height} (縮放比例: {scale:.2f})")
 
             # 轉換為PIL圖片
             display_img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
@@ -7258,11 +7300,13 @@ class HealthMonitor:
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
-            # 更新預覽（Canvas）
+            # 更新預覽（Canvas，鎖定尺寸 = 圖片尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
             self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
+            self.inventory_preview_label.config(width=disp_w, height=disp_h)
             self._preview_has_image = True
+            self._draw_exclusion_overlay()
 
             # 更新統計資訊標籤
             if hasattr(self, 'occupied_label'):
@@ -7270,9 +7314,7 @@ class HealthMonitor:
 
         except Exception as e:
             print(f"更新預覽失敗: {e}")
-            # 如果標記失敗，至少顯示原始圖片
             try:
-                # 轉換為PIL圖片並顯示
                 display_img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
@@ -7281,6 +7323,7 @@ class HealthMonitor:
                     self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
                     self.inventory_preview_label.image = tk_img
                     self._preview_has_image = True
+                    self._draw_exclusion_overlay()
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 
@@ -7325,18 +7368,7 @@ class HealthMonitor:
                         cv2.line(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (0, 0, 255), 1)
                         cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (0, 0, 255), 1)
 
-            # 標記排除的格子
-            for grid_index in self.excluded_inventory_slots:
-                if grid_index < len(self.inventory_grid_positions):
-                    abs_x, abs_y = self.inventory_grid_positions[grid_index]
-                    center_x = abs_x - self.inventory_region['x']
-                    center_y = abs_y - self.inventory_region['y']
-                    if 0 <= center_x < width and 0 <= center_y < height:
-                        size = 6
-                        cv2.rectangle(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (255, 0, 0), 1)
-                        cv2.line(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (255, 0, 0), 1)
-                        cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (255, 0, 0), 1)
-
+            # 排除標記改由 Canvas 疊加層處理（_draw_exclusion_overlay）
             # 調整圖片大小 - 根據當前GUI尺寸動態調整（與update_inventory_preview保持一致）
             try:
                 current_gui_width = self.root.winfo_width()
@@ -7347,23 +7379,22 @@ class HealthMonitor:
                     max_width = max(300, current_gui_width - 100)  # 為側邊欄預留空間
                     max_height = max(200, current_gui_height - 200)  # 為統計和控制區域預留空間
                 else:  # 正常GUI尺寸
-                    max_width = 500
-                    max_height = 400
+                    max_width = 700
+                    max_height = 500
             except:
                 # 如果獲取GUI尺寸失敗，使用預設值
-                max_width = 500
-                max_height = 400
+                max_width = 700
+                max_height = 500
 
             # 計算縮放比例，保持長寬比
-            scale = min(max_width / width, max_height / height, 1.0)  # 不超過1.0（不放大）
+            scale = min(max_width / width, max_height / height, 1.0)
 
-            if scale < 1.0:  # 只在需要縮小時調整
+            if scale < 1.0:
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 display_img = cv2.resize(display_img, (new_width, new_height))
-                print(f"背包進度預覽已縮放: {width}x{height} -> {new_width}x{new_height} (縮放比例: {scale:.2f})")
 
-            # 轉換為PIL圖片 - 優化：直接使用現有的轉換邏輯
+            # 轉換為PIL圖片
             display_img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(display_img_rgb)
             tk_img = ImageTk.PhotoImage(pil_img)
@@ -7379,21 +7410,21 @@ class HealthMonitor:
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
-            # 更新預覽（Canvas）
+            # 更新預覽（Canvas，鎖定尺寸 = 圖片尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
             self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
+            self.inventory_preview_label.config(width=disp_w, height=disp_h)
             self._preview_has_image = True
+            self._draw_exclusion_overlay()
 
-            # 更新統計資訊標籤 - 優化：只在需要時更新
+            # 更新統計資訊標籤
             if hasattr(self, 'occupied_label'):
                 self.occupied_label.config(text=f"{occupied_count}/60")
 
         except Exception as e:
             print(f"更新進度預覽失敗: {e}")
-            # 如果標記失敗，至少顯示原始圖片
             try:
-                # 轉換為PIL圖片並顯示
                 display_img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
@@ -7401,7 +7432,9 @@ class HealthMonitor:
                     self.inventory_preview_label.delete("all")
                     self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
                     self.inventory_preview_label.image = tk_img
+                    self.inventory_preview_label.config(width=disp_w, height=disp_h)
                     self._preview_has_image = True
+                    self._draw_exclusion_overlay()
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 

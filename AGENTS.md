@@ -28,9 +28,38 @@ The following tools are available in PATH and can be used by agents for searchin
 ## Current Git State
 
 - Branch: `master`
-- Ahead of `origin/master` by **16 commits**
-- Working tree: **clean** (nothing to commit)
+- Ahead of `origin/master` by **16 commits** (will be 17 after next commit)
+- Working tree: **dirty** (modified `src/health_monitor.py`)
 - `git push` is **locked** — do not push unless explicitly instructed
+
+## Recent Changes (v1.0.9 + pending)
+
+### Activation-Aware Previews
+
+- `monitor_health()` now checks `window.isActive` on every iteration.
+- When the window loses focus, health/mana preview labels show "等待遊戲視窗激活" instead of capturing covered/desktop content.
+- Manual capture methods (`capture_preview`, `capture_mana_preview`, async variants) all check `_is_game_window_active()` before capturing.
+- Inventory preview refresh also checks activation state.
+- Flat check (no busy-wait loop), 0.5s re-check interval.
+- Helper: `_is_game_window_active()`, `_show_health_preview_placeholder()`, `_show_mana_preview_placeholder()`.
+
+### Exclusion Marker Canvas Overlay
+
+- Exclusion markers are drawn as a separate Canvas overlay (`_draw_exclusion_overlay`), independent of the background image.
+- Click toggles exclusion via `_on_preview_click` → calls `_draw_exclusion_overlay()`.
+- No full re-render of the inventory preview on exclusion toggle.
+
+### Max Preview Size
+
+- Default max_width: 500 → 700
+- Default max_height: 400 → 500
+
+### Known Issues / DXGI vs GDI
+
+- `PrintWindow` (GDI) returns all-black frames for Path of Exile 2 (DirectX) — confirmed via test harness.
+- `dxcam` (DXGI Desktop Duplication) captures the final composited desktop, so covered/minimized windows yield covered/desktop content — same as `mss`.
+- No reliable capture-before-activation solution exists without Windows.Graphics.Capture (Win10+).
+- Activation guard is the chosen mitigation path for now.
 
 ## Canonical Structure
 
