@@ -16,6 +16,15 @@ This project runs on Windows with **PowerShell 7+** available as the shell.
 All commands in this file and related scripts assume PowerShell 7+ syntax (pipeline chain operators `&&` / `||`, `Set-Content`, `Get-ChildItem`, etc.).
 Avoid `cmd.exe` batch idioms unless running explicit `.bat` scripts.
 
+## Available Tools
+
+The following tools are available in PATH and can be used by agents for searching and analysis:
+
+- **ripgrep** (`rg 15.1.0`) — fast recursive search with PCRE2 support
+  - Use `rg -C` for context around matches
+  - Use `rg --count-matches` for precise match counting
+  - Defaults to `.gitignore`-aware behavior
+
 ## Current Git State
 
 - Branch: `master`
