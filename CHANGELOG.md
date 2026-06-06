@@ -5,6 +5,18 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.0.9] - 2026-06-07
+
+### ✨ 新增
+
+- **背包排除格子功能**: 可在背包預覽中點擊格子切換排除狀態，F3 一鍵清包時自動跳過被排除的格子
+- 預覽即時刷新：點擊排除後立即重新繪製顯示藍色標記
+- 排除設定持久化：排除狀態自動儲存至 `health_monitor_config.json`
+
+### 🐛 修復
+
+- 背包預覽改為 `tk.Canvas`，解決 `ttk.Label` 無法可靠接收滑鼠點擊事件的問題
+
 ## [1.0.8] - 2026-05-15
 
 ### 🐛 修復

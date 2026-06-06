@@ -28,7 +28,7 @@ The following tools are available in PATH and can be used by agents for searchin
 ## Current Git State
 
 - Branch: `master`
-- Ahead of `origin/master` by **12 commits**
+- Ahead of `origin/master` by **16 commits**
 - Working tree: **clean** (nothing to commit)
 - `git push` is **locked** — do not push unless explicitly instructed
 
@@ -53,7 +53,7 @@ Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
 
 ## Version
 
-- Current: **v1.0.8**
+- Current: **v1.0.9**
 - Set in `src/health_monitor.py` (`CURRENT_VERSION`) and `tools/build.py` (`APP_VERSION`)
 
 ## Packaging Rules (Critical)
@@ -88,6 +88,9 @@ Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
 
 ## Notes for Future Refactor
 
-- `health_monitor.py` at ~10,400 lines is the main refactor target.
+- `health_monitor.py` at ~10,500 lines is the main refactor target.
+- Inventory exclusion feature: `excluded_inventory_slots` (set of ints), saved as `excluded_inventory_slots` in config JSON, rendered as blue overlay on preview, respected in all F3 clear paths.
+- `_on_preview_click()` handles Canvas click → toggle exclusion → re-render.
+- `_preview_meta` stores rendered image dimensions for click coordinate mapping.
 - No automated test suite exists yet — manual diagnostic scripts were removed.
 - Do not assume `README_EN.md` exists today. If bilingual public docs are required again, add or restore the English counterpart first.

@@ -37,7 +37,7 @@ from custom_dialogs import setup_custom_messagebox
 from config_manager import get_config_manager
 
 # 版本資訊
-CURRENT_VERSION = "v1.0.8"
+CURRENT_VERSION = "v1.0.9"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -628,10 +628,8 @@ class HealthMonitor:
                 self.ui_preview_hint_label.config(text=self.get_text("inventory_ui_screenshot_hint"))
             
             # 更新預覽標籤的初始文字
-            if hasattr(self, 'inventory_preview_label'):
-                current_text = self.inventory_preview_label.cget('text')
-                if current_text in [self.get_text("select_inventory_region_first"), "Please select inventory region first"]:
-                    self.inventory_preview_label.config(text=self.get_text("select_inventory_region_first"))
+            if hasattr(self, 'inventory_preview_label') and not getattr(self, '_preview_has_image', False):
+                self.inventory_preview_label.itemconfig(self._preview_placeholder, text=self.get_text("select_inventory_region_first"))
             
             # 更新舊的按鈕引用（向後相容）
             if hasattr(self, 'inventory_clear_btn'):
@@ -764,6 +762,7 @@ class HealthMonitor:
         self.inventory_selection_active = False
         self.inventory_selection_start = None
         self.inventory_selection_end = None
+        self.excluded_inventory_slots = set()  # 被排除的格子索引（清包時跳過）
 
         # 背包UI安全檢查相關變數
         self.inventory_ui_screenshot = None  # 背包UI截圖
@@ -5017,7 +5016,7 @@ class HealthMonitor:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # 檢查是否需要清空
-                needs_clearing, occupied_slots = self.should_clear_inventory(img)
+                needs_clearing, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
                 if needs_clearing:
                     self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
                     print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
@@ -5524,8 +5523,14 @@ class HealthMonitor:
         self.reset_offset_btn = ttk.Button(offset_frame, text=self.get_text("reset"), command=self.reset_grid_offset)
         self.reset_offset_btn.grid(row=1, column=8, padx=(10, 0))
 
-        self.inventory_preview_label = ttk.Label(preview_frame, text=self.get_text("select_inventory_region_first"), relief="sunken", background="lightgray")
+        self.inventory_preview_label = tk.Canvas(preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2)
         self.inventory_preview_label.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(5, 0))
+        self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self.get_text("select_inventory_region_first"), anchor='nw', fill='gray')
+        self.inventory_preview_label.bind('<Button-1>', self._on_preview_click)
+        self._preview_has_image = False
+
+        self.inventory_exclude_hint = ttk.Label(preview_frame, text=self.get_text("inventory_exclude_hint"), foreground="gray")
+        self.inventory_exclude_hint.grid(row=3, column=0, sticky=tk.W, pady=(2, 5))
 
         # 設定預覽區域大小
         preview_frame.columnconfigure(0, weight=1)
@@ -5556,7 +5561,7 @@ class HealthMonitor:
             self.inventory_grid_positions = self.calculate_inventory_grid_positions()
 
         # 如果有預覽圖片，立即更新
-        if hasattr(self, 'inventory_preview_label') and self.inventory_preview_label.cget('text') != self.get_text("select_inventory_region_first"):
+        if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
             # 重新獲取當前背包圖片並更新預覽
             self.update_inventory_preview_from_current()
 
@@ -5574,7 +5579,7 @@ class HealthMonitor:
             self.inventory_grid_positions = self.calculate_inventory_grid_positions()
 
         # 如果有預覽圖片，立即更新
-        if hasattr(self, 'inventory_preview_label') and self.inventory_preview_label.cget('text') != self.get_text("select_inventory_region_first"):
+        if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
             self.update_inventory_preview_from_current()
 
     def update_offset_labels(self):
@@ -5648,7 +5653,7 @@ class HealthMonitor:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # 分析背包狀態
-                should_clear, occupied_slots = self.should_clear_inventory(img)
+                should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
 
                 # 更新預覽
                 self.update_inventory_preview_with_items(img, occupied_slots)
@@ -6770,7 +6775,11 @@ class HealthMonitor:
             # 這樣可以避免文字視窗被誤識別為道具
             if current_slot is not None and i <= current_slot:
                 continue
-                
+
+            # 跳過使用者排除的格子
+            if skip_slots is not None and i in skip_slots:
+                continue
+
             if i >= len(self.empty_inventory_colors):
                 continue
 
@@ -6816,7 +6825,7 @@ class HealthMonitor:
 
             # === 階段1：初始識別一次，創建清包列表並計算辨識次數 ===
             print("階段1：開始初始識別，創建清包列表")
-            initial_item_positions = self.find_inventory_items(img, None, -1)
+            initial_item_positions = self.find_inventory_items(img, self.excluded_inventory_slots, -1)
 
             if not initial_item_positions:
                 print("沒有找到需要清空的物品")
@@ -6866,7 +6875,7 @@ class HealthMonitor:
                         current_img = cv2.cvtColor(current_img, cv2.COLOR_RGB2BGR)
 
                     # 分析當前背包狀態
-                    should_continue, current_occupied = self.should_clear_inventory(current_img, None, -1)
+                    should_continue, current_occupied = self.should_clear_inventory(current_img, self.excluded_inventory_slots, -1)
 
                     # 更新預覽
                     progress_text = f"動態清包: {total_processed} 個道具已處理"
@@ -6883,7 +6892,7 @@ class HealthMonitor:
                     break
 
                 # 找到下一個要點擊的物品位置（跳過已標記無法清空的物品）
-                current_item_positions = self.find_inventory_items(current_img, None, -1)
+                current_item_positions = self.find_inventory_items(current_img, self.excluded_inventory_slots, -1)
 
                 # 過濾掉已跳過的位置
                 available_positions = [pos for pos in current_item_positions if pos not in skipped_positions]
@@ -6942,7 +6951,7 @@ class HealthMonitor:
                         check_img = cv2.cvtColor(check_img, cv2.COLOR_RGB2BGR)
 
                     # 檢查點擊的位置是否還有物品
-                    check_item_positions = self.find_inventory_items(check_img, None, -1)
+                    check_item_positions = self.find_inventory_items(check_img, self.excluded_inventory_slots, -1)
 
                     # 如果點擊的位置還有物品，說明無法清空（倉庫滿了）
                     if next_pos in check_item_positions:
@@ -6980,7 +6989,7 @@ class HealthMonitor:
                     final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
 
                 # 分析最終背包狀態
-                final_should_clear, final_occupied = self.should_clear_inventory(final_img, None, -1)
+                final_should_clear, final_occupied = self.should_clear_inventory(final_img, self.excluded_inventory_slots, -1)
 
                 # 在主線程中最終更新預覽
                 final_progress_text = f"清包完成: {total_processed} 個道具"
@@ -6997,7 +7006,7 @@ class HealthMonitor:
                     self.add_status_message(self.get_text("f3_retry_final"), "info")
 
                     # 重新擷取當前狀態作為重試的基礎
-                    retry_item_positions = self.find_inventory_items(final_img, None, -1)
+                    retry_item_positions = self.find_inventory_items(final_img, self.excluded_inventory_slots, -1)
 
                     if retry_item_positions:
                         print(f"重試：找到 {len(retry_item_positions)} 個剩餘物品")
@@ -7066,7 +7075,7 @@ class HealthMonitor:
                             retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
                             retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
 
-                        _, retry_final_occupied = self.should_clear_inventory(retry_final_img, None, -1)
+                        _, retry_final_occupied = self.should_clear_inventory(retry_final_img, self.excluded_inventory_slots, -1)
 
                         final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
                         self.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
@@ -7092,13 +7101,39 @@ class HealthMonitor:
 
     def find_inventory_items(self, img, skip_slots=None, current_slot=None):
         """分析圖片並找到有物品的格子位置"""
-        _, occupied_indices = self.should_clear_inventory(img, None, current_slot)
+        _, occupied_indices = self.should_clear_inventory(img, skip_slots, current_slot)
         # 將索引轉換為座標
         occupied_positions = []
         for index in occupied_indices:
             if index < len(self.inventory_grid_positions):
                 occupied_positions.append(self.inventory_grid_positions[index])
         return occupied_positions
+
+    def _on_preview_click(self, event):
+        """點擊背包預覽切換格子的排除狀態"""
+        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
+            self.add_status_message("無法切換排除：請先完成背包設定（框選區域＋記錄空格顏色）", "warning")
+            return
+        meta = self._preview_meta
+        click_x = event.x - meta['offset_x']
+        click_y = event.y - meta['offset_y']
+        if click_x < 0 or click_y >= meta['img_h'] or click_y < 0 or click_x >= meta['img_w']:
+            return
+        col = click_x // meta['cell_w']
+        row = click_y // meta['cell_h']
+        if col < 0 or col >= 12 or row < 0 or row >= 5:
+            return
+        idx = row * 12 + col
+        if idx in self.excluded_inventory_slots:
+            self.excluded_inventory_slots.discard(idx)
+        else:
+            self.excluded_inventory_slots.add(idx)
+        # 立即重新繪製預覽以反映排除狀態
+        if hasattr(self, '_last_preview_img') and self._last_preview_img is not None:
+            self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
+        self.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
+        # 儲存設定
+        self.save_config(show_message=False)
 
     def update_inventory_preview_with_items(self, img, occupied_slots):
         """更新背包預覽，顯示60個格子的狀態"""
@@ -7162,6 +7197,16 @@ class HealthMonitor:
                         # 繪製綠色圓點表示空置
                         cv2.circle(display_img, (center_x, center_y), 2, (0, 255, 0), -1)
 
+                    # 標記排除的格子（藍色底線和邊框）
+                    if grid_index in self.excluded_inventory_slots:
+                        x1 = col * cell_width + offset_x
+                        y1 = row * cell_height + offset_y
+                        x2 = x1 + cell_width
+                        y2 = y1 + cell_height
+                        cv2.rectangle(display_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                        cv2.line(display_img, (x1, y1), (x2, y2), (255, 0, 0), 1)
+                        cv2.line(display_img, (x2, y1), (x1, y2), (255, 0, 0), 1)
+
             # 移除圖片上的統計文字（移到外面顯示）
             # cv2.putText(display_img, f"Occupied: {occupied_count}/60", (10, 20),
             #            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
@@ -7201,9 +7246,23 @@ class HealthMonitor:
             pil_img = Image.fromarray(display_img_rgb)
             tk_img = ImageTk.PhotoImage(pil_img)
 
-            # 更新預覽
-            self.inventory_preview_label.config(image=tk_img, text="")
+            # 儲存預覽元數據供點擊排除使用
+            disp_w = new_width if scale < 1.0 else width
+            disp_h = new_height if scale < 1.0 else height
+            self._preview_meta = {
+                'img_w': disp_w, 'img_h': disp_h,
+                'cell_w': disp_w // 12, 'cell_h': disp_h // 5,
+                'offset_x': int(offset_x * scale) if scale < 1.0 else offset_x,
+                'offset_y': int(offset_y * scale) if scale < 1.0 else offset_y,
+            }
+            self._last_preview_img = img
+            self._last_occupied_slots = occupied_slots
+
+            # 更新預覽（Canvas）
+            self.inventory_preview_label.delete("all")
+            self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
+            self._preview_has_image = True
 
             # 更新統計資訊標籤
             if hasattr(self, 'occupied_label'):
@@ -7218,7 +7277,10 @@ class HealthMonitor:
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
                 if hasattr(self, 'inventory_preview_label'):
-                    self.inventory_preview_label.config(image=tk_img, text="")
+                    self.inventory_preview_label.delete("all")
+                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+                    self.inventory_preview_label.image = tk_img
+                    self._preview_has_image = True
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 
@@ -7263,6 +7325,18 @@ class HealthMonitor:
                         cv2.line(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (0, 0, 255), 1)
                         cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (0, 0, 255), 1)
 
+            # 標記排除的格子
+            for grid_index in self.excluded_inventory_slots:
+                if grid_index < len(self.inventory_grid_positions):
+                    abs_x, abs_y = self.inventory_grid_positions[grid_index]
+                    center_x = abs_x - self.inventory_region['x']
+                    center_y = abs_y - self.inventory_region['y']
+                    if 0 <= center_x < width and 0 <= center_y < height:
+                        size = 6
+                        cv2.rectangle(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (255, 0, 0), 1)
+                        cv2.line(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (255, 0, 0), 1)
+                        cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (255, 0, 0), 1)
+
             # 調整圖片大小 - 根據當前GUI尺寸動態調整（與update_inventory_preview保持一致）
             try:
                 current_gui_width = self.root.winfo_width()
@@ -7294,9 +7368,22 @@ class HealthMonitor:
             pil_img = Image.fromarray(display_img_rgb)
             tk_img = ImageTk.PhotoImage(pil_img)
 
-            # 更新預覽 - 優化：批量更新以提高性能
-            self.inventory_preview_label.config(image=tk_img, text="")
+            # 儲存預覽元數據供點擊排除使用
+            disp_w = new_width if scale < 1.0 else width
+            disp_h = new_height if scale < 1.0 else height
+            self._preview_meta = {
+                'img_w': disp_w, 'img_h': disp_h,
+                'cell_w': disp_w // 12, 'cell_h': disp_h // 5,
+                'offset_x': 0, 'offset_y': 0,
+            }
+            self._last_preview_img = img
+            self._last_occupied_slots = occupied_slots
+
+            # 更新預覽（Canvas）
+            self.inventory_preview_label.delete("all")
+            self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
+            self._preview_has_image = True
 
             # 更新統計資訊標籤 - 優化：只在需要時更新
             if hasattr(self, 'occupied_label'):
@@ -7311,7 +7398,10 @@ class HealthMonitor:
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
                 if hasattr(self, 'inventory_preview_label'):
-                    self.inventory_preview_label.config(image=tk_img, text="")
+                    self.inventory_preview_label.delete("all")
+                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+                    self.inventory_preview_label.image = tk_img
+                    self._preview_has_image = True
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 
@@ -7437,7 +7527,7 @@ class HealthMonitor:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # 分析背包狀態
-                should_clear, occupied_slots = self.should_clear_inventory(img)
+                should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
 
             # 5. 恢復GUI面板（如果之前縮小了）
             if gui_minimized_for_test:
@@ -7497,6 +7587,7 @@ class HealthMonitor:
             self.config['inventory_grid_positions'] = [list(pos) for pos in self.inventory_grid_positions]  # 保存為list格式
             self.config['grid_offset_x'] = self.grid_offset_x
             self.config['grid_offset_y'] = self.grid_offset_y
+            self.config['excluded_inventory_slots'] = sorted(self.excluded_inventory_slots)
             # 儲存血魔監控的遊戲視窗標題
             self.config['inventory_window_title'] = self.window_var.get()
 
@@ -8417,6 +8508,7 @@ class HealthMonitor:
             self.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]
             self.grid_offset_x = self.config.get('grid_offset_x', 0)
             self.grid_offset_y = self.config.get('grid_offset_y', 0)
+            self.excluded_inventory_slots = set(self.config.get('excluded_inventory_slots', []))
 
             self.inventory_ui_region = self.config.get('inventory_ui_region')
             if self.inventory_ui_region:
@@ -8652,6 +8744,8 @@ class HealthMonitor:
                 self.config['grid_offset_x'] = self.grid_offset_x
             if hasattr(self, 'grid_offset_y'):
                 self.config['grid_offset_y'] = self.grid_offset_y
+            if hasattr(self, 'excluded_inventory_slots'):
+                self.config['excluded_inventory_slots'] = sorted(self.excluded_inventory_slots)
 
             # 儲存觸發設定
             settings = []

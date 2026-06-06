@@ -111,7 +111,8 @@ class ConfigManager:
             'empty_inventory_colors': self.config.get('empty_inventory_colors', []),
             'inventory_grid_positions': self.config.get('inventory_grid_positions', []),
             'grid_offset_x': self.config.get('grid_offset_x', 0),
-            'grid_offset_y': self.config.get('grid_offset_y', 0)
+            'grid_offset_y': self.config.get('grid_offset_y', 0),
+            'excluded_inventory_slots': self.config.get('excluded_inventory_slots', [])
         }
     
     def set_inventory_settings(self, settings):
