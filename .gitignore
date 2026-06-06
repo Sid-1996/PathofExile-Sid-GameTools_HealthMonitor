@@ -211,3 +211,4 @@ Icon
 .nfs*
 src/llm_report.txt
 src/skeleton.txt
+src/=
