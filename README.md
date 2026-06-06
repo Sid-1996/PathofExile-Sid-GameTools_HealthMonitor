@@ -157,7 +157,7 @@ scripts\build_exe.bat
 ## Test Built EXE / 測試 EXE
 
 ```bat
-scripts\test_built_exe.bat
+scripts\launch_built_exe.bat
 ```
 
 ---

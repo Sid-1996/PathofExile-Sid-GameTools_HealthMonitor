@@ -49,7 +49,7 @@ Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
 1. Install dependencies: `scripts/install_dependencies.bat`
 2. Run from source: `scripts/run_monitor.bat`
 3. Build EXE: `scripts/build_exe.bat`
-4. Test built EXE: `scripts/test_built_exe.bat`
+4. Test built EXE: `scripts/launch_built_exe.bat`
 
 ## Version
 

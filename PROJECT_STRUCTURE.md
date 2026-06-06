@@ -53,7 +53,7 @@ Python POE/
 - `scripts/install_dependencies.bat`: install Python dependencies
 - `scripts/run_monitor.bat`: run from source
 - `scripts/build_exe.bat`: build EXE package
-- `scripts/test_built_exe.bat`: test packaged EXE
+- `scripts/launch_built_exe.bat`: launch packaged EXE for smoke test
 - `scripts/cleanup.bat`: cleanup helper
 - `scripts/pre-push-check.bat`: pre-push checks
 - `scripts/push-with-review.bat`: guarded publish helper
