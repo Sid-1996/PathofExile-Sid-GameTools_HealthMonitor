@@ -130,6 +130,8 @@ Thumbs.db
 # Project specific
 config.json
 health_monitor_config.json
+src/health_monitor_config.json.backup
+src/screenshots/
 *.key
 *.log
 
