@@ -900,6 +900,7 @@
     "f3_processing_items_detected": "F3 processing - Detected {count} item slots",
     "f3_completed_inventory_cleared": "F3 completed - Inventory cleared",
     "f3_inventory_reminder": "F3 Inventory Reminder: Please ensure inventory is open",
+    "f3_retry_final": "F3 Final Retry: Remaining items detected, executing final cleanup",
     "f6_hotkey_pressed": "F6 pressed - Starting one-click pickup",
     "f6_processing_verifying_game_window": "F6 processing - Verifying game window status",
     "f6_processing_inventory_ui_check_passed": "F6 processing - Inventory UI check passed",
