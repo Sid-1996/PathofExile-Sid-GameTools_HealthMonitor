@@ -1974,8 +1974,17 @@ class HealthMonitor:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_window_id_help = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set, bg='#f8f9fa')
+
+        def _on_canvas_resize_help(event):
+            canvas.itemconfig(canvas_window_id_help, width=event.width)
+        canvas.bind("<Configure>", _on_canvas_resize_help)
+
+        def _on_mousewheel_help(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _on_mousewheel_help))
+        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
 
         # 佈局
         canvas.pack(side="left", fill="both", expand=True)
@@ -2197,10 +2206,19 @@ class HealthMonitor:
             self.settings_tree.yview_scroll(int(-1*(event.delta/120)), "units")
             return "break"
 
+        elif current_tab_index == 2:  # 技能組合分頁
+            if hasattr(self, 'combo_canvas') and self.combo_canvas:
+                self.combo_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                return "break"
+
         elif current_tab_index == 4:  # 使用說明分頁
-            # 使用說明分頁：滾動Canvas
             if hasattr(self, 'help_canvas') and self.help_canvas:
                 self.help_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                return "break"
+
+        elif current_tab_index == 6:  # 關於作者分頁
+            if hasattr(self, 'about_canvas') and self.about_canvas:
+                self.about_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
                 return "break"
 
         return "break"  # 阻止事件繼續傳播
@@ -9305,6 +9323,27 @@ class HealthMonitor:
         """創建技能連段分頁 - 橫向寬敞佈局"""
         main_frame = self.combo_frame
 
+        _combo_canvas = tk.Canvas(main_frame, highlightthickness=0)
+        _combo_scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=_combo_canvas.yview)
+        _combo_scrollable = ttk.Frame(_combo_canvas)
+
+        _combo_scrollable.bind(
+            "<Configure>",
+            lambda e: _combo_canvas.configure(scrollregion=_combo_canvas.bbox("all"))
+        )
+
+        _combo_canvas_window = _combo_canvas.create_window((0, 0), window=_combo_scrollable, anchor="nw")
+        _combo_canvas.configure(yscrollcommand=_combo_scrollbar.set)
+
+        def _on_combo_canvas_resize(event):
+            _combo_canvas.itemconfig(_combo_canvas_window, width=event.width)
+        _combo_canvas.bind("<Configure>", _on_combo_canvas_resize)
+
+        _combo_scrollbar.pack(side="right", fill="y")
+        _combo_canvas.pack(side="left", fill="both", expand=True)
+        self.combo_canvas = _combo_canvas
+        main_frame = _combo_scrollable
+
         # 標題
         title_label = ttk.Label(main_frame, text=self.get_text("skill_combo_system_title"), font=('Microsoft YaHei', 20, 'bold'))
         title_label.pack(pady=(15, 35))
@@ -10294,11 +10333,16 @@ class HealthMonitor:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+
+        def _on_canvas_resize_about(event):
+            canvas.itemconfig(canvas_window_id, width=event.width)
+        canvas.bind("<Configure>", _on_canvas_resize_about)
 
         # 打包canvas和滾動條
         canvas.pack(side="left", fill="both", expand=True)
+        self.about_canvas = canvas
         scrollbar.pack(side="right", fill="y")
 
         # 主標題區域 - 現代化設計
