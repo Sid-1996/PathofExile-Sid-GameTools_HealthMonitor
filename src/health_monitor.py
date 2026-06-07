@@ -35,9 +35,10 @@ from language_system import get_language_manager, get_text as get_localized_text
 from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler
 from custom_dialogs import setup_custom_messagebox
 from config_manager import get_config_manager
+from _version import __version__
 
 # 版本資訊
-CURRENT_VERSION = "v1.0.9"
+CURRENT_VERSION = f"v{__version__}"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3248,6 +3249,8 @@ class HealthMonitor:
                     if self._preview_placeholder_shown:
                         self._preview_placeholder_shown = False
                         self.add_status_message(self.get_text("game_window_regained_focus"), "success")
+                        if self.inventory_region:
+                            self.root.after(0, self.update_inventory_preview_from_current)
 
                     # 計算區域在螢幕上的絕對位置
                     x, y, w, h = self.config['region']
