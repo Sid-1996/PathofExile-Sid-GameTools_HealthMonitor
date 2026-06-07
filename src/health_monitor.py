@@ -32,7 +32,7 @@ import winreg
 # Import new modularized components
 from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
-from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler
+from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler, Tooltip
 from custom_dialogs import setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
@@ -1316,9 +1316,15 @@ class HealthMonitor:
         self.interface_ui_label = ttk.Label(window_frame, text=self.get_interface_ui_region_text(), background="lightgray", relief="sunken", padding=2)
         self.interface_ui_label.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
-        ttk.Button(window_frame, text=self.get_text("select_health_region"), command=self.start_selection).grid(row=4, column=0, pady=(5, 0))
-        ttk.Button(window_frame, text=self.get_text("select_mana_region"), command=self.start_mana_selection).grid(row=4, column=1, pady=(5, 0), padx=(5, 0))
-        ttk.Button(window_frame, text=self.get_text("select_interface_ui"), command=self.select_interface_ui_region).grid(row=4, column=2, pady=(5, 0), padx=(5, 0))
+        btn = ttk.Button(window_frame, text=self.get_text("select_health_region"), command=self.start_selection)
+        btn.grid(row=4, column=0, pady=(5, 0))
+        Tooltip(btn, self.get_text("select_health_region_tip"))
+        btn = ttk.Button(window_frame, text=self.get_text("select_mana_region"), command=self.start_mana_selection)
+        btn.grid(row=4, column=1, pady=(5, 0), padx=(5, 0))
+        Tooltip(btn, self.get_text("select_mana_region_tip"))
+        btn = ttk.Button(window_frame, text=self.get_text("select_interface_ui"), command=self.select_interface_ui_region)
+        btn.grid(row=4, column=2, pady=(5, 0), padx=(5, 0))
+        Tooltip(btn, self.get_text("select_interface_ui_tip"))
 
         # 設定列寬
         window_frame.columnconfigure(1, weight=1)
@@ -1350,20 +1356,30 @@ class HealthMonitor:
         self.cooldown_var = tk.StringVar(value="1500")
         ttk.Entry(add_frame, textvariable=self.cooldown_var, width=8).grid(row=0, column=7, padx=(5, 0))
 
-        ttk.Button(add_frame, text=self.get_text("add_trigger"), command=self.add_setting_new).grid(row=0, column=8, padx=(10, 0))
+        btn = ttk.Button(add_frame, text=self.get_text("add_trigger"), command=self.add_setting_new)
+        btn.grid(row=0, column=8, padx=(10, 0))
+        Tooltip(btn, self.get_text("add_trigger_tip"))
 
         # 觸發選項區域
         options_frame = ttk.Frame(settings_frame)
         options_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(10, 0))
 
-        ttk.Button(options_frame, text=self.get_text("remove_selected"), command=self.remove_setting).grid(row=0, column=0, padx=(0, 0))
-        ttk.Button(options_frame, text=self.get_text("adjust_colors"), command=self.adjust_colors).grid(row=0, column=1, padx=(20, 0))
-        ttk.Button(options_frame, text=self.get_text("adjust_interface_ui"), command=self.adjust_interface_ui_thresholds).grid(row=0, column=2, padx=(10, 0))
+        btn = ttk.Button(options_frame, text=self.get_text("remove_selected"), command=self.remove_setting)
+        btn.grid(row=0, column=0, padx=(0, 0))
+        Tooltip(btn, self.get_text("remove_selected_tip"))
+        btn = ttk.Button(options_frame, text=self.get_text("adjust_colors"), command=self.adjust_colors)
+        btn.grid(row=0, column=1, padx=(20, 0))
+        Tooltip(btn, self.get_text("adjust_colors_tip"))
+        btn = ttk.Button(options_frame, text=self.get_text("adjust_interface_ui"), command=self.adjust_interface_ui_thresholds)
+        btn.grid(row=0, column=2, padx=(10, 0))
+        Tooltip(btn, self.get_text("adjust_interface_ui_tip"))
 
         # 多重觸發選項
         self.multi_trigger_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options_frame, text=self.get_text("multiple_triggers"),
-                        variable=self.multi_trigger_var).grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
+        cb = ttk.Checkbutton(options_frame, text=self.get_text("multiple_triggers"),
+                             variable=self.multi_trigger_var)
+        cb.grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
+        Tooltip(cb, self.get_text("multiple_triggers_tip"))
 
         # 配置列寬以防止重疊
         options_frame.columnconfigure(0, weight=0)
@@ -1415,6 +1431,7 @@ class HealthMonitor:
 
         self.test_preview_btn = ttk.Button(self.control_frame, text=self.get_text("test_preview"), command=self.test_preview)
         self.test_preview_btn.grid(row=0, column=3, padx=(5, 0))
+        Tooltip(self.test_preview_btn, self.get_text("test_preview_tip"))
 
         # 檢查頻率設定
         self.check_freq_label = ttk.Label(self.control_frame, text=self.get_text("check_frequency"))
@@ -1778,6 +1795,7 @@ class HealthMonitor:
         # 清除記錄按鈕
         clear_btn = ttk.Button(control_frame, text=self.get_text("clear_records"), command=self.clear_status_log)
         clear_btn.pack(side="left", padx=(0, 10))
+        Tooltip(clear_btn, self.get_text("clear_records_tip"))
 
         # 自動滾動開關
         self.auto_scroll_var = tk.BooleanVar(value=True)
@@ -5501,10 +5519,13 @@ class HealthMonitor:
         # 框選背包區域
         self.select_inventory_region_btn = ttk.Button(inventory_frame, text=self.get_text("select_inventory_region"), command=self.select_inventory_region)
         self.select_inventory_region_btn.grid(row=0, column=0, pady=2)
+        Tooltip(self.select_inventory_region_btn, self.get_text("select_inventory_region_tip"))
         self.record_empty_color_btn = ttk.Button(inventory_frame, text=self.get_text("record_empty_color"), command=self.record_empty_inventory_color)
         self.record_empty_color_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
+        Tooltip(self.record_empty_color_btn, self.get_text("record_empty_color_tip"))
         self.select_inventory_ui_btn = ttk.Button(inventory_frame, text=self.get_text("select_inventory_ui"), command=self.select_inventory_ui_region)
         self.select_inventory_ui_btn.grid(row=0, column=2, padx=(10, 0), pady=2)
+        Tooltip(self.select_inventory_ui_btn, self.get_text("select_inventory_ui_tip"))
 
         # 顏色顯示
         self.record_status_label = ttk.Label(inventory_frame, text=self.get_text("record_status"))
@@ -5524,6 +5545,7 @@ class HealthMonitor:
 
         self.test_clear_inventory_btn = ttk.Button(control_frame, text=self.get_text("test_clear_inventory"), command=self.test_inventory_clearing)
         self.test_clear_inventory_btn.grid(row=0, column=0, pady=2)
+        Tooltip(self.test_clear_inventory_btn, self.get_text("test_clear_inventory_tip"))
         self.save_inventory_settings_btn = ttk.Button(control_frame, text=self.get_text("save_inventory_settings"), command=self.save_inventory_config)
         self.save_inventory_settings_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
@@ -5538,13 +5560,13 @@ class HealthMonitor:
                                   variable=self.inventory_clear_click_mode, value="left",
                                   command=self._on_click_mode_changed)
         left_rb.grid(row=0, column=1, padx=(5, 10))
-        self._bind_tooltip(left_rb, self.get_text("clear_click_left_tip"))
+        Tooltip(left_rb, self.get_text("clear_click_left_tip"))
 
         right_rb = ttk.Radiobutton(click_mode_frame, text=self.get_text("clear_click_right"),
                                    variable=self.inventory_clear_click_mode, value="right",
                                    command=self._on_click_mode_changed)
         right_rb.grid(row=0, column=2, padx=(5, 10))
-        self._bind_tooltip(right_rb, self.get_text("clear_click_right_tip"))
+        Tooltip(right_rb, self.get_text("clear_click_right_tip"))
 
         # GUI設定選項
         gui_control_frame = ttk.Frame(control_frame)
@@ -5575,6 +5597,7 @@ class HealthMonitor:
         # 座標設定按鈕
         self.setup_pickup_coordinates_btn = ttk.Button(pickup_frame, text=self.get_text("setup_pickup_coordinates"), command=self.setup_pickup_coordinates)
         self.setup_pickup_coordinates_btn.grid(row=0, column=0, pady=2)
+        Tooltip(self.setup_pickup_coordinates_btn, self.get_text("setup_pickup_coordinates_tip"))
         self.save_pickup_coordinates_btn = ttk.Button(pickup_frame, text=self.get_text("save_coordinates"), command=self.save_pickup_coordinates)
         self.save_pickup_coordinates_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
@@ -7309,27 +7332,6 @@ class HealthMonitor:
         self._draw_exclusion_overlay()
         self.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
         self.save_config(show_message=False)
-
-    def _bind_tooltip(self, widget, text):
-        tip = None
-        def show(event):
-            nonlocal tip
-            if tip:
-                return
-            x = widget.winfo_rootx() + 20
-            y = widget.winfo_rooty() + 25
-            tip = tk.Toplevel(widget)
-            tip.wm_overrideredirect(True)
-            tip.wm_geometry(f"+{x}+{y}")
-            label = ttk.Label(tip, text=text, background="#ffffcc", relief="solid", borderwidth=1, padding=2)
-            label.pack()
-        def hide(event):
-            nonlocal tip
-            if tip:
-                tip.destroy()
-                tip = None
-        widget.bind('<Enter>', show, add='+')
-        widget.bind('<Leave>', hide, add='+')
 
     def _on_click_mode_changed(self):
         self.save_config(show_message=False)
@@ -9357,6 +9359,7 @@ class HealthMonitor:
         self.check_update_btn = ttk.Button(button_frame, text=self.get_text("check_update_button"),
                                          command=self.check_for_updates)
         self.check_update_btn.pack(side=tk.LEFT, padx=(0, 10))
+        Tooltip(self.check_update_btn, self.get_text("check_update_button_tip"))
 
         # 前往下載按鈕
         self.download_btn = ttk.Button(button_frame, text=self.get_text("download_page_button"),
@@ -9367,6 +9370,7 @@ class HealthMonitor:
         self.test_connection_btn = ttk.Button(button_frame, text=self.get_text("test_connection_button"),
                                             command=self.test_github_connection)
         self.test_connection_btn.pack(side=tk.LEFT)
+        Tooltip(self.test_connection_btn, self.get_text("test_connection_button_tip"))
 
         # 自動靜默檢查版本（只在有新版本時彈出提醒）
         self._silent_version_check_after_id = self.root.after(2000, self.silent_version_check)
@@ -9422,6 +9426,7 @@ class HealthMonitor:
         self.combo_start_btn = ttk.Button(button_frame, text=self.get_text("start_combo_system"),
                                         command=self.start_combo_system, width=20)
         self.combo_start_btn.pack(side=tk.LEFT, padx=(0, 15))
+        Tooltip(self.combo_start_btn, self.get_text("start_combo_system_tip"))
 
         self.combo_stop_btn = ttk.Button(button_frame, text=self.get_text("stop_combo_system"),
                                        command=self.stop_combo_system, state=tk.DISABLED, width=20)
@@ -9545,6 +9550,7 @@ class HealthMonitor:
             stationary_check = ttk.Checkbutton(skills_frame, text=self.get_text("stationary_attack"), variable=stationary_var,
                                              command=functools.partial(self.update_stationary_attack, set_index, i, stationary_var))
             stationary_check.grid(row=i, column=4, sticky=tk.W, padx=(15, 0), pady=3)
+            Tooltip(stationary_check, self.get_text("stationary_attack_tip"))
 
             # 原地攻擊說明標籤
             ttk.Label(skills_frame, text=self.get_text("shift_skill_note"), font=('Arial', 8), foreground="gray").grid(

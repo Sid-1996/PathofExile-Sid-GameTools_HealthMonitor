@@ -124,6 +124,46 @@ def setup_exception_handler():
     sys.excepthook = global_exception_handler
 
 
+class Tooltip:
+    """可重複使用的 Tooltip：懸浮 widget 顯示說明文字，支援延遲"""
+    def __init__(self, widget, text, delay=300):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self._tip = None
+        self._after_id = None
+        widget.bind('<Enter>', self._schedule, add='+')
+        widget.bind('<Leave>', self._hide, add='+')
+
+    def _schedule(self, event):
+        if self._tip:
+            return
+        self._after_id = self.widget.after(self.delay, self._show)
+
+    def _show(self):
+        if self._tip:
+            return
+        import tkinter as tk
+        from tkinter import ttk
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + 25
+        self._tip = tk.Toplevel(self.widget)
+        self._tip.wm_overrideredirect(True)
+        self._tip.wm_geometry(f"+{x}+{y}")
+        label = ttk.Label(self._tip, text=self.text,
+                          background="#ffffcc", relief="solid",
+                          borderwidth=1, padding=2)
+        label.pack()
+
+    def _hide(self, event=None):
+        if self._after_id:
+            self.widget.after_cancel(self._after_id)
+            self._after_id = None
+        if self._tip:
+            self._tip.destroy()
+            self._tip = None
+
+
 def format_usage_time(total_seconds):
     """格式化使用時間顯示"""
     hours = total_seconds // 3600
