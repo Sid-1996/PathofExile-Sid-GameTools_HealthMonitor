@@ -176,7 +176,7 @@ class SkillTimerModule:
         self._toggle_btns:   list[ttk.Button] = []
 
         # ── 根容器 ──
-        title = self._t("skill_timer_title", "⏱ 技能計時器")
+        title = self._t("skill_timer_title", "⏱ 技能計時器(Beta)")
         self.frame = ttk.LabelFrame(parent, text=title)
         self._build_ui()
 
@@ -371,7 +371,7 @@ class SkillTimerModule:
     def refresh_language(self):
         """語言切換時更新所有 UI 文字"""
         # 更新 LabelFrame 標題
-        self.frame.config(text=self._t("skill_timer_title", "⏱ 技能計時器"))
+        self.frame.config(text=self._t("skill_timer_title", "⏱ 技能計時器(Beta)"))
         # 更新層技能槽狀態燈
         for i, slot in enumerate(self.slots):
             if slot.is_running:
