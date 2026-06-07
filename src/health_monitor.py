@@ -1133,7 +1133,7 @@ class HealthMonitor:
                 tab_index = self.notebook.index(self.notebook.select())
                 if tab_index == 1:
                     self._focus_watcher_interval = 200
-                    if self._is_game_window_active() and self.inventory_region:
+                    if self._is_game_window_visible() and self.inventory_region:
                         self.root.after(0, self.update_inventory_preview_from_current)
                 else:
                     self._focus_watcher_interval = 1000
@@ -1268,6 +1268,11 @@ class HealthMonitor:
                         self.notebook.select(i)
                         self.adjust_window_for_tab(last_tab)
                         print(self.get_text("restored_last_tab").format(last_tab=last_tab))
+                        # 同步更新 focus watcher 間隔
+                        if i == 1:  # 一鍵清包分頁
+                            self._focus_watcher_interval = 200
+                        else:
+                            self._focus_watcher_interval = 1000
                         break
         except Exception as e:
             print(f"{self.get_text('restore_tab_error')} {e}")
