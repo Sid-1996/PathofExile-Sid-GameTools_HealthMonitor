@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo  安全發布流程 v1.0.7
+echo  安全發布流程
 echo ========================================
 echo.
 
@@ -63,7 +63,7 @@ if exist "dist\GameTools_Package\GameTools_HealthMonitor.exe" (
     echo.
     echo 🚀 安全發布包已準備完成
     echo 📦 位置: dist\GameTools_Package\
-    echo 📁 檔案: GameTools_HealthMonitor_v1.0.7_Final.zip
+    echo 📁 檔案: GameTools_HealthMonitor_v%APP_VERSION%_Final.zip
     echo.
     echo 🔒 安全提醒：
     echo   - 此版本已通過基本安全檢查

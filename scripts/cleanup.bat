@@ -14,8 +14,8 @@ if exist "build\pyinstaller_work_*" (
 )
 
 echo 清理舊的發布包...
-if exist "dist\GameTools_HealthMonitor_v1.0.7_*.zip" (
-    del /q "dist\GameTools_HealthMonitor_v1.0.7_*.zip"
+if exist "dist\GameTools_HealthMonitor_v*_*.zip" (
+    del /q "dist\GameTools_HealthMonitor_v*_*.zip"
     echo 已刪除舊的發布包
 )
 

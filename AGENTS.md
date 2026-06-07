@@ -128,7 +128,10 @@ Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
 ## Version
 
 - Current: **v1.0.9**
-- Set in `src/health_monitor.py` (`CURRENT_VERSION`) and `tools/build.py` (`APP_VERSION`)
+- Single source: `src/_version.py` (`__version__ = "1.0.9"`)
+- `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
+- `build.py`: `APP_VERSION = __version__`
+- Managed by commitizen via `src/_version.py:__version__`
 
 ## Packaging Rules (Critical)
 

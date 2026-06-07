@@ -73,8 +73,10 @@ Python POE/
 
 ## Version Notes
 
-- Current verified app version is `v1.0.8` in `src/health_monitor.py`.
-- Current packaging version is `1.0.8` in `tools/build.py`.
+- Single source of truth: `src/_version.py` (`__version__ = "1.0.9"`)
+- `health_monitor.py` imports as `CURRENT_VERSION = f"v{__version__}"`
+- `build.py` imports as `APP_VERSION = __version__`
+- Commitizen manages version via `src/_version.py:__version__`
 
 ## Packaging Notes
 

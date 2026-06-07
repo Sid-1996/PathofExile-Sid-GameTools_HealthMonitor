@@ -26,7 +26,7 @@ A clear and concise description of what actually happened.
 ## 📱 Environment Information
 - **OS**: [e.g. Windows 10/11]
 - **Game Version**: [e.g. Path of Exile 3.25.x]
-- **Tool Version**: [e.g. v1.0.7]
+- **Tool Version**: [e.g. v1.0.9]
 - **Python Version**: (if running from source)
 
 ## 📸 Screenshots
