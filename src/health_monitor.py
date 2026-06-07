@@ -4207,24 +4207,17 @@ class HealthMonitor:
 
     def _start_window_focus_watcher(self):
         """啟動獨立的視窗焦點監聽器，不依賴監控狀態"""
-        self._focus_watcher_last_active = False
         self._focus_watcher_tick()
 
     def _focus_watcher_tick(self):
-        """定期檢查遊戲視窗焦點，視窗激活且在一鍵清包分頁時自動刷新庫存預覽"""
+        """定期檢查遊戲視窗焦點，僅在一鍵清包分頁時刷新庫存預覽"""
         if getattr(self, '_is_closing', False):
             return
         try:
-            current_active = self._is_game_window_active()
-            last_active = getattr(self, '_focus_watcher_last_active', False)
             interval = getattr(self, '_focus_watcher_interval', 1000)
             if interval <= 200:
                 if self.inventory_region:
                     self.update_inventory_preview_from_current()
-            elif current_active and not last_active:
-                if self.inventory_region:
-                    self.update_inventory_preview_from_current()
-            self._focus_watcher_last_active = current_active
         except Exception:
             pass
         self.root.after(getattr(self, '_focus_watcher_interval', 1000), self._focus_watcher_tick)
