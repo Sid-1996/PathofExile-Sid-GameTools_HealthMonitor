@@ -380,6 +380,13 @@ start "" "GameTools_HealthMonitor.exe"
                     return False
                 self.end_step(step_name)
 
+            # 清理 PyInstaller 暫存檔
+            self.start_step("Cleanup build residue")
+            if os.path.exists(self.build_dir):
+                shutil.rmtree(self.build_dir)
+                self.log("build/ removed")
+            self.end_step("Cleanup build residue")
+
             total_time = datetime.now() - self.start_time
             minutes = total_time.total_seconds() / 60
             self.log(f"? 蝮質?: {minutes:.1f} ??")
