@@ -5729,6 +5729,20 @@ class HealthMonitor:
 
             game_window = windows[0]
 
+            # 若已設定背包UI參考圖，檢查背包是否已開啟
+            if self.inventory_ui_region and hasattr(self, 'inventory_ui_screenshot') and self.inventory_ui_screenshot is not None:
+                if not self.check_inventory_ui_exists(game_window):
+                    if hasattr(self, 'inventory_preview_label'):
+                        self.inventory_preview_label.delete("all")
+                        self.inventory_preview_label.create_text(
+                            10, 10,
+                            text=self.get_text("waiting_inventory_open"),
+                            anchor='nw',
+                            fill='gray'
+                        )
+                        self._preview_has_image = False
+                    return
+
             # 擷取背包區域
             with mss.mss() as sct:
                 monitor = {
