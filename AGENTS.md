@@ -77,7 +77,7 @@ The following tools are available in PATH and can be used by agents for searchin
 - Working tree: **clean** after F821 fixes
 - `git push` is **locked** — do not push unless explicitly instructed
 
-## Recent Changes (v1.0.9 + pending)
+## Recent Changes (v1.0.8)
 
 ### Activation-Aware Previews
 
@@ -127,8 +127,8 @@ Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
 
 ## Version
 
-- Current: **v1.0.9**
-- Single source: `src/_version.py` (`__version__ = "1.0.9"`)
+- Current: **v1.0.8**
+- Single source: `src/_version.py` (`__version__ = "1.0.8"`)
 - `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
 - `build.py`: `APP_VERSION = __version__`
 - Managed by commitizen via `src/_version.py:__version__`

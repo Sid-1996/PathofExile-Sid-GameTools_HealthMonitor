@@ -5527,9 +5527,28 @@ class HealthMonitor:
         self.save_inventory_settings_btn = ttk.Button(control_frame, text=self.get_text("save_inventory_settings"), command=self.save_inventory_config)
         self.save_inventory_settings_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
+        # 清包點擊模式選擇
+        click_mode_frame = ttk.Frame(control_frame)
+        click_mode_frame.grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky=tk.W)
+
+        ttk.Label(click_mode_frame, text=self.get_text("clear_click_mode")).grid(row=0, column=0, sticky=tk.W)
+        self.inventory_clear_click_mode = tk.StringVar(value="left")
+
+        left_rb = ttk.Radiobutton(click_mode_frame, text=self.get_text("clear_click_left"),
+                                  variable=self.inventory_clear_click_mode, value="left",
+                                  command=self._on_click_mode_changed)
+        left_rb.grid(row=0, column=1, padx=(5, 10))
+        self._bind_tooltip(left_rb, self.get_text("clear_click_left_tip"))
+
+        right_rb = ttk.Radiobutton(click_mode_frame, text=self.get_text("clear_click_right"),
+                                   variable=self.inventory_clear_click_mode, value="right",
+                                   command=self._on_click_mode_changed)
+        right_rb.grid(row=0, column=2, padx=(5, 10))
+        self._bind_tooltip(right_rb, self.get_text("clear_click_right_tip"))
+
         # GUI設定選項
         gui_control_frame = ttk.Frame(control_frame)
-        gui_control_frame.grid(row=1, column=0, columnspan=2, pady=(10, 0))
+        gui_control_frame.grid(row=2, column=0, columnspan=2, pady=(10, 0))
 
         ttk.Label(gui_control_frame, text=self.get_text("gui_settings")).grid(row=0, column=0, sticky=tk.W)
         ttk.Checkbutton(gui_control_frame, text=self.get_text("always_on_top"), variable=self.always_on_top_var,
@@ -7058,10 +7077,13 @@ class HealthMonitor:
                 # 滑鼠操作時序
                 pyautogui.moveTo(screen_x, screen_y, duration=0.015)
                 time.sleep(0.025)
-                pyautogui.rightClick(screen_x, screen_y)
+                if self.inventory_clear_click_mode.get() == "left":
+                    pyautogui.click(screen_x, screen_y)
+                    print(f"[OK] 已完成左鍵點擊第 {total_processed + 1} 個道具")
+                else:
+                    pyautogui.rightClick(screen_x, screen_y)
+                    print(f"[OK] 已完成右鍵點擊第 {total_processed + 1} 個道具")
                 time.sleep(0.025)
-
-                print(f"[OK] 已完成右鍵點擊第 {total_processed + 1} 個道具")
                 total_processed += 1
 
                 # 點擊完成後，將滑鼠移動到遊戲視窗正中央，避免影響下次辨識
@@ -7286,6 +7308,30 @@ class HealthMonitor:
             self.excluded_inventory_slots.add(idx)
         self._draw_exclusion_overlay()
         self.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
+        self.save_config(show_message=False)
+
+    def _bind_tooltip(self, widget, text):
+        tip = None
+        def show(event):
+            nonlocal tip
+            if tip:
+                return
+            x = widget.winfo_rootx() + 20
+            y = widget.winfo_rooty() + 25
+            tip = tk.Toplevel(widget)
+            tip.wm_overrideredirect(True)
+            tip.wm_geometry(f"+{x}+{y}")
+            label = ttk.Label(tip, text=text, background="#ffffcc", relief="solid", borderwidth=1, padding=2)
+            label.pack()
+        def hide(event):
+            nonlocal tip
+            if tip:
+                tip.destroy()
+                tip = None
+        widget.bind('<Enter>', show, add='+')
+        widget.bind('<Leave>', hide, add='+')
+
+    def _on_click_mode_changed(self):
         self.save_config(show_message=False)
 
     def update_inventory_preview_with_items(self, img, occupied_slots):
@@ -8644,6 +8690,10 @@ class HealthMonitor:
             self.grid_offset_y = self.config.get('grid_offset_y', 0)
             self.excluded_inventory_slots = set(self.config.get('excluded_inventory_slots', []))
 
+            click_mode = self.config.get('inventory_clear_click_mode', 'left')
+            if hasattr(self, 'inventory_clear_click_mode'):
+                self.inventory_clear_click_mode.set(click_mode)
+
             self.inventory_ui_region = self.config.get('inventory_ui_region')
             if self.inventory_ui_region:
                 self.load_ui_screenshot_from_file()
@@ -8958,6 +9008,8 @@ class HealthMonitor:
                 self.config['auto_clear_enabled'] = self.auto_clear_enabled
             if hasattr(self, 'clear_interval'):
                 self.config['clear_interval'] = self.clear_interval
+            if hasattr(self, 'inventory_clear_click_mode'):
+                self.config['inventory_clear_click_mode'] = self.inventory_clear_click_mode.get()
 
             # 儲存取物座標設定
             if hasattr(self, 'pickup_coordinates') and self.pickup_coordinates:

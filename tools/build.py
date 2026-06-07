@@ -209,14 +209,16 @@ class GameToolBuilder:
             # Pillow 鈭脖?瑼?
             try:
                 import PIL
+                import sysconfig
                 pil_dir = os.path.dirname(PIL.__file__)
+                ext_suffix = sysconfig.get_config_var('EXT_SUFFIX') or '.cp312-win_amd64.pyd'
                 pillow_pyds = [
-                    '_imaging.cp310-win_amd64.pyd',
-                    '_imagingtk.cp310-win_amd64.pyd',
-                    '_imagingmath.cp310-win_amd64.pyd',
-                    '_imagingft.cp310-win_amd64.pyd',
-                    '_imagingcms.cp310-win_amd64.pyd',
-                    '_imagingmorph.cp310-win_amd64.pyd'
+                    f'_imaging{ext_suffix}',
+                    f'_imagingtk{ext_suffix}',
+                    f'_imagingmath{ext_suffix}',
+                    f'_imagingft{ext_suffix}',
+                    f'_imagingcms{ext_suffix}',
+                    f'_imagingmorph{ext_suffix}'
                 ]
                 for pyd in pillow_pyds:
                     pyd_path = os.path.join(pil_dir, pyd)
@@ -281,20 +283,24 @@ class GameToolBuilder:
                 shutil.copy2(src_path, dst_full)
                 self.log(f"??銴ˊ: {dst_name}")
 
-        # ?萄遣??撌亙.bat
+        # Create launch bat
         bat_content = '''@echo off
 chcp 65001 >nul
-echo 甇??? PathofExile Sid Sid頛撌亙...
+echo ========================================
+echo  GameTools Health Monitor - Launcher
+echo ========================================
 echo.
-echo 隢誑蝞∠??⊥???銵迨撌亙隞亦敺?雿喲?撽?
+echo Starting Path of Exile Health Monitor...
+echo.
+echo If you encounter issues, check the 使用說明.md file.
 echo.
 start "" "GameTools_HealthMonitor.exe"
 '''
 
-        bat_path = os.path.join(package_dir, "??撌亙.bat")
+        bat_path = os.path.join(package_dir, "啟動工具.bat")
         with open(bat_path, 'w', encoding='utf-8') as f:
             f.write(bat_content)
-        self.log("???萄遣??撌亙.bat")
+        self.log("Created 啟動工具.bat")
 
         # ?萄遣 README.txt
         readme_content = f"""# Sid Game Tools
