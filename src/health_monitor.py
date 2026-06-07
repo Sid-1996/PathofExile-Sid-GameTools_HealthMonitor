@@ -6893,10 +6893,6 @@ class HealthMonitor:
                     baseline_rgb = self.empty_inventory_colors[i]
                     color_diff = sum(abs(a - b) for a, b in zip(current_rgb, baseline_rgb))
 
-                    # 調試信息：記錄顏色差異
-                    if i < 5:  # 只記錄前5個格子的信息
-                        print(f"格子{i}: 當前顏色{current_rgb}, 基準顏色{baseline_rgb}, 差異{color_diff}")
-
                     # 如果顏色差異大於閾值，說明這個格子有物品
                     # 降低閾值從30到15，提高檢測靈敏度
                     if color_diff > 15:  # 進一步降低閾值
@@ -7293,7 +7289,6 @@ class HealthMonitor:
                     if grid_index in occupied_slots:  # 直接檢查索引是否在佔用的格子列表中
                         has_item = True
                         occupied_count += 1
-                        print(f"檢測到物品在格子 {grid_index} (行{row}, 列{col})")  # 調試信息
 
                     if has_item:
                         # 繪製紅色叉號表示有物品
