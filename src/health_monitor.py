@@ -4218,13 +4218,12 @@ class HealthMonitor:
             current_active = self._is_game_window_active()
             last_active = getattr(self, '_focus_watcher_last_active', False)
             interval = getattr(self, '_focus_watcher_interval', 1000)
-            if current_active:
-                if interval <= 200:
-                    if self.inventory_region:
-                        self.update_inventory_preview_from_current()
-                elif not last_active:
-                    if self.inventory_region:
-                        self.update_inventory_preview_from_current()
+            if interval <= 200:
+                if self.inventory_region:
+                    self.update_inventory_preview_from_current()
+            elif current_active and not last_active:
+                if self.inventory_region:
+                    self.update_inventory_preview_from_current()
             self._focus_watcher_last_active = current_active
         except Exception:
             pass
@@ -4239,6 +4238,17 @@ class HealthMonitor:
             w = windows[0]
             return not w.isMinimized and w.isActive
         except:
+            return False
+
+    def _is_game_window_visible(self):
+        """檢查遊戲視窗是否存在且非最小化（不要求前景激活）"""
+        try:
+            windows = gw.getWindowsWithTitle(self.window_var.get())
+            if not windows:
+                return False
+            w = windows[0]
+            return not w.isMinimized
+        except Exception:
             return False
 
     def _show_health_preview_placeholder(self):
@@ -5695,7 +5705,7 @@ class HealthMonitor:
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
-            if not self._is_game_window_active():
+            if not self._is_game_window_visible():
                 if hasattr(self, 'inventory_preview_label'):
                     self.inventory_preview_label.delete("all")
                     self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self.get_text("waiting_for_game_window"), anchor='nw', fill='gray')
