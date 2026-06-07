@@ -25,6 +25,51 @@ The following tools are available in PATH and can be used by agents for searchin
   - Use `rg --count-matches` for precise match counting
   - Defaults to `.gitignore`-aware behavior
 
+- **ruff** (`ruff 0.15.16`, via pipx) — fast Python linter + formatter
+  - `ruff check src/` — scan for issues
+  - `ruff check src/ --statistics` — summary view (good for large files)
+  - `ruff check src/ --fix` — auto-fix safe issues (whitespace, f-string, etc.)
+  - Config lives in `pyproject.toml` `[tool.ruff]`; aligned with existing `.flake8` rules
+  - Known baseline: 591 issues in `health_monitor.py` (mostly whitespace, 31 bare-except, 11 complex functions)
+
+- **pyright** (`pyright 1.1.410`, via pipx) — static type checker
+  - `pyright src/health_monitor.py` — type-check main app
+  - Useful before touching `close_app()`, threading code, or tkinter callbacks
+  - No `pyrightconfig.json` yet — runs with defaults (basic mode)
+
+- **py-spy** (`py-spy 0.4.2`, via pipx) — live profiler, no code changes needed
+  - `py-spy top --pid <PID>` — see which functions are hot while app is running
+  - `py-spy record -o profile.svg --pid <PID>` — flamegraph output
+  - Requires running process PID; use `psutil` or Task Manager to find it
+
+- **commitizen** (`cz 4.16.3`, via pipx) — structured commit messages + auto changelog
+  - `cz commit` — interactive prompt instead of `git commit`
+  - `cz bump` — auto-increment version in `health_monitor.py` + `build.py` + `CHANGELOG.md`
+  - Config lives in `pyproject.toml` `[tool.commitizen]`
+  - Conventional commit format: `feat:`, `fix:`, `refactor:`, `chore:` etc.
+
+## When to Use Each Tool
+
+**改任何 Python 之前**
+→ 先跑 `ruff check src/ --statistics` 確認現有 baseline，不要把歷史包袱誤認為自己造成的
+
+**改 `close_app()`、threading、tkinter callback 等敏感路徑之前**
+→ 先跑 `pyright src/health_monitor.py`，確認型別沒有明顯錯誤再動手
+
+**準備 commit**
+→ 用 `cz commit` 取代 `git commit`（互動式選擇 feat/fix/refactor/chore 等類型）
+→ 升版本號用 `cz bump`，它會自動同步 `health_monitor.py`、`build.py`、`CHANGELOG.md`，不要手動改三個地方
+
+**收到效能問題回報（截圖卡頓、監控延遲）**
+→ 請使用者跑起程式後，用 `py-spy top --pid <PID>` 觀察熱點函式
+→ 要產出 flamegraph 給人看：`py-spy record -o profile.svg --pid <PID>`
+
+**ruff 掃出問題時的處理原則**
+→ `[*]` 標記 = 可自動修，直接 `ruff check src/ --fix` 處理（空白、f-string 等）
+→ `E722` (bare-except) = 需人工判斷，確認是否應改為具體 exception 類型
+→ `C901` (complex-structure) = 函式過複雜，列入重構待辦，不要在當次任務順手動它
+→ `[ ]` 標記 = 無法自動修，需人工處理，視情況決定是否在當次任務處理
+
 ## Current Git State
 
 - Branch: `master`

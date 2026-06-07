@@ -1,0 +1,31 @@
+[tool.ruff]
+target-version = "py310"
+line-length = 200
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+# 對齊現有 .flake8 忽略規則，同時補上常見問題檢查
+select = ["E", "F", "W", "C90"]
+ignore = [
+    "E501",   # line too long (由 line-length 控制)
+    "F401",   # unused import（主程式結構複雜，暫不強制）
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "1.0.9"
+version_files = [
+    "src/health_monitor.py:CURRENT_VERSION",
+    "tools/build.py:APP_VERSION",
+]
+tag_format = "v$version"
+update_changelog_on_bump = true
+changelog_file = "CHANGELOG.md"
