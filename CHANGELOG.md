@@ -5,6 +5,47 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.0.8] - 2026-06-08
+
+### ✨ 新增
+
+- **清包點擊模式切換**: 支援左鍵/右鍵兩種模式，左鍵適合一般存倉，右鍵適合大量重複通貨。設定自動儲存，保留到下次啟動
+- **Tooltip 提示系統**: 抽離為 `utils.Tooltip` 獨立類別，支援延遲顯示。19 組按鈕/核取方塊加 tooltip（血魔監控/清包/連段/狀態/版本檢查分頁）
+- **獨立視窗焦點監聽**: 背包預覽在遊戲視窗重新獲得焦點時自動刷新，非清包分頁時停止輪詢以節省資源
+- **技能計時器模組**: 支援自訂技能槽位、毫秒級精度間隔、單鍵與組合鍵
+- **版本集中管理**: 透過 `src/_version.py` 統一管理版本號，`build.py` 自動讀取
+
+### 🐛 修復
+
+- 修復 Canvas 白邊問題，技能組合與關於作者分頁滾輪無反應
+- 修復未記錄背包 UI 時的分頁切換路由與焦點監聽同步問題
+- 修復 F821 未定義名稱、F841 未使用變數/賦值
+- 修復語言系統初始化與切換、模組化拆分後的 load_config 與 close lifecycle
+- 修正錯誤的版本號 v1.0.9 → v1.0.8
+- 補齊 f3_retry_final 英文翻譯，中英語言包完全對應 479 keys
+- 更新版本資訊日期 2025年9月 → 2026年6月
+
+### 🔧 優化
+
+- 非清包分頁停止輪詢背包預覽（效能改善）
+- 清包時若未檢測到背包 UI 則跳過預覽，顯示提示
+- 移除偵測迴圈中的 debug print 陳述
+- 自動修復 536 處 whitespace 和 f-string 問題
+- 移除無用變數和無效賦值
+
+### 🏗️ 內部整理
+
+- 核心元件拆分為獨立模組（config_manager、language_system、utils、custom_dialogs、skill_timer）
+- 移除 `src for DEVELOPER/` 相容層，簡化 build pipeline
+- 停止追蹤 runtime 產生的螢幕截圖與設定備份
+- 移除 .windsurf 工作流程與測試產物
+- 清理重複文檔、更新 AGENTS.md
+- 移除 `LOCAL_DEVELOPMENT.md` 追蹤
+
+### 🛠️ Build
+
+- `tools/build.py`: Pillow pyd 後綴動態偵測（cp310→cp312）、批次檔編碼問題修復、打包完成後自動清理 `build/` 目錄
+
 ## [歷史版本] - 2026-06-07
 
 ### ✨ 新增

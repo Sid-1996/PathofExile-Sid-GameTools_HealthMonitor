@@ -4,35 +4,26 @@
 
 ```text
 Python POE/
-├─ .github/                         # GitHub metadata and workflows
-├─ .windsurf/                       # Workflow notes and SOPs
-├─ assets/                          # Static assets
-├─ build/                           # Local build artifacts
-├─ dist/                            # Packaged outputs
-├─ docs/                            # User/developer documentation
-├─ scripts/                         # One-click local workflows
-├─ src/                             # Canonical runtime source
-│  ├─ health_monitor.py             # Main application entry and integration layer
-│  ├─ config_manager.py             # Config loading/saving helpers
-│  ├─ language_system.py            # Language pack loading and translation helpers
-│  ├─ utils.py                      # Shared runtime utilities and F12 cleanup helpers
-│  ├─ custom_dialogs.py             # Shared dialog helpers
-│  ├─ skill_timer.py                # Skill timer module with bilingual support
-│  ├─ language_packs.json           # Bilingual UI strings
-│  ├─ health_monitor_config.json    # User config (runtime-generated)
-│  ├─ health_monitor_config.json.backup
-│  ├─ screenshots/                  # Runtime-generated screenshots and previews
-│  └─ __pycache__/
-├─ tools/                           # Build pipeline and icon
-├─ AGENTS.md                        # AI contributor quick guide
-├─ CHANGELOG.md                     # Change history
-├─ DEVELOPER_HANDBOOK.md            # Detailed technical documentation
-├─ LOCAL_DEVELOPMENT.md             # Local setup notes
-├─ PROJECT_STRUCTURE.md             # This file
-├─ README.md                        # Primary public README
-├─ LICENSE
-├─ GameTools_HealthMonitor.spec
-└─ test_*.py                        # Local validation scripts
+  ├─ .github/                         # GitHub metadata and workflows
+  ├─ assets/                          # Static assets
+  ├─ docs/                            # User/developer documentation
+  ├─ scripts/                         # One-click local workflows
+  ├─ src/                             # Canonical runtime source
+  │  ├─ health_monitor.py             # Main application entry and integration layer
+  │  ├─ config_manager.py             # Config loading/saving helpers
+  │  ├─ language_system.py            # Language pack loading and translation helpers
+  │  ├─ utils.py                      # Shared runtime utilities and F12 cleanup helpers
+  │  ├─ custom_dialogs.py             # Shared dialog helpers
+  │  ├─ skill_timer.py                # Skill timer module with bilingual support
+  │  ├─ language_packs.json           # Bilingual UI strings
+  │  └─ _version.py                   # Single version source
+  ├─ tools/                           # Build pipeline and icon
+  ├─ AGENTS.md                        # AI contributor quick guide
+  ├─ CHANGELOG.md                     # Change history
+  ├─ DEVELOPER_HANDBOOK.md            # Detailed technical documentation
+  ├─ PROJECT_STRUCTURE.md             # This file
+  ├─ README.md                        # Primary public README
+  └─ LICENSE                          # AGPL-3.0
 ```
 
 ## Canonical Source Rules
