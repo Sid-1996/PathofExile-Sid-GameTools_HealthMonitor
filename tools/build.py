@@ -353,6 +353,16 @@ start "" "GameTools_HealthMonitor.exe"
         # =============================================================================
 
         # ?萄遣 ZIP
+        # 壓 ZIP 前清理執行期殘留（使用者個人設定/截圖）
+        for item_name in ['health_monitor_config.json', 'health_monitor_config.json.backup', 'screenshots']:
+            item_path = os.path.join(package_dir, item_name)
+            if os.path.isfile(item_path):
+                os.remove(item_path)
+                self.log(f"Cleaned residue: {item_name}")
+            elif os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+                self.log(f"Cleaned residue: {item_name}/")
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
         zip_name = f"GameTools_HealthMonitor_v{APP_VERSION}_{timestamp}"
         zip_path = os.path.join(self.dist_dir, zip_name)
