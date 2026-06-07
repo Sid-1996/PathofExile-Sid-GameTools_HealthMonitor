@@ -927,7 +927,7 @@ class HealthMonitor:
         except Exception as e:
             print(f": {e}")
 
-        self._start_window_focus_watcher()
+        self.root.after(500, self._start_window_focus_watcher)
 
         self.add_status_message(self.get_text("tool_started_successfully"), "success")
         self.add_status_message(self.get_text("hotkey_info"), "info")
@@ -2183,6 +2183,8 @@ class HealthMonitor:
         """分頁切換時的處理"""
         # 確保滾輪事件仍然綁定
         self.root.focus_set()  # 確保主視窗有焦點
+        # 同步觸發分頁切換的其他邏輯（視窗大小、interval 等）
+        self.on_tab_change(event)
 
     def handle_mousewheel(self, event):
         """處理滾輪事件，轉發給當前可見的可滾動組件"""
@@ -4212,6 +4214,11 @@ class HealthMonitor:
 
     def _start_window_focus_watcher(self):
         """啟動獨立的視窗焦點監聽器，不依賴監控狀態"""
+        try:
+            tab_index = self.notebook.index(self.notebook.select())
+            self._focus_watcher_interval = 200 if tab_index == 1 else 1000
+        except Exception:
+            self._focus_watcher_interval = 1000
         self._focus_watcher_tick()
 
     def _focus_watcher_tick(self):
