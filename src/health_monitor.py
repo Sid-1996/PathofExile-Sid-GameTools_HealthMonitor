@@ -1129,6 +1129,17 @@ class HealthMonitor:
             # 保存當前分頁到配置中
             self.config['last_selected_tab'] = current_tab
 
+            try:
+                tab_index = self.notebook.index(self.notebook.select())
+                if tab_index == 1:
+                    self._focus_watcher_interval = 200
+                    if self._is_game_window_active() and self.inventory_region:
+                        self.root.after(0, self.update_inventory_preview_from_current)
+                else:
+                    self._focus_watcher_interval = 1000
+            except Exception:
+                pass
+
         except Exception as e:
             print(f"{self.get_text('tab_switch_resize_error')} {e}")
 
@@ -4200,19 +4211,24 @@ class HealthMonitor:
         self._focus_watcher_tick()
 
     def _focus_watcher_tick(self):
-        """每秒檢查遊戲視窗焦點，視窗重新激活時自動刷新庫存預覽"""
+        """定期檢查遊戲視窗焦點，視窗激活且在一鍵清包分頁時自動刷新庫存預覽"""
         if getattr(self, '_is_closing', False):
             return
         try:
             current_active = self._is_game_window_active()
             last_active = getattr(self, '_focus_watcher_last_active', False)
-            if current_active and not last_active:
-                if self.inventory_region:
-                    self.update_inventory_preview_from_current()
+            interval = getattr(self, '_focus_watcher_interval', 1000)
+            if current_active:
+                if interval <= 200:
+                    if self.inventory_region:
+                        self.update_inventory_preview_from_current()
+                elif not last_active:
+                    if self.inventory_region:
+                        self.update_inventory_preview_from_current()
             self._focus_watcher_last_active = current_active
         except Exception:
             pass
-        self.root.after(1000, self._focus_watcher_tick)
+        self.root.after(getattr(self, '_focus_watcher_interval', 1000), self._focus_watcher_tick)
 
     def _is_game_window_active(self):
         """檢查遊戲視窗是否在前台且可用（非最小化）"""
