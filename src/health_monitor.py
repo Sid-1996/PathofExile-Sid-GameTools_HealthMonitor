@@ -2705,9 +2705,10 @@ class HealthMonitor:
                     self.root.after(0, _update_preview)
             except Exception as e:
                 print(f"預覽擷取失敗: {e}")
+                _err_msg = str(e)
                 def _update_error():
                     if hasattr(self, 'preview_label'):
-                        self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
+                        self.preview_label.config(text=f"預覽擷取失敗\n{_err_msg}", image="")
                 self.root.after(0, _update_error)
 
         thread = threading.Thread(target=_capture, daemon=True)
@@ -2785,9 +2786,10 @@ class HealthMonitor:
                     self.root.after(0, _update_preview)
             except Exception as e:
                 print(f"魔力預覽擷取失敗: {e}")
+                _err_msg = str(e)
                 def _update_error():
                     if hasattr(self, 'mana_preview_label'):
-                        self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{str(e)}", image="")
+                        self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{_err_msg}", image="")
                 self.root.after(0, _update_error)
 
         import threading
@@ -7919,8 +7921,9 @@ class HealthMonitor:
 
             except Exception as e:
                 print(f"F6(worker): 發生例外: {e}")
+                _err_msg = str(e)
                 try:
-                    self.root.after(0, lambda: self.add_status_message(f"F6 執行失敗 - {str(e)}", "error"))
+                    self.root.after(0, lambda: self.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
                 except:
                     pass
                 # 確保 ctrl 被釋放
@@ -10115,10 +10118,11 @@ class HealthMonitor:
                 self.schedule_ui_callback(update_connection_ui)
 
             except Exception as e:
+                _err_msg = str(e)
                 def update_exception_ui():
                     try:
                         self.latest_version_var.set(self.get_text("check_error"))
-                        self.version_status_var.set(self.get_text("check_error_with_message").format(error=str(e)))
+                        self.version_status_var.set(self.get_text("check_error_with_message").format(error=_err_msg))
                         self.latest_version_label.config(foreground='red')
                     except Exception as e2:
                         print(f"異常UI更新失敗: {e2}")

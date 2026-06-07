@@ -73,8 +73,8 @@ The following tools are available in PATH and can be used by agents for searchin
 ## Current Git State
 
 - Branch: `master`
-- Ahead of `origin/master` by **16 commits** (will be 17 after next commit)
-- Working tree: **dirty** (modified `src/health_monitor.py`)
+- Ahead of `origin/master` by **20 commits** (will be 21 after next commit)
+- Working tree: **clean** after F821 fixes
 - `git push` is **locked** — do not push unless explicitly instructed
 
 ## Recent Changes (v1.0.9 + pending)
