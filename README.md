@@ -1,4 +1,5 @@
 # Path of Exile Sid 輔助工具 / GameTools Health Monitor
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total)
 
 > 以影像辨識與輸入模擬為核心的 Windows 工具  
 > External automation research toolkit for Path of Exile
