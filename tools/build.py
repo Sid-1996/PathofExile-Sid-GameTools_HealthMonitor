@@ -11,7 +11,11 @@ import subprocess
 import shutil
 from datetime import datetime
 
-APP_VERSION = "1.0.9"
+# Add src to path to import version
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
+from _version import __version__
+
+APP_VERSION = __version__
 
 class GameToolBuilder:
     def __init__(self):

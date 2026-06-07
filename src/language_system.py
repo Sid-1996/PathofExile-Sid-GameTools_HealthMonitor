@@ -9,6 +9,12 @@ import sys
 import tkinter as tk
 from tkinter import messagebox
 
+# Import version from _version
+try:
+    from _version import __version__ as APP_VERSION
+except ImportError:
+    APP_VERSION = "1.0.9"
+
 
 def get_app_dir():
     """獲取應用程式目錄，適用於開發環境和打包後的exe"""
@@ -68,6 +74,9 @@ class LanguageManager:
         """獲取本地化文字"""
         try:
             result = LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
+            # Format window_title with current version
+            if key == 'window_title':
+                result = result.format(version=APP_VERSION)
             if key in ['window_title', 'tab_health_monitor', 'control_panel']:
                 print(f"[DEBUG] get_text('{key}') -> '{result}' (語言: {self.current_language})")
             return result
