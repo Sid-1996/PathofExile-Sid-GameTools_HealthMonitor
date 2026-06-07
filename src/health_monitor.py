@@ -5660,6 +5660,10 @@ class HealthMonitor:
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
             if not self._is_game_window_active():
+                if hasattr(self, 'inventory_preview_label'):
+                    self.inventory_preview_label.delete("all")
+                    self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self.get_text("waiting_for_game_window"), anchor='nw', fill='gray')
+                    self._preview_has_image = False
                 return
 
             # 使用血魔監控的遊戲視窗
