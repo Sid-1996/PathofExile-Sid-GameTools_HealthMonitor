@@ -276,7 +276,7 @@ class HealthMonitor:
             # 直接使用語言管理器，避免導入函數的問題
             result = self.language_manager.get_text(key)
             return result
-        except Exception as e:
+        except Exception:
             # print(f"[DEBUG] 主程序 get_text('{key}') 異常: {e}")
             return f"[{key}]"
 
@@ -494,7 +494,7 @@ class HealthMonitor:
 
             # print(f"[DEBUG] update_ui_text() 完成")
 
-        except Exception as e:
+        except Exception:
             pass
 
     def update_ui_language(self):
@@ -3443,7 +3443,6 @@ class HealthMonitor:
     def analyze_health(self, img):
         """分析血量條，使用18個等間隔位置檢測以提高精度"""
         height = img.shape[0]
-        width = img.shape[1]
 
         # 定義18個等間隔檢測位置的百分比（從上到下：95%, 90%, 85%, ..., 5%）
         detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
@@ -3575,7 +3574,6 @@ class HealthMonitor:
     def analyze_mana(self, img):
         """分析魔力條，使用18個等間隔位置檢測以提高精度"""
         height = img.shape[0]
-        width = img.shape[1]
 
         # 定義18個等間隔檢測位置的百分比（從上到下：95%, 90%, 85%, ..., 5%）
         detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
@@ -3842,7 +3840,6 @@ class HealthMonitor:
 
         # 處理魔力設定
         if mana_percent is not None and mana_settings:
-            triggered = False
             for setting in mana_settings:
                 if mana_percent <= setting['percent']:
                     # 檢查冷卻時間
@@ -3855,12 +3852,10 @@ class HealthMonitor:
                             # 添加狀態訊息
                             self.add_status_message(self.get_text("mana_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
                             self.press_key_sequence(setting['key'], f"mana_{setting['percent']}")
-                            triggered = True
-                        except Exception as e:
+                        except Exception:
                             pass
                     else:
                         remaining = cooldown - (current_time - last_trigger) * 1000
-                        triggered = True  # 即使在冷卻中，也標記為已處理
 
                     # 找到第一個匹配的設定後就停止，避免執行更高百分比的設定
                     # 但是如果啟用了多重觸發，則繼續檢查其他設定
@@ -3937,7 +3932,7 @@ class HealthMonitor:
             if windows:
                 return windows[0]._hWnd
             return None
-        except Exception as e:
+        except Exception:
             return None
 
     def map_key_to_vk_code(self, key):
@@ -8401,7 +8396,7 @@ class HealthMonitor:
 
                 # 嘗試找到最簡單的相對路徑
                 current_dir = os.getcwd()
-                script_dir = os.path.dirname(script_path)
+                os.path.dirname(script_path)
 
                 try:
                     # 計算相對路徑
