@@ -5734,14 +5734,32 @@ class HealthMonitor:
                 if not self.check_inventory_ui_exists(game_window):
                     if hasattr(self, 'inventory_preview_label'):
                         self.inventory_preview_label.delete("all")
+                        w = self.inventory_preview_label.winfo_width() or 300
+                        h = self.inventory_preview_label.winfo_height() or 200
                         self.inventory_preview_label.create_text(
-                            10, 10,
+                            w // 2, h // 2,
                             text=self.get_text("waiting_inventory_open"),
-                            anchor='nw',
-                            fill='gray'
+                            anchor='center',
+                            fill='gray',
+                            font=('Microsoft JhengHei', 14)
                         )
                         self._preview_has_image = False
                     return
+            elif self.inventory_ui_region and (not hasattr(self, 'inventory_ui_screenshot') or self.inventory_ui_screenshot is None):
+                # 有設定區域但還沒截參考圖，提示使用者
+                if hasattr(self, 'inventory_preview_label'):
+                    self.inventory_preview_label.delete("all")
+                    w = self.inventory_preview_label.winfo_width() or 300
+                    h = self.inventory_preview_label.winfo_height() or 200
+                    self.inventory_preview_label.create_text(
+                        w // 2, h // 2,
+                        text=self.get_text("inventory_ui_not_recorded"),
+                        anchor='center',
+                        fill='orange',
+                        font=('Microsoft JhengHei', 14)
+                    )
+                    self._preview_has_image = False
+                return
 
             # 擷取背包區域
             with mss.mss() as sct:
