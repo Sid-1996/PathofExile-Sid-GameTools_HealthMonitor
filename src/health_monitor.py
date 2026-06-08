@@ -10353,7 +10353,7 @@ class HealthMonitor:
         update_window = tk.Toplevel(self.root)
         update_window.title(self.get_text("new_version_found_title"))
         update_window.geometry("500x350")
-        update_window.resizable(False, False)
+        update_window.resizable(True, True)
         update_window.transient(self.root)
         update_window.grab_set()
 
@@ -10382,10 +10382,17 @@ class HealthMonitor:
         # 更新說明
         if release_body and release_body != self.get_text("no_update_notes"):
             ttk.Label(info_frame, text=self.get_text("update_notes_label"), font=('Arial', 10, 'bold')).pack(anchor=tk.W)
-            notes = release_body[:300] + "..." if len(release_body) > 300 else release_body
-            notes_label = ttk.Label(info_frame, text=notes, wraplength=400,
-                                   font=('Arial', 9), justify=tk.LEFT)
-            notes_label.pack(anchor=tk.W, pady=(5, 0))
+            notes_frame = ttk.Frame(info_frame)
+            notes_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+            notes_scrollbar = ttk.Scrollbar(notes_frame)
+            notes_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            notes_text = tk.Text(notes_frame, height=6, font=('Arial', 9),
+                                wrap=tk.WORD, yscrollcommand=notes_scrollbar.set,
+                                state=tk.NORMAL)
+            notes_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            notes_scrollbar.config(command=notes_text.yview)
+            notes_text.insert(tk.END, release_body)
+            notes_text.config(state=tk.DISABLED)
 
         # 按鈕框架
         button_frame = ttk.Frame(update_window)
