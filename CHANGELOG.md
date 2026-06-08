@@ -5,6 +5,17 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.1.0] - 2026-06-08
+
+### 🐛 修復
+
+- **CTRL+Click 連點根本原因修復**：移除 `ShellExecuteW runas` 強制提升管理員權限，改用 `subprocess.Popen` 繼承父進程完整性層級。原本以管理員權限啟動的 `auto_click.exe` 因 Windows UIPI 機制無法向普通權限的 PoE2 注入點擊，導致功能完全失效。現在兩者完整性層級一致，點擊正常運作。
+- **更新通知視窗**：將 `ttk.Label` + 300 字截斷改為 `tk.Text` + `ttk.Scrollbar`，顯示完整 release notes，並支援拖曳調整視窗大小
+
+### 🔧 優化
+
+- 移除 `config_manager.py` 中未使用的使用時間追蹤副本函數（`load_usage_time_from_registry`、`save_usage_time_to_registry` 等 6 個函數）及相關死碼
+
 ## [1.0.9] - 2026-06-08
 
 ### 🐛 修復
