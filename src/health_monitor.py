@@ -9057,28 +9057,29 @@ class HealthMonitor:
         """啟動AHK自動點擊腳本 - 支援EXE版本優先"""
         try:
             # 檢查是否已經有進程在運行
-            if self.auto_click_process and self.auto_click_process.poll() is None:
-                print("AHK自動點擊已經在運行中")
-                return
+            if self.auto_click_process:
+                if isinstance(self.auto_click_process, psutil.Process):
+                    if self.auto_click_process.is_running():
+                        print("AHK自動點擊已經在運行中")
+                        return
+                elif self.auto_click_process.poll() is None:
+                    print("AHK自動點擊已經在運行中")
+                    return
 
             # 獲取當前進程名稱，支援編譯前後
             if getattr(sys, 'frozen', False):
-                # 如果是打包後的exe
                 process_name = "GameTools_HealthMonitor.exe"
             else:
-                # 如果是開發環境，獲取實際的Python可執行文件名稱
                 actual_executable = os.path.basename(sys.executable)
                 print(f"實際Python可執行文件: {actual_executable}")
                 print(f"完整路徑: {sys.executable}")
 
-                # 檢查所有可能的Python進程名稱
                 current_pid = os.getpid()
                 current_process = psutil.Process(current_pid)
                 actual_process_name = current_process.name()
                 print(f"當前進程PID: {current_pid}")
                 print(f"當前進程名稱: {actual_process_name}")
 
-                # 使用實際的進程名稱
                 process_name = actual_process_name
 
             print(f"將傳遞給AHK的進程名稱: {process_name}")
@@ -9086,10 +9087,8 @@ class HealthMonitor:
             # 優先檢查EXE版本
             if os.path.exists(self.auto_click_exe_path):
                 print(f"找到EXE版本: {self.auto_click_exe_path}")
-                # 以管理員權限直接執行EXE，傳遞Python進程名稱作為參數
                 import ctypes
                 try:
-                    # 嘗試以管理員權限啟動
                     ctypes.windll.shell32.ShellExecuteW(
                         None,
                         "runas",
@@ -9101,9 +9100,30 @@ class HealthMonitor:
                     print(" AHK自動點擊(EXE版)已以管理員權限啟動")
                     print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
                     print(" 當主程式退出時，AHK腳本會自動關閉")
+
+                    # 等待進程啟動後用 psutil 追蹤
+                    time.sleep(1.5)
+                    found = False
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        try:
+                            if proc.info['name'] and proc.info['name'].lower() == 'auto_click.exe':
+                                self.auto_click_process = proc
+                                print(f" 已追蹤到 auto_click.exe 進程 (PID: {proc.info['pid']})")
+                                found = True
+                                break
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            continue
+                    if not found:
+                        msg = ("[WARN] 未偵測到 auto_click.exe 進程，可能 UAC 被使用者拒絕\n"
+                               "Press CTRL+Click may not work. The UAC prompt may have been denied, "
+                               "or the process failed to start.")
+                        print(msg)
+                        self.add_status_message(msg, "error")
                 except Exception as admin_error:
                     print(f"管理員權限啟動失敗，嘗試普通啟動: {admin_error}")
-                    # 如果管理員權限啟動失敗，則使用普通方式
+                    msg = ("CTRL+Click 自動連點：管理員權限啟動失敗，嘗試普通啟動\n"
+                           "Auto-click: Admin launch failed, trying normal launch")
+                    self.add_status_message(msg, "warning")
                     self.auto_click_process = subprocess.Popen([
                         self.auto_click_exe_path,
                         process_name
@@ -9115,7 +9135,6 @@ class HealthMonitor:
             elif os.path.exists(self.auto_click_script_path):
                 print(f"找到AHK腳本: {self.auto_click_script_path}")
 
-                # 尋找AutoHotkey可執行文件
                 ahk_paths = [
                     r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
                     r"C:\Program Files\AutoHotkey\v2\AutoHotkey32.exe",
@@ -9130,10 +9149,12 @@ class HealthMonitor:
                         break
 
                 if not ahk_exe:
-                    print("[ERROR] 未找到AutoHotkey程式，請確保已安裝AutoHotkey或使用EXE版本")
+                    msg = ("[ERROR] 未找到AutoHotkey程式，請確保已安裝AutoHotkey或使用EXE版本\n"
+                           "AutoHotkey not found. Please install AutoHotkey v2 or use the EXE version.")
+                    print(msg)
+                    self.add_status_message(msg, "error")
                     return
 
-                # 啟動AHK腳本，傳遞Python進程名稱作為參數
                 self.auto_click_process = subprocess.Popen([
                     ahk_exe,
                     self.auto_click_script_path,
@@ -9145,26 +9166,47 @@ class HealthMonitor:
                 print(" 當主程式退出時，AHK腳本會自動關閉")
 
             else:
-                print("[ERROR] 未找到AHK腳本或EXE文件")
-                print("請確保存在以下文件之一：")
-                print(f"  - {self.auto_click_exe_path}")
-                print(f"  - {self.auto_click_script_path}")
+                msg = ("[ERROR] 未找到AHK腳本或EXE文件\n"
+                       "請確保存在以下文件之一：\n"
+                       f"  - {self.auto_click_exe_path}\n"
+                       f"  - {self.auto_click_script_path}\n"
+                       "Auto-click files not found. Please reinstall the package or restore the missing files.")
+                print(msg)
+                self.add_status_message(msg, "error")
 
         except Exception as e:
-            print(f"[ERROR] 啟動AHK自動點擊失敗: {e}")
+            msg = f"[ERROR] 啟動AHK自動點擊失敗: {e}\nAuto-click startup failed: {e}"
+            print(msg)
+            self.add_status_message(msg, "error")
 
     def stop_auto_click_ahk(self):
         """停止AHK自動點擊腳本"""
         try:
-            if self.auto_click_process and self.auto_click_process.poll() is None:
-                self.auto_click_process.terminate()
-                self.auto_click_process.wait(timeout=3)
-                print("[STOP] AHK自動點擊已停止")
-            else:
+            if self.auto_click_process is None:
                 print("AHK自動點擊未運行")
-        except subprocess.TimeoutExpired:
-            # 如果無法正常終止，強制結束
-            self.auto_click_process.kill()
+                return
+
+            if isinstance(self.auto_click_process, psutil.Process):
+                if self.auto_click_process.is_running():
+                    self.auto_click_process.terminate()
+                    self.auto_click_process.wait(timeout=3)
+                    print("[STOP] AHK自動點擊已停止")
+                else:
+                    print("AHK自動點擊未運行")
+            else:
+                if self.auto_click_process.poll() is None:
+                    self.auto_click_process.terminate()
+                    self.auto_click_process.wait(timeout=3)
+                    print("[STOP] AHK自動點擊已停止")
+                else:
+                    print("AHK自動點擊未運行")
+        except psutil.NoSuchProcess:
+            print("[STOP] AHK自動點擊進程已不存在")
+        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+            if isinstance(self.auto_click_process, psutil.Process):
+                self.auto_click_process.kill()
+            else:
+                self.auto_click_process.kill()
             print("[STOP] AHK自動點擊已強制停止")
         except Exception as e:
             print(f"停止AHK自動點擊時發生錯誤: {e}")

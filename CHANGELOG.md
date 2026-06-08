@@ -5,6 +5,14 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.0.9] - 2026-06-08
+
+### 🐛 修復
+
+- **CTRL+Click 連點功能修復**: 修復 UAC 管理員權限啟動後進程無法追蹤的問題（`ShellExecuteW runas` 後 `self.auto_click_process` 永遠為 `None`，導致程式無法終止 AHK 進程）
+- 修復連點功能失敗時完全無使用者可見提示的問題（所有失敗路徑補入 `add_status_message` UI 提示）
+- `stop_auto_click_ahk()` 同時支援 `psutil.Process` 與 `subprocess.Popen` 兩種物件類型
+
 ## [1.0.8] - 2026-06-08
 
 ### ✨ 新增
