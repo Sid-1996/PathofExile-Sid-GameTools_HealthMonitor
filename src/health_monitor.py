@@ -9087,48 +9087,29 @@ class HealthMonitor:
             # 優先檢查EXE版本
             if os.path.exists(self.auto_click_exe_path):
                 print(f"找到EXE版本: {self.auto_click_exe_path}")
-                import ctypes
                 try:
-                    ctypes.windll.shell32.ShellExecuteW(
-                        None,
-                        "runas",
-                        self.auto_click_exe_path,
-                        process_name,
-                        None,
-                        1
-                    )
-                    print(" AHK自動點擊(EXE版)已以管理員權限啟動")
-                    print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
-                    print(" 當主程式退出時，AHK腳本會自動關閉")
-
-                    # 等待進程啟動後用 psutil 追蹤
-                    time.sleep(1.5)
-                    found = False
-                    for proc in psutil.process_iter(['pid', 'name']):
-                        try:
-                            if proc.info['name'] and proc.info['name'].lower() == 'auto_click.exe':
-                                self.auto_click_process = proc
-                                print(f" 已追蹤到 auto_click.exe 進程 (PID: {proc.info['pid']})")
-                                found = True
-                                break
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            continue
-                    if not found:
-                        msg = ("[WARN] 未偵測到 auto_click.exe 進程，可能 UAC 被使用者拒絕\n"
-                               "Press CTRL+Click may not work. The UAC prompt may have been denied, "
-                               "or the process failed to start.")
-                        print(msg)
-                        self.add_status_message(msg, "error")
-                except Exception as admin_error:
-                    print(f"管理員權限啟動失敗，嘗試普通啟動: {admin_error}")
-                    msg = ("CTRL+Click 自動連點：管理員權限啟動失敗，嘗試普通啟動\n"
-                           "Auto-click: Admin launch failed, trying normal launch")
-                    self.add_status_message(msg, "warning")
                     self.auto_click_process = subprocess.Popen([
                         self.auto_click_exe_path,
                         process_name
                     ], creationflags=subprocess.CREATE_NO_WINDOW)
-                    print(" AHK自動點擊(EXE版)已啟動")
+                    time.sleep(0.3)
+                    if self.auto_click_process.poll() is not None:
+                        msg = ("auto_click.exe 啟動後異常終止，請檢查檔案是否完整\n"
+                               "auto_click.exe exited unexpectedly. The file may be corrupted.")
+                        print(msg)
+                        self.add_status_message(msg, "error")
+                    else:
+                        print(" AHK自動點擊(EXE版)已啟動")
+                        print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
+                        print(" 當主程式退出時，AHK腳本會自動關閉")
+                        self.add_status_message(
+                            "CTRL+Click 自動連點已啟動 (auto_click.exe)",
+                            "success"
+                        )
+                except Exception as e:
+                    msg = f"啟動 auto_click.exe 失敗: {e}\nFailed to start auto_click.exe: {e}"
+                    print(msg)
+                    self.add_status_message(msg, "error")
                 return
 
             # 如果沒有EXE版本，檢查AHK腳本
