@@ -6,7 +6,6 @@
 import json
 import os
 import sys
-import winreg
 from datetime import datetime
 from utils import get_app_dir
 
@@ -17,11 +16,6 @@ class ConfigManager:
     def __init__(self, config_filename="health_monitor_config.json"):
         self.config_file = os.path.join(get_app_dir(), config_filename)
         self.config = {}
-        self.start_time = datetime.now()
-        
-        # 註冊表相關常數
-        self.REGISTRY_KEY = r"SOFTWARE\SidGameTools\HealthMonitor"
-        self.REGISTRY_VALUE = "TotalUsageTime"
     
     def load_config(self):
         """載入設定檔案"""
@@ -146,85 +140,6 @@ class ConfigManager:
         for key, value in settings.items():
             if value is not None:
                 self.config[key] = value
-    
-    def load_usage_time_from_registry(self):
-        """從註冊表載入總使用時間"""
-        try:
-            # 開啟註冊表鍵
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.REGISTRY_KEY, 0, winreg.KEY_READ)
-            
-            # 讀取使用時間
-            total_seconds, _ = winreg.QueryValueEx(key, self.REGISTRY_VALUE)
-            
-            # 關閉註冊表鍵
-            winreg.CloseKey(key)
-            
-            return total_seconds
-        except FileNotFoundError:
-            # 如果註冊表鍵不存在，返回0
-            return 0
-        except Exception as e:
-            print(f"載入使用時間失敗: {e}")
-            return 0
-    
-    def save_usage_time_to_registry(self, total_seconds):
-        """保存總使用時間到註冊表"""
-        try:
-            # 創建或開啟註冊表鍵
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, self.REGISTRY_KEY)
-            
-            # 設定使用時間
-            winreg.SetValueEx(key, self.REGISTRY_VALUE, 0, winreg.REG_DWORD, total_seconds)
-            
-            # 關閉註冊表鍵
-            winreg.CloseKey(key)
-        except Exception as e:
-            print(f"保存使用時間失敗: {e}")
-    
-    def track_usage_time(self):
-        """追蹤並保存使用時間"""
-        try:
-            # 計算本次使用時間
-            usage_time = datetime.now() - self.start_time
-            usage_seconds = int(usage_time.total_seconds())
-            
-            # 載入之前的總使用時間
-            total_seconds = self.load_usage_time_from_registry()
-            
-            # 加上本次使用時間
-            total_seconds += usage_seconds
-            
-            # 保存總使用時間
-            self.save_usage_time_to_registry(total_seconds)
-            
-            return total_seconds
-        except Exception as e:
-            print(f"追蹤使用時間失敗: {e}")
-            return 0
-    
-    def format_usage_time(self, total_seconds):
-        """格式化使用時間顯示"""
-        hours = total_seconds // 3600
-        minutes = (total_seconds % 3600) // 60
-        seconds = total_seconds % 60
-        
-        if hours > 0:
-            return f"{hours}小時{minutes}分鐘"
-        elif minutes > 0:
-            return f"{minutes}分鐘{seconds}秒"
-        else:
-            return f"{seconds}秒"
-    
-    def get_current_usage_time(self):
-        """獲取當前使用時間（本次運行）"""
-        current_time = datetime.now() - self.start_time
-        return int(current_time.total_seconds())
-    
-    def get_total_usage_time(self):
-        """獲取總使用時間（包含歷史記錄）"""
-        historical_time = self.load_usage_time_from_registry()
-        current_time = self.get_current_usage_time()
-        return historical_time + current_time
     
     def backup_config(self, backup_suffix=None):
         """備份設定檔案"""
