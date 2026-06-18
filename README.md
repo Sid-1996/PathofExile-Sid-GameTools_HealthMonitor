@@ -1,8 +1,9 @@
 # Path of Exile Sid 輔助工具 / GameTools Health Monitor
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total) [![GitHub Pages](https://img.shields.io/badge/Web-GitHub%20Pages-58a6ff?style=flat-square&logo=github)](https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/)
 
 > 以影像辨識與輸入模擬為核心的 Windows 工具  
-> External automation research toolkit for Path of Exile
+> External automation research toolkit for Path of Exile  
+> 🌐 <a href="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/">GitHub Pages 介紹頁 / Project Site</a>
 
 基於 Python + AutoHotkey + OCR / Image Recognition 所打造的 UI 自動化研究工具。
 

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/sitemap.xml

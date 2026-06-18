@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Path of Exile Sid 輔助工具 — GameTools Health Monitor</title>
+  <meta name="title" content="Path of Exile Sid 輔助工具 — GameTools Health Monitor">
+  <meta name="description" content="以影像辨識與輸入模擬為核心的 PoE Windows 自動化工具。支援血量/魔力監控、技能連段、背包自動化、自動連點、技能計時器。基於 Python + OpenCV + AutoHotkey 開發。">
+  <meta name="keywords" content="Path of Exile, PoE, PoE2, 輔助工具, automation, health monitor, 血量監控, 技能連段, 背包自動化, 自動連點, OpenCV, AutoHotkey, Python, GGG, Windows tool">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="Sid-1996">
+  <meta name="language" content="zh-TW, en">
+  <link rel="canonical" href="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="software">
+  <meta property="og:url" content="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/">
+  <meta property="og:title" content="Path of Exile Sid 輔助工具 — GameTools Health Monitor">
+  <meta property="og:description" content="以影像辨識與輸入模擬為核心的 PoE Windows 自動化研究工具。支援血量/魔力監控、技能連段、背包自動化、自動連點、技能計時器。">
+  <meta property="og:locale" content="zh_TW">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/">
+  <meta name="twitter:title" content="Path of Exile Sid 輔助工具 — GameTools Health Monitor">
+  <meta name="twitter:description" content="以影像辨識與輸入模擬為核心的 PoE Windows 自動化研究工具。">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GameTools Health Monitor",
+    "alternateName": "Path of Exile Sid 輔助工具",
+    "operatingSystem": "Windows 10/11",
+    "applicationCategory": "GameApplication",
+    "description": "以影像辨識與輸入模擬為核心的 Path of Exile Windows 自動化研究工具。支援血量/魔力監控、技能連段、背包自動化、自動連點、技能計時器。",
+    "url": "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor",
+    "downloadUrl": "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases",
+    "license": "https://www.gnu.org/licenses/agpl-3.0",
+    "author": {
+      "@type": "Person",
+      "name": "Sid-1996"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "TWD"
+    }
+  }
+  </script>
+
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2333;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --red: #f85149;
+      --radius: 8px;
+      --max-w: 960px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    img { max-width: 100%; height: auto; }
+
+    /* ===== Layout ===== */
+    .container { max-width: var(--max-w); margin: 0 auto; padding: 0 20px; }
+    section { padding: 60px 0; }
+    section + section { border-top: 1px solid var(--border); }
+
+    /* ===== Header ===== */
+    header {
+      padding: 40px 0 20px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin-top: 8px;
+    }
+    header .badge { margin-top: 14px; }
+    header .badge img { vertical-align: middle; }
+
+    /* ===== Nav ===== */
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding: 16px 0;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav a {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: 0.2s;
+    }
+    nav a:hover {
+      color: var(--text);
+      text-decoration: none;
+      border-bottom-color: var(--accent);
+    }
+
+    /* ===== Typography ===== */
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .en { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
+
+    /* ===== Cards ===== */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: 0.2s;
+    }
+    .card:hover { background: var(--bg-card-hover); }
+    .card h3 { font-size: 1rem; margin-bottom: 6px; }
+    .card h3 span { color: var(--text-muted); font-size: 0.8rem; font-weight: 400; }
+    .card p { color: var(--text-muted); font-size: 0.88rem; }
+    .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+
+    /* ===== Hotkey Table ===== */
+    .hotkey-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .hotkey-table th, .hotkey-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .hotkey-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .hotkey-table tr:hover td { background: var(--bg-card-hover); }
+    .hotkey-table kbd {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 0.8rem;
+      font-family: inherit;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+    }
+
+    /* ===== Download ===== */
+    .download-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      text-align: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: var(--accent);
+      color: #0d1117;
+      font-weight: 600;
+      border-radius: var(--radius);
+      transition: 0.2s;
+      font-size: 1rem;
+    }
+    .btn:hover { background: var(--accent-hover); text-decoration: none; }
+    .btn-download { background: var(--green); }
+    .btn-download:hover { background: #4ade80; }
+
+    /* ===== Footer ===== */
+    footer {
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--text-muted); }
+
+    /* ===== Disclaimer ===== */
+    .disclaimer {
+      background: #1c1a0e;
+      border: 1px solid #3d3200;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: 0.85rem;
+      color: #d29922;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 640px) {
+      header h1 { font-size: 1.5rem; }
+      nav { gap: 12px; }
+      nav a { font-size: 0.8rem; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header>
+  <div class="container">
+    <h1>🛡️ GameTools Health Monitor</h1>
+    <p class="subtitle">Path of Exile — 以影像辨識與輸入模擬為核心的 Windows 自動化研究工具</p>
+    <p class="subtitle" style="font-size:0.9rem">External automation research toolkit for Path of Exile</p>
+    <div class="badge">
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases" target="_blank">
+        <img src="https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?style=flat-square&label=Latest" alt="Latest Release">
+      </a>
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases" target="_blank">
+        <img src="https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?style=flat-square&label=Downloads" alt="Total Downloads">
+      </a>
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor" target="_blank">
+        <img src="https://img.shields.io/github/stars/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?style=flat-square&label=Stars" alt="GitHub Stars">
+      </a>
+      <a href="https://www.gnu.org/licenses/agpl-3.0" target="_blank">
+        <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" alt="License AGPL v3">
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Nav ===== -->
+<nav>
+  <a href="#features">功能 Features</a>
+  <a href="#hotkeys">熱鍵 Hotkeys</a>
+  <a href="#tech">技術 Tech</a>
+  <a href="#download">下載 Download</a>
+  <a href="#community">社群 Community</a>
+  <a href="#disclaimer">免責 Disclaimer</a>
+</nav>
+
+<!-- ===== Intro ===== -->
+<section id="intro">
+  <div class="container">
+    <h2>📖 關於 / About</h2>
+    <p style="margin-bottom:12px">
+      本專案是以 <strong>影像辨識 (OpenCV)</strong> 與 <strong>輸入模擬</strong> 為核心技術的
+      <strong>Path of Exile</strong> 自動化研究工具，提供即時血量/魔力監控、技能連段、背包自動化清包取物、
+      自動連點及技能計時器等功能。所有操作均為外部圖像辨識，不修改遊戲檔案、不注入程式碼、不讀取遊戲記憶體。
+    </p>
+    <p>
+      Built with <strong>Python</strong> + <strong>OpenCV</strong> + <strong>AutoHotkey</strong>.
+      This is an external automation research toolkit for Path of Exile.
+      It uses image recognition and input simulation — no code injection, no memory reading.
+    </p>
+  </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section id="features">
+  <div class="container">
+    <h2>✨ 功能總覽 <span class="en">Features</span></h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <div class="card-icon">🩸</div>
+        <h3>血量 / 魔力監控 <span>Health / Mana</span></h3>
+        <p>即時百分比判定、多閾值觸發、冷卻保護。支援低血警告與自動回復觸發。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>技能連段 <span>Skill Combo</span></h3>
+        <p>自訂技能序列、自訂延遲、多組配置。毫秒級精確執行。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🎒</div>
+        <h3>背包自動化 <span>Inventory</span></h3>
+        <p>一鍵清倉整理、固定點取物、UI 顏色辨識、左/右鍵點擊模式切換。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🖱️</div>
+        <h3>自動連點 <span>Auto Clicker</span></h3>
+        <p>Ctrl + Left Click 切換開關，背景穩定運行。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <h3>技能計時器 <span>Skill Timer</span></h3>
+        <p>自訂技能槽位、毫秒級精度間隔、支援單鍵與組合鍵。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🔍</div>
+        <h3>背包預覽 <span>Preview</span></h3>
+        <p>即時遊戲畫面截圖預覽，支援排除標記（藍色疊加層），一鍵切換。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h3>多語言支援 <span>Multi-language</span></h3>
+        <p>內建繁體中文與英文語言包，可擴充翻譯。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <h3>視窗焦點感知 <span>Activation-Aware</span></h3>
+        <p>遊戲視窗失去焦點時自動暫停監控，避免錯誤觸發。</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== Hotkeys ===== -->
+<section id="hotkeys">
+  <div class="container">
+    <h2>⌨️ 熱鍵一覽 <span class="en">Hotkeys</span></h2>
+    <div style="overflow-x:auto">
+      <table class="hotkey-table">
+        <thead>
+          <tr><th>熱鍵</th><th>功能 (中文)</th><th>Function (English)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><kbd>F3</kbd></td><td>一鍵清包</td><td>Clear Inventory</td></tr>
+          <tr><td><kbd>F5</kbd></td><td>回藏身處</td><td>Return Hideout</td></tr>
+          <tr><td><kbd>F6</kbd></td><td>一鍵取物</td><td>Pickup Sequence</td></tr>
+          <tr><td><kbd>F9</kbd></td><td>暫停 / 繼續</td><td>Pause / Resume</td></tr>
+          <tr><td><kbd>F10</kbd></td><td>血量監控開關</td><td>Health Monitor Toggle</td></tr>
+          <tr><td><kbd>F12</kbd></td><td>退出程式</td><td>Exit</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>Left Click</kbd></td><td>自動連點</td><td>Auto Click</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Tech Stack ===== -->
+<section id="tech">
+  <div class="container">
+    <h2>🧠 技術使用 <span class="en">Tech Stack</span></h2>
+    <div class="card-grid">
+      <div class="card"><h3>🐍 Python</h3><p>主程式語言，事件驅動架構</p></div>
+      <div class="card"><h3>👁️ OpenCV</h3><p>影像辨識與模板匹配</p></div>
+      <div class="card"><h3>🖱️ PyAutoGUI</h3><p>跨平台滑鼠鍵盤模擬</p></div>
+      <div class="card"><h3>⌨️ keyboard</h3><p>全域熱鍵監聽</p></div>
+      <div class="card"><h3>🪟 PyGetWindow</h3><p>Windows 視窗管理</p></div>
+      <div class="card"><h3>⚙️ AutoHotkey</h3><p>自動連點腳本引擎</p></div>
+      <div class="card"><h3>📦 PyInstaller</h3><p>打包為單一 EXE 執行檔</p></div>
+      <div class="card"><h3>🎨 tkinter / ttk</h3><p>圖形使用者介面</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Download ===== -->
+<section id="download">
+  <div class="container">
+    <h2>📦 下載 <span class="en">Download</span></h2>
+    <div class="download-box">
+      <p style="margin-bottom:16px;color:var(--text-muted)">
+        最新版本 <strong>v1.1.0</strong> — 下載後解壓即可執行，無需額外安裝依賴。
+      </p>
+      <p style="margin-bottom:20px;font-size:0.85rem;color:var(--text-muted)">
+        Windows 10 / 11 適用 · 解壓後執行 <code>GameTools_HealthMonitor.exe</code>
+      </p>
+      <a class="btn btn-download" href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases" target="_blank">
+        ⬇️ 前往 Releases 下載
+      </a>
+      <p style="margin-top:16px;font-size:0.8rem;color:var(--text-muted)">
+        <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor" target="_blank">🔗 GitHub 原始碼</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases" target="_blank">📋 版本歷史</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Community ===== -->
+<section id="community">
+  <div class="container">
+    <h2>🤝 社群 <span class="en">Community</span></h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>📘 Facebook 粉絲專頁</h3>
+        <p>最新消息與更新公告</p>
+        <a href="https://www.facebook.com/talksometingshit/" target="_blank">facebook.com/talksometingshit</a>
+      </div>
+      <div class="card">
+        <h3>🐛 GitHub Issues</h3>
+        <p>問題回報與功能建議</p>
+        <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues" target="_blank">Open an Issue</a>
+      </div>
+      <div class="card">
+        <h3>⭐ 支持專案</h3>
+        <p>點擊 Star 支持開發者</p>
+        <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor" target="_blank">Star on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Disclaimer ===== -->
+<section id="disclaimer">
+  <div class="container">
+    <h2>⚠️ 免責聲明 <span class="en">Disclaimer</span></h2>
+    <div class="disclaimer">
+      <p><strong>本軟體僅供教育研究與自動化學習使用。</strong></p>
+      <p style="margin-top:8px">This software is provided for educational research, automation study, and image recognition experimentation.</p>
+      <p style="margin-top:8px">本工具不會修改遊戲檔案、不會注入程式碼、不會讀取遊戲記憶體。</p>
+      <p style="margin-top:8px">使用本工具可能違反 Grinding Gear Games 的服務條款，請自行承擔使用風險。</p>
+      <p style="margin-top:8px">Use at your own risk. This software does NOT modify game files, inject code, or access game memory.</p>
+      <p style="margin-top:12px;font-size:0.8rem">License: <a href="https://www.gnu.org/licenses/agpl-3.0" target="_blank">AGPL-3.0</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/blob/main/LICENSE">AGPL-3.0 License</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases">Releases</a>
+    </p>
+    <p style="margin-top:8px">Built with ❤️ by Sid-1996 &nbsp;·&nbsp; 未經授權禁止商業使用</p>
+  </div>
+</footer>
+
+</body>
+</html>
