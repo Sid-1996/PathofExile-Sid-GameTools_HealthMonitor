@@ -41,6 +41,7 @@ from usage_tracker import UsageTracker
 from window_key_sender import WindowKeySender
 from tab_help import HelpTab
 from tab_about import AboutTab
+from tab_status import StatusTab
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -290,19 +291,9 @@ class HealthMonitor:
         self.update_ui_text()
 
     def update_status_tab_language(self):
-        """更新狀態分頁的語言"""
         try:
-            # 更新狀態分頁的標籤和按鈕
-            if hasattr(self, 'status_count_label'):
-                count = len(getattr(self, 'status_log', []))
-                self.status_count_label.config(text=self.get_text("total_records").format(count=count))
-
-            if hasattr(self, 'clear_records_btn'):
-                self.clear_records_btn.config(text=self.get_text("clear_records"))
-
-            if hasattr(self, 'auto_scroll_var') and hasattr(self, 'auto_scroll_check'):
-                self.auto_scroll_check.config(text=self.get_text("auto_scroll_to_latest"))
-
+            if hasattr(self, 'status_tab'):
+                self.status_tab.update_language()
         except Exception as e:
             print(f"更新狀態分頁語言時發生錯誤: {e}")
 
@@ -591,12 +582,6 @@ class HealthMonitor:
         self.preview_enabled = tk.BooleanVar(value=True)
         self.preview_interval_var = tk.StringVar(value="250")
 
-        # 執行狀態記錄相關變數
-        self.status_log = []  # 儲存狀態訊息
-        self.status_log_max_lines = 100  # 最大記錄行數
-        self.last_status_message = ""  # 記錄上一條訊息，避免重複
-        self.status_text_widget = None  # 狀態顯示文字區域
-
         # GUI 元件
         self.update_loading_status("正在創建介面元件...")
         self.create_widgets()
@@ -668,8 +653,8 @@ class HealthMonitor:
         self.window_key_sender = WindowKeySender(self)
         self.root.after(500, self.window_key_sender._start_window_focus_watcher)
 
-        self.add_status_message(self.get_text("tool_started_successfully"), "success")
-        self.add_status_message(self.get_text("hotkey_info"), "info")
+        self.status_tab.add_status_message(self.get_text("tool_started_successfully"), "success")
+        self.status_tab.add_status_message(self.get_text("hotkey_info"), "info")
         self.usage_tracker.start_periodic_update()
 
     def refresh_visual_previews_after_load(self):
@@ -693,7 +678,7 @@ class HealthMonitor:
         """監聽滑鼠右鍵事件用於中斷F3清包"""
         if self.state._is_closing:
             return
-        self.add_status_message(self.get_text("mouse_interrupt_started"), "info")
+        self.status_tab.add_status_message(self.get_text("mouse_interrupt_started"), "info")
         print(self.get_text("mouse_interrupt_started"))
 
         right_click_start = None
@@ -842,7 +827,7 @@ class HealthMonitor:
         self.create_monitor_tab()
         self.create_inventory_tab()
         self.create_combo_tab()
-        self.create_status_tab()  # 新增執行狀態分頁
+        self.status_tab = StatusTab(self, self.state, self.status_frame)
         self.help_tab = HelpTab(self, self.state, self.help_frame)
         self.create_version_tab()
         self.about_tab = AboutTab(self, self.state, self.about_frame)
@@ -1499,204 +1484,6 @@ class HealthMonitor:
             test_settings.lift()
             test_settings.focus_force()
             test_settings.attributes("-topmost", True)
-
-    def create_status_tab(self):
-        """創建執行狀態分頁"""
-        # 主框架
-        main_frame = self.status_frame
-
-        # 標題
-        title_label = ttk.Label(main_frame, text=self.get_text("tool_execution_status"), font=("Microsoft YaHei", 20, "bold"))
-        title_label.pack(pady=(15, 35))
-
-        # 控制按鈕框架
-        control_frame = ttk.Frame(main_frame)
-        control_frame.pack(fill="x", pady=(0, 15))
-
-        # 清除記錄按鈕
-        clear_btn = ttk.Button(control_frame, text=self.get_text("clear_records"), command=self.clear_status_log)
-        clear_btn.pack(side="left", padx=(0, 10))
-        Tooltip(clear_btn, self.get_text("clear_records_tip"))
-
-        # 自動滾動開關
-        self.auto_scroll_var = tk.BooleanVar(value=True)
-        auto_scroll_cb = ttk.Checkbutton(control_frame, text=self.get_text("auto_scroll_to_latest"), variable=self.auto_scroll_var)
-        auto_scroll_cb.pack(side="left", padx=(0, 10))
-
-        # 狀態統計標籤
-        self.status_count_label = ttk.Label(control_frame, text=self.get_text("total_records"))
-        self.status_count_label.pack(side="right")
-
-        # 創建文字顯示區域（帶滾動條）
-        text_frame = ttk.Frame(main_frame)
-        text_frame.pack(fill="both", expand=True, pady=(10, 0))
-
-        # 文字區域
-        self.status_text_widget = tk.Text(
-            text_frame,
-            wrap=tk.WORD,
-            font=("Consolas", 10),
-            bg="#1e1e1e",
-            fg="#ffffff",
-            insertbackground="#ffffff",
-            selectbackground="#264f78"
-        )
-
-        # 滾動條
-        status_scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.status_text_widget.yview)
-        self.status_text_widget.configure(yscrollcommand=status_scrollbar.set)
-
-        # 配置文字區域的顏色標籤
-        self.configure_status_text_tags()
-
-        # 佈局
-        self.status_text_widget.pack(side="left", fill="both", expand=True)
-        status_scrollbar.pack(side="right", fill="y")
-
-        # 設置為只讀
-        self.status_text_widget.config(state=tk.DISABLED)
-
-        # 添加啟動訊息
-        self.add_status_message(self.get_text("tool_started_successfully"), "success")
-
-    def configure_status_text_tags(self):
-        """配置狀態文字區域的顏色標籤"""
-        # 成功訊息 - 綠色
-        self.status_text_widget.tag_config("success", foreground="#4CAF50")
-        # 警告訊息 - 黃色
-        self.status_text_widget.tag_config("warning", foreground="#FF9800")
-        # 錯誤訊息 - 紅色
-        self.status_text_widget.tag_config("error", foreground="#F44336")
-        # 資訊訊息 - 藍色
-        self.status_text_widget.tag_config("info", foreground="#2196F3")
-        # 熱鍵訊息 - 紫色
-        self.status_text_widget.tag_config("hotkey", foreground="#9C27B0")
-        # 監控訊息 - 青色
-        self.status_text_widget.tag_config("monitor", foreground="#00BCD4")
-
-    def add_status_message(self, message, msg_type="info"):
-        if self.state._is_closing:
-            return
-
-        """添加狀態訊息到顯示區域"""
-        # 檢查是否重複訊息（簡單的重複檢測）
-        if message == self.last_status_message:
-            return
-
-        self.last_status_message = message
-
-        # 獲取當前時間
-        current_time = datetime.now().strftime("%H:%M:%S")
-        formatted_message = f"[{current_time}] {message}\n"
-
-        # 添加到記錄列表
-        self.status_log.append((current_time, message, msg_type))
-
-        # 限制記錄數量
-        if len(self.status_log) > self.status_log_max_lines:
-            self.status_log = self.status_log[-self.status_log_max_lines:]
-            # 清空文字區域並重新載入
-            try:
-                if self.status_text_widget and self.status_text_widget.winfo_exists():
-                    self.refresh_status_display()
-                    return
-            except (RuntimeError, tk.TclError):
-                return
-
-        # 如果文字區域存在，添加新訊息
-        try:
-            widget_exists = bool(self.status_text_widget and self.status_text_widget.winfo_exists())
-        except (RuntimeError, tk.TclError):
-            return
-
-        if widget_exists:
-            try:
-                self.status_text_widget.config(state=tk.NORMAL)
-                self.status_text_widget.insert(tk.END, formatted_message, msg_type)
-                self.status_text_widget.config(state=tk.DISABLED)
-            except (RuntimeError, tk.TclError):
-                return
-
-            # 自動滾動到底部
-            try:
-                if self.auto_scroll_var.get():
-                    self.status_text_widget.see(tk.END)
-            except (RuntimeError, tk.TclError):
-                return
-
-            # 更新統計
-            try:
-                self.update_status_count()
-            except (RuntimeError, tk.TclError):
-                return
-
-    def schedule_ui_callback(self, callback, delay=0):
-        if self.state._is_closing:
-            return None
-
-        try:
-            if not self.root.winfo_exists():
-                return None
-        except (RuntimeError, tk.TclError):
-            return None
-
-        def guarded_callback():
-            if self.state._is_closing:
-                return
-
-            try:
-                if not self.root.winfo_exists():
-                    return
-            except (RuntimeError, tk.TclError):
-                return
-
-            try:
-                callback()
-            except (RuntimeError, tk.TclError):
-                return
-
-        try:
-            return self.root.after(delay, guarded_callback)
-        except (RuntimeError, tk.TclError):
-            return None
-
-    def refresh_status_display(self):
-        """重新刷新狀態顯示區域"""
-        if not self.status_text_widget:
-            return
-
-        self.status_text_widget.config(state=tk.NORMAL)
-        self.status_text_widget.delete(1.0, tk.END)
-
-        for time_str, message, msg_type in self.status_log:
-            formatted_message = f"[{time_str}] {message}\n"
-            self.status_text_widget.insert(tk.END, formatted_message, msg_type)
-
-        self.status_text_widget.config(state=tk.DISABLED)
-
-        if self.auto_scroll_var.get():
-            self.status_text_widget.see(tk.END)
-
-        self.update_status_count()
-
-    def clear_status_log(self):
-        """清除狀態記錄"""
-        self.status_log.clear()
-        self.last_status_message = ""
-
-        if self.status_text_widget:
-            self.status_text_widget.config(state=tk.NORMAL)
-            self.status_text_widget.delete(1.0, tk.END)
-            self.status_text_widget.config(state=tk.DISABLED)
-
-        self.update_status_count()
-        self.add_status_message(self.get_text("records_cleared"), "info")
-
-    def update_status_count(self):
-        """更新狀態記錄數量顯示"""
-        if self.status_count_label:
-            count = len(self.status_log)
-            self.status_count_label.config(text=self.get_text("total_records").format(count=count))
 
     def setup_global_scroll(self):
         """設置全域滾輪支持，讓整個視窗都能使用滾輪"""
@@ -2603,7 +2390,7 @@ class HealthMonitor:
         self.stop_btn.config(state=tk.NORMAL)
 
         # 添加狀態訊息
-        self.add_status_message(self.get_text("health_monitor_started"), "success")
+        self.status_tab.add_status_message(self.get_text("health_monitor_started"), "success")
 
         # 開始監控時設置為非干擾模式：降低不透明度但保持可見
         self.root.attributes("-alpha", 0.8)  # 輕微透明
@@ -2623,7 +2410,7 @@ class HealthMonitor:
 
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-        self.add_status_message(self.get_text("health_monitor_stopped"), "info")
+        self.status_tab.add_status_message(self.get_text("health_monitor_stopped"), "info")
 
         self.root.attributes("-alpha", 1.0)
         self.manage_window_hierarchy(self.root, "MAIN")
@@ -2702,7 +2489,7 @@ class HealthMonitor:
                     windows = gw.getWindowsWithTitle(self.window_var.get())
                     if not windows:
                         self.update_status("--", "--", "視窗未找到", "")
-                        self.add_status_message(self.get_text("game_window_closed"), "warning")
+                        self.status_tab.add_status_message(self.get_text("game_window_closed"), "warning")
                         interruptible_sleep(1.0, self.is_monitoring)
                         continue
 
@@ -2717,14 +2504,14 @@ class HealthMonitor:
                         if not self._preview_placeholder_shown:
                             self._preview_placeholder_shown = True
                             msg_key = "game_window_minimized" if window.isMinimized else "game_window_lost_focus"
-                            self.add_status_message(self.get_text(msg_key), "warning")
+                            self.status_tab.add_status_message(self.get_text(msg_key), "warning")
                             self.root.after(0, self._show_health_preview_placeholder)
                             self.root.after(0, self._show_mana_preview_placeholder)
                         interruptible_sleep(0.5, self.is_monitoring)
                         continue
                     if self._preview_placeholder_shown:
                         self._preview_placeholder_shown = False
-                        self.add_status_message(self.get_text("game_window_regained_focus"), "success")
+                        self.status_tab.add_status_message(self.get_text("game_window_regained_focus"), "success")
 
                     # 計算區域在螢幕上的絕對位置
                     x, y, w, h = self.config['region']
@@ -3554,7 +3341,7 @@ class HealthMonitor:
         keyboard.add_hotkey('f10', self.toggle_monitoring)   # F10: 監控開關
         keyboard.add_hotkey('f12', global_f12_handler)       # F12: 緊急關閉（使用全局處理器）
 
-        self.add_status_message(self.get_text("global_hotkeys_registered"), "success")
+        self.status_tab.add_status_message(self.get_text("global_hotkeys_registered"), "success")
 
         # 設定 CTRL+左鍵自動點擊監聽器
         self.auto_click_manager.setup_auto_click_listener()
@@ -3572,14 +3359,14 @@ class HealthMonitor:
             print(" 再次按F9可恢復所有功能")
 
             # 添加狀態訊息
-            self.add_status_message(self.get_text("global_pause_activated"), "warning")
+            self.status_tab.add_status_message(self.get_text("global_pause_activated"), "warning")
 
             # 記錄並停止血魔監控（如果正在運行）
             if self.is_monitoring():
                 self.state.monitoring_was_active = True
                 self.stop_monitoring()
                 print(" 血魔監控已自動停止")
-                self.add_status_message(self.get_text("health_monitor_auto_stopped"), "info")
+                self.status_tab.add_status_message(self.get_text("health_monitor_auto_stopped"), "info")
             else:
                 self.state.monitoring_was_active = False
 
@@ -3588,7 +3375,7 @@ class HealthMonitor:
                 self.state.combo_was_running = True
                 self.stop_combo_system()
                 print(" 技能連段已自動停止")
-                self.add_status_message(self.get_text("combo_system_auto_stopped"), "info")
+                self.status_tab.add_status_message(self.get_text("combo_system_auto_stopped"), "info")
             else:
                 self.state.combo_was_running = False
 
@@ -3596,7 +3383,7 @@ class HealthMonitor:
             print(" 全域暫停已解除 - 自動恢復之前的功能")
 
             # 添加狀態訊息
-            self.add_status_message(self.get_text("global_pause_deactivated"), "success")
+            self.status_tab.add_status_message(self.get_text("global_pause_deactivated"), "success")
 
             # 自動恢復血魔監控（如果之前處於活躍狀態）
             if self.state.monitoring_was_active:
@@ -3604,11 +3391,11 @@ class HealthMonitor:
                     # 靜默重新啟動血魔監控
                     self.restart_monitoring_silently()
                     print("[START] 血魔監控已自動重新啟動")
-                    self.add_status_message(self.get_text("health_monitor_auto_restarted"), "success")
+                    self.status_tab.add_status_message(self.get_text("health_monitor_auto_restarted"), "success")
                 except Exception as e:
                     print(f"[WARN] 血魔監控自動重新啟動失敗: {e}")
                     print(" 請手動重新啟動血魔監控")
-                    self.add_status_message(self.get_text("health_monitor_restart_failed").format(error=str(e)), "error")
+                    self.status_tab.add_status_message(self.get_text("health_monitor_restart_failed").format(error=str(e)), "error")
 
             # 自動恢復技能連段（如果之前處於運行狀態）
             if self.state.combo_was_running:
@@ -3616,11 +3403,11 @@ class HealthMonitor:
                     # 靜默重新啟動技能連段系統
                     self.restart_combo_system_silently()
                     print("[START] 技能連段已自動重新啟動")
-                    self.add_status_message("技能連段已自動重新啟動", "success")
+                    self.status_tab.add_status_message("技能連段已自動重新啟動", "success")
                 except Exception as e:
                     print(f"[WARN] 技能連段自動重新啟動失敗: {e}")
                     print(" 請手動重新啟動技能連段系統")
-                    self.add_status_message(f"技能連段自動重啟失敗: {str(e)}", "error")
+                    self.status_tab.add_status_message(f"技能連段自動重啟失敗: {str(e)}", "error")
 
             print(" 所有功能已完全恢復正常")
 
@@ -3648,14 +3435,14 @@ class HealthMonitor:
         # 全域暫停檢查
         if self.is_global_pause():
             print("[STOP] 全域暫停中，跳過F10熱鍵")
-            self.add_status_message("按下 F10 - 因全域暫停模式而跳過執行", "warning")
+            self.status_tab.add_status_message("按下 F10 - 因全域暫停模式而跳過執行", "warning")
             return
 
         if self.is_monitoring():
-            self.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
+            self.status_tab.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
             self.stop_monitoring()
         else:
-            self.add_status_message("按下 F10 - 啟動血魔監控", "hotkey")
+            self.status_tab.add_status_message("按下 F10 - 啟動血魔監控", "hotkey")
             self.start_monitoring()
 
     def quick_clear_inventory(self):
@@ -3663,35 +3450,35 @@ class HealthMonitor:
         # 全域暫停檢查
         if self.is_global_pause():
             print("[STOP] 全域暫停中，跳過F3熱鍵")
-            self.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning")
+            self.status_tab.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning")
             return
 
-        self.add_status_message(self.get_text("f3_hotkey_pressed"), "hotkey")
+        self.status_tab.add_status_message(self.get_text("f3_hotkey_pressed"), "hotkey")
 
         # 重置中斷標誌
         self.state.inventory_clear_interrupt = False
 
         if not self.inventory_region or not self.empty_inventory_colors:
-            self.add_status_message(self.get_text("f3_fail_inventory_incomplete"), "error")
+            self.status_tab.add_status_message(self.get_text("f3_fail_inventory_incomplete"), "error")
             messagebox.showwarning(self.get_text("f3_inventory_reminder"), self.get_text("inventory_setup_incomplete"))
             return
 
         # 檢查背包UI是否已設定
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
-            self.add_status_message(self.get_text("f3_fail_inventory_ui_not_set"), "error")
+            self.status_tab.add_status_message(self.get_text("f3_fail_inventory_ui_not_set"), "error")
             messagebox.showwarning(self.get_text("f3_inventory_reminder"), self.get_text("inventory_ui_screenshot_not_set"))
             return
 
         # 使用血魔監控的遊戲視窗
         window_title = self.window_var.get()
         if not window_title:
-            self.add_status_message(self.get_text("f3_fail_game_window_not_set"), "error")
+            self.status_tab.add_status_message(self.get_text("f3_fail_game_window_not_set"), "error")
             messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。")
             return
 
         # 檢查遊戲視窗是否處於前台
         if not self.window_key_sender.is_game_window_foreground(window_title):
-            self.add_status_message(self.get_text("f3_cancel_game_not_foreground"), "warning")
+            self.status_tab.add_status_message(self.get_text("f3_cancel_game_not_foreground"), "warning")
             print(f"F3: 遊戲視窗 '{window_title}' 不在前台，跳過清包操作")
             return
 
@@ -3699,12 +3486,12 @@ class HealthMonitor:
             # 獲取遊戲視窗
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
-                self.add_status_message(self.get_text("f3_fail_game_window_not_found"), "error")
+                self.status_tab.add_status_message(self.get_text("f3_fail_game_window_not_found"), "error")
                 print("找不到遊戲視窗")
                 return
 
             game_window = windows[0]
-            self.add_status_message(self.get_text("f3_processing_game_window_found"), "info")
+            self.status_tab.add_status_message(self.get_text("f3_processing_game_window_found"), "info")
 
             # 首先檢查GUI是否會遮擋背包UI檢測區域或背包區域，如果會則縮小GUI
             gui_minimized_for_ui_check = False
@@ -3726,7 +3513,7 @@ class HealthMonitor:
 
             # 如果需要縮小GUI，一次性處理
             if needs_gui_minimize:
-                self.add_status_message(self.get_text("f3_processing_gui_minimized"), "info")
+                self.status_tab.add_status_message(self.get_text("f3_processing_gui_minimized"), "info")
                 print("F3: 正在縮小GUI以避免遮擋...")
                 original_state_for_ui_check = self.root.state()
                 original_geometry_for_ui_check = self.root.geometry()
@@ -3739,7 +3526,7 @@ class HealthMonitor:
             try:
                 game_window.activate()
                 time.sleep(0.2)
-                self.add_status_message(self.get_text("f3_processing_game_window_activated"), "info")
+                self.status_tab.add_status_message(self.get_text("f3_processing_game_window_activated"), "info")
                 print("F3: 遊戲視窗已激活")
             except Exception as e:
                 print(f"F3: 激活遊戲視窗失敗: {e}")
@@ -3748,16 +3535,16 @@ class HealthMonitor:
                     pyautogui.click(game_window.left + game_window.width // 2,
                                   game_window.top + game_window.height // 2)
                     time.sleep(0.2)
-                    self.add_status_message(self.get_text("f3_processing_trying_activate"), "info")
+                    self.status_tab.add_status_message(self.get_text("f3_processing_trying_activate"), "info")
                     print("F3: 已嘗試點擊遊戲視窗")
                 except Exception as e2:
-                    self.add_status_message(self.get_text("f3_warning_cannot_activate_game_window"), "warning")
+                    self.status_tab.add_status_message(self.get_text("f3_warning_cannot_activate_game_window"), "warning")
                     print(f"F3: 點擊遊戲視窗也失敗: {e2}")
 
             # 檢查背包UI是否可見（GUI已縮小或遊戲視窗已激活，不會被遮擋）
             if not self.is_inventory_ui_visible(game_window):
                 print("F3: 背包UI未開啟，跳過清包操作")
-                self.add_status_message(self.get_text("f3_cancel_inventory_not_open"), "warning")
+                self.status_tab.add_status_message(self.get_text("f3_cancel_inventory_not_open"), "warning")
                 # 如果之前縮小了GUI，需要恢復
                 if gui_minimized_for_ui_check:
                     self.root.deiconify()
@@ -3796,21 +3583,21 @@ class HealthMonitor:
             # 檢查是否需要清空
             needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
             if needs_clearing:
-                self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
+                self.status_tab.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
                 print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
                 self.clear_inventory_item(game_window, img)
                 if self.state.inventory_clear_interrupt:
-                    self.add_status_message(self.get_text("f3_cancel_user_interrupt"), "warning")
+                    self.status_tab.add_status_message(self.get_text("f3_cancel_user_interrupt"), "warning")
                     print("F3: 清包被中斷")
                 else:
-                    self.add_status_message(self.get_text("f3_completed_inventory_cleared"), "success")
+                    self.status_tab.add_status_message(self.get_text("f3_completed_inventory_cleared"), "success")
                     print("F3: 已清空背包物品")
             else:
-                self.add_status_message("F3 執行完成 - 背包已為空狀態", "success")
+                self.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success")
                 print("F3: 背包已淨空，無需操作")
 
         except Exception as e:
-            self.add_status_message(self.get_text("f3_fail_error_occurred").format(error=str(e)), "error")
+            self.status_tab.add_status_message(self.get_text("f3_fail_error_occurred").format(error=str(e)), "error")
             print(f"F3清包錯誤: {e}")
         finally:
             # 確保中斷標誌被重置
@@ -5650,7 +5437,7 @@ class HealthMonitor:
                 if not available_positions:
                     if skipped_positions:
                         print(f" 所有剩餘物品都無法存放進倉庫（已跳過 {len(skipped_positions)} 個位置）")
-                        self.add_status_message(self.get_text("inventory_full_cannot_continue"), "warning")
+                        self.status_tab.add_status_message(self.get_text("inventory_full_cannot_continue"), "warning")
                     else:
                         print("重新辨識發現沒有需要清理的物品，結束")
                     break
@@ -5756,7 +5543,7 @@ class HealthMonitor:
                 # 如果還有物品且未達到重試次數限制，執行一次重試
                 if final_should_clear and total_processed < max_iterations:
                     print("檢測到還有剩餘物品，執行最終重試")
-                    self.add_status_message(self.get_text("f3_retry_final"), "info")
+                    self.status_tab.add_status_message(self.get_text("f3_retry_final"), "info")
 
                     # 重新擷取當前狀態作為重試的基礎
                     retry_item_positions = find_inventory_items(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
@@ -5875,7 +5662,7 @@ class HealthMonitor:
     def _on_preview_click(self, event):
         """點擊背包預覽切換格子的排除狀態"""
         if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
-            self.add_status_message("無法切換排除：請先完成背包設定（框選區域＋記錄空格顏色）", "warning")
+            self.status_tab.add_status_message("無法切換排除：請先完成背包設定（框選區域＋記錄空格顏色）", "warning")
             return
         meta = self._preview_meta
         click_x = event.x - meta['offset_x']
@@ -5892,7 +5679,7 @@ class HealthMonitor:
         else:
             self.excluded_inventory_slots.add(idx)
         self._draw_exclusion_overlay()
-        self.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
+        self.status_tab.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
         self.save_config(show_message=False)
 
     def _on_click_mode_changed(self):
@@ -6360,26 +6147,26 @@ class HealthMonitor:
         # 全域暫停檢查
         if self.state.global_pause:
             print("[STOP] 全域暫停中，跳過F5熱鍵")
-            self.add_status_message("按下 F5 - 因全域暫停模式而跳過執行", "warning")
+            self.status_tab.add_status_message("按下 F5 - 因全域暫停模式而跳過執行", "warning")
             return
 
-        self.add_status_message("按下 F5 - 執行返回藏身", "hotkey")
+        self.status_tab.add_status_message("按下 F5 - 執行返回藏身", "hotkey")
 
         try:
             # 檢查是否有設定遊戲視窗
             window_title = self.window_var.get()
             if not window_title:
                 print("F5: 未設定遊戲視窗，無法使用返回藏身功能")
-                self.add_status_message("F5 執行失敗 - 未設定遊戲視窗", "error")
+                self.status_tab.add_status_message("F5 執行失敗 - 未設定遊戲視窗", "error")
                 return
 
             # 檢查遊戲視窗是否在前台
             if not self.window_key_sender.is_game_window_foreground(window_title):
                 print(f"F5: 遊戲視窗 '{window_title}' 不在前台，跳過返回藏身操作")
-                self.add_status_message("F5 執行取消 - 遊戲視窗不在前台", "warning")
+                self.status_tab.add_status_message("F5 執行取消 - 遊戲視窗不在前台", "warning")
                 return
 
-            self.add_status_message("F5 執行中 - 發送返回藏身指令", "info")
+            self.status_tab.add_status_message("F5 執行中 - 發送返回藏身指令", "info")
             print("F5: 執行返回藏身")
 
             # 暫時阻止輸入，防止按鍵衝突
@@ -6401,11 +6188,11 @@ class HealthMonitor:
             pyautogui.press('enter')
 
             print("F5: 返回藏身指令已執行")
-            self.add_status_message(self.get_text("f5_success_hide_command_sent"), "success")
+            self.status_tab.add_status_message(self.get_text("f5_success_hide_command_sent"), "success")
 
         except Exception as e:
             print(f"F5: 返回藏身失敗: {str(e)}")
-            self.add_status_message(f"F5 執行失敗 - {str(e)}", "error")
+            self.status_tab.add_status_message(f"F5 執行失敗 - {str(e)}", "error")
 
     def f6_pickup_items(self):
         """F6 一鍵取物（非阻塞版）
@@ -6416,14 +6203,14 @@ class HealthMonitor:
             print("[STOP] 全域暫停中，跳過F6熱鍵")
             # 在主線程更新狀態訊息
             try:
-                self.root.after(0, lambda: self.add_status_message(self.get_text("f6_skip_global_pause"), "warning"))
+                self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_skip_global_pause"), "warning"))
             except Exception:
                 pass
             return
 
         # 簡短回饋（主線程）
         try:
-            self.root.after(0, lambda: self.add_status_message(self.get_text("f6_hotkey_pressed"), "hotkey"))
+            self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_hotkey_pressed"), "hotkey"))
         except Exception:
             pass
 
@@ -6434,7 +6221,7 @@ class HealthMonitor:
         if not window_title:
             print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
             try:
-                self.root.after(0, lambda: self.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
+                self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
             except Exception:
                 pass
             return
@@ -6521,7 +6308,7 @@ class HealthMonitor:
                 if not windows:
                     print("F6(worker): 找不到遊戲視窗")
                     try:
-                        self.root.after(0, lambda: self.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
+                        self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
                     except Exception:
                         pass
                     return
@@ -6544,13 +6331,13 @@ class HealthMonitor:
                 if not self.is_inventory_ui_visible(game_window):
                     print("F6(worker): 背包UI未打開，無法執行取物功能")
                     try:
-                        self.root.after(0, lambda: self.add_status_message(self.get_text("f6_cancel_inventory_ui_not_open"), "warning"))
+                        self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_cancel_inventory_ui_not_open"), "warning"))
                     except Exception:
                         pass
                     return
 
                 try:
-                    self.root.after(0, lambda: self.add_status_message(self.get_text("f6_processing_inventory_ui_check_passed"), "info"))
+                    self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_processing_inventory_ui_check_passed"), "info"))
                 except Exception:
                     pass
 
@@ -6581,7 +6368,7 @@ class HealthMonitor:
 
                     print("F6(worker): 取物完成")
                     try:
-                        self.root.after(0, lambda: self.add_status_message(self.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success"))
+                        self.root.after(0, lambda: self.status_tab.add_status_message(self.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success"))
                     except Exception:
                         pass
 
@@ -6627,7 +6414,7 @@ class HealthMonitor:
                 print(f"F6(worker): 發生例外: {e}")
                 _err_msg = str(e)
                 try:
-                    self.root.after(0, lambda: self.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
+                    self.root.after(0, lambda: self.status_tab.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
                 except Exception:
                     pass
                 # 確保 ctrl 被釋放
@@ -7043,10 +6830,10 @@ class HealthMonitor:
         runtime = end_time - self.start_time
         runtime_str = f"{runtime.days}天 {runtime.seconds//3600}小時 {(runtime.seconds%3600)//60}分鐘 {runtime.seconds%60}秒"
         print(f"應用程式運行時間: {runtime_str}")
-        self.add_status_message(f"應用程式運行時間: {runtime_str}", "info")
+        self.status_tab.add_status_message(f"應用程式運行時間: {runtime_str}", "info")
 
         # 添加關閉訊息
-        self.add_status_message("工具正在關閉，清理資源中...", "info")
+        self.status_tab.add_status_message("工具正在關閉，清理資源中...", "info")
 
         # 儲存設定
         try:
@@ -7072,7 +6859,7 @@ class HealthMonitor:
             pass
 
         self.state.monitoring = False
-        self.add_status_message(self.get_text("tool_closed_successfully"), "info")
+        self.status_tab.add_status_message(self.get_text("tool_closed_successfully"), "info")
 
         # 清理全局引用
         global _app_instance
@@ -7203,9 +6990,9 @@ class HealthMonitor:
             self.config = self.config_manager.config
 
             if success:
-                self.add_status_message(self.get_text("config_loaded_successfully"), "success")
+                self.status_tab.add_status_message(self.get_text("config_loaded_successfully"), "success")
             else:
-                self.add_status_message(self.get_text("config_file_not_found"), "info")
+                self.status_tab.add_status_message(self.get_text("config_file_not_found"), "info")
 
             self.selected_region = self.config.get('region')
             self.selected_mana_region = self.config.get('mana_region')
@@ -7424,7 +7211,7 @@ class HealthMonitor:
         except Exception as e:
             error_msg = f"?????????: {e}"
             print(f"[ERROR] {error_msg}")
-            self.add_status_message(f"??????- {str(e)}", "error")
+            self.status_tab.add_status_message(f"??????- {str(e)}", "error")
             self.config = {}
 
     def save_config(self, show_message=True):
@@ -7559,11 +7346,11 @@ class HealthMonitor:
             # 儲存到檔案
             self.config_manager.save_config(self.config)
 
-            self.add_status_message("設定檔案儲存成功", "success")
+            self.status_tab.add_status_message("設定檔案儲存成功", "success")
             if show_message:
                 messagebox.showinfo("成功", "所有紀錄都已儲存")
         except Exception as e:
-            self.add_status_message(f"設定檔案儲存失敗 - {str(e)}", "error")
+            self.status_tab.add_status_message(f"設定檔案儲存失敗 - {str(e)}", "error")
             messagebox.showerror("錯誤", f"儲存失敗: {str(e)}")
 
     def check_inventory_ui_exists(self, game_window):
@@ -8048,7 +7835,7 @@ class HealthMonitor:
         self.combo_status_label.config(text=self.get_text("combo_running"), foreground="green")
 
         enabled_count = len(enabled_sets)
-        self.add_status_message(self.get_text("combo_system_started").format(count=enabled_count), "success")
+        self.status_tab.add_status_message(self.get_text("combo_system_started").format(count=enabled_count), "success")
         print("技能連段系統已啟動")
 
     def stop_combo_system(self):
@@ -8076,7 +7863,7 @@ class HealthMonitor:
         self.combo_stop_btn.config(state=tk.DISABLED)
         self.combo_status_label.config(text=self.get_text("combo_stopped"), foreground="red")
 
-        self.add_status_message("技能連擊系統已停止", "info")
+        self.status_tab.add_status_message("技能連擊系統已停止", "info")
         print("[STOP] 連段系統已完全停止")
 
     def restart_combo_system_silently(self):
@@ -8161,13 +7948,13 @@ class HealthMonitor:
         valid_keys = [key for key in combo_keys if key and key != 'off' and key != '']
 
         # 詳細的連段資訊
-        self.add_status_message(self.get_text("combo_trigger_detected").format(
+        self.status_tab.add_status_message(self.get_text("combo_trigger_detected").format(
             set=set_index + 1, key=trigger_key, count=len(valid_keys)), "monitor")
 
         # 添加技能序列資訊
         if valid_keys:
             skills_text = " | ".join([f"{i+1}:{key}" for i, key in enumerate(valid_keys)])
-            self.add_status_message(self.get_text("combo_skill_sequence").format(sequence=skills_text), "monitor")
+            self.status_tab.add_status_message(self.get_text("combo_skill_sequence").format(sequence=skills_text), "monitor")
         print(f"執行連段套組 {set_index + 1}: {valid_keys}")
 
         # 處理觸發延遲（如果有設定）
@@ -8176,7 +7963,7 @@ class HealthMonitor:
                 delay_ms = int(trigger_delay)
                 if delay_ms > 0:
                     delay = delay_ms / 1000.0  # 轉換為秒
-                    self.add_status_message(self.get_text("combo_trigger_delay").format(delay=delay_ms), "info")
+                    self.status_tab.add_status_message(self.get_text("combo_trigger_delay").format(delay=delay_ms), "info")
                     print(f"  觸發延遲: {delay_ms}ms")
                     time.sleep(delay)
             except (ValueError, TypeError):
@@ -8188,7 +7975,7 @@ class HealthMonitor:
             # 跳過off或空值的技能
             if not key or key == 'off' or key == '' or not self.is_combo_running():
                 if not self.is_combo_running():
-                    self.add_status_message(f"⏹️ 連擊套組 {set_index + 1} 被中斷", "warning")
+                    self.status_tab.add_status_message(f"⏹️ 連擊套組 {set_index + 1} 被中斷", "warning")
                     print(f"連段套組 {set_index + 1} 被中斷")
                     return
                 continue
@@ -8222,7 +8009,7 @@ class HealthMonitor:
                             # 釋放Shift
                             SendMessageW(game_hwnd, WM_KEYUP, shift_vk, 0)
 
-                            self.add_status_message(self.get_text("combo_skill_execution").format(
+                            self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                                 index=i+1, skill=f"Shift+{key}", type=self.get_text("stationary_attack"), method=self.get_text("selective_send")), "success")
                             print(f"  原地攻擊模式: Shift+{key} (發送到遊戲窗口)")
                         else:
@@ -8230,7 +8017,7 @@ class HealthMonitor:
                             pyautogui.keyDown('shift')
                             pyautogui.press(key.lower())
                             pyautogui.keyUp('shift')
-                            self.add_status_message(self.get_text("combo_skill_execution").format(
+                            self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                                 index=i+1, skill=f"Shift+{key}", type=self.get_text("stationary_attack"), method=self.get_text("global_send")), "warning")
                             print(f"  原地攻擊模式: Shift+{key} (全局按鍵)")
                     else:
@@ -8238,13 +8025,13 @@ class HealthMonitor:
                         vk_code = self.window_key_sender.map_key_to_vk_code(key.lower())
                         if vk_code:
                             self.window_key_sender.send_key_to_window_combo(game_hwnd, vk_code)  # 使用技能連段專用方法
-                            self.add_status_message(self.get_text("combo_skill_execution").format(
+                            self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                                 index=i+1, skill=key, type=self.get_text("normal_attack"), method=self.get_text("selective_send")), "success")
                             print(f"  [SKILL] 技能連段選擇性按下技能鍵: {key} (發送到遊戲窗口)")
                         else:
                             # 如果無法映射鍵碼，回退到全局按鍵
                             pyautogui.press(key.lower())
-                            self.add_status_message(self.get_text("combo_skill_execution").format(
+                            self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                                 index=i+1, skill=key, type=self.get_text("normal_attack"), method=self.get_text("global_send")), "warning")
                             print(f"  [SKILL] 技能連段全局按下技能鍵: {key} (鍵碼映射失敗)")
                 else:
@@ -8253,16 +8040,16 @@ class HealthMonitor:
                         pyautogui.keyDown('shift')
                         pyautogui.press(key.lower())
                         pyautogui.keyUp('shift')
-                        self.add_status_message(self.get_text("combo_skill_execution").format(
+                        self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                             index=i+1, skill=f"Shift+{key}", type=self.get_text("stationary_attack"), method=self.get_text("global_send")), "warning")
                         print(f"  原地攻擊模式: Shift+{key} (全局按鍵)")
                     else:
                         pyautogui.press(key.lower())
-                        self.add_status_message(self.get_text("combo_skill_execution").format(
+                        self.status_tab.add_status_message(self.get_text("combo_skill_execution").format(
                             index=i+1, skill=key, type=self.get_text("normal_attack"), method=self.get_text("global_send")), "warning")
                         print(f"  全局按下技能鍵: {key} (無法獲取窗口句柄)")
             except Exception as e:
-                self.add_status_message(f"❌ 技能 {i+1}: {key} 執行失敗 - {str(e)}", "error")
+                self.status_tab.add_status_message(f"❌ 技能 {i+1}: {key} 執行失敗 - {str(e)}", "error")
                 print(f"  按鍵模擬失敗 {key}: {e}")
                 continue
 
@@ -8272,7 +8059,7 @@ class HealthMonitor:
                     delay_ms = int(delays[i])
                     if delay_ms > 0:
                         delay = delay_ms / 1000.0  # 轉換為秒
-                        self.add_status_message(self.get_text("combo_skill_delay").format(delay=delay_ms), "info")
+                        self.status_tab.add_status_message(self.get_text("combo_skill_delay").format(delay=delay_ms), "info")
                         time.sleep(delay)
                         print(f"  延遲: {delay_ms}ms")
                 except (ValueError, TypeError):
@@ -8282,7 +8069,7 @@ class HealthMonitor:
         print(f"連段套組 {set_index + 1} 執行完成")
 
         # 詳細的完成訊息
-        self.add_status_message(self.get_text("combo_completed").format(
+        self.status_tab.add_status_message(self.get_text("combo_completed").format(
             set=set_index + 1, key=trigger_key, count=len(valid_keys)), "success")
 
     def save_combo_config(self):
@@ -8573,7 +8360,7 @@ class HealthMonitor:
                         except Exception as e:
                             print(f"UI更新失敗: {e}")
 
-                    self.schedule_ui_callback(update_ui)
+                    self.status_tab.schedule_ui_callback(update_ui)
 
                 else:
                     # 連接失敗時的UI更新
@@ -8585,7 +8372,7 @@ class HealthMonitor:
                         except Exception as e:
                             print(f"錯誤UI更新失敗: {e}")
 
-                    self.schedule_ui_callback(update_error_ui)
+                    self.status_tab.schedule_ui_callback(update_error_ui)
 
             except requests.exceptions.Timeout:
                 def update_timeout_ui():
@@ -8596,7 +8383,7 @@ class HealthMonitor:
                     except Exception as e:
                         print(f"超時UI更新失敗: {e}")
 
-                self.schedule_ui_callback(update_timeout_ui)
+                self.status_tab.schedule_ui_callback(update_timeout_ui)
 
             except requests.exceptions.ConnectionError:
                 def update_connection_ui():
@@ -8607,7 +8394,7 @@ class HealthMonitor:
                     except Exception as e:
                         print(f"連接UI更新失敗: {e}")
 
-                self.schedule_ui_callback(update_connection_ui)
+                self.status_tab.schedule_ui_callback(update_connection_ui)
 
             except Exception as e:
                 _err_msg = str(e)
@@ -8619,7 +8406,7 @@ class HealthMonitor:
                     except Exception as e2:
                         print(f"異常UI更新失敗: {e2}")
 
-                self.schedule_ui_callback(update_exception_ui)
+                self.status_tab.schedule_ui_callback(update_exception_ui)
 
         # 在後台線程中執行檢查
         threading.Thread(target=_silent_check, daemon=True).start()
