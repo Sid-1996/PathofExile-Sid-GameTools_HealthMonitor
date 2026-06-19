@@ -53,6 +53,18 @@ from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
+from monitor_analyzer import (
+    analyze_health,
+    is_health_color,
+    get_health_color_ratio,
+    analyze_mana,
+    is_mana_color,
+    get_mana_color_ratio,
+    get_main_color,
+    check_triggers,
+    trigger_actions,
+    interruptible_sleep,
+)
 
 # 版本資訊
 CURRENT_VERSION = f"v{__version__}"
@@ -3027,12 +3039,6 @@ class HealthMonitor:
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
 
-    def _interruptible_sleep(self, duration):
-        """可中斷的睡眠函數，能夠快速響應停止信號"""
-        start_time = time.time()
-        while self.is_monitoring() and (time.time() - start_time) < duration:
-            time.sleep(0.01)  # 10ms的小睡眠，允許快速響應停止
-
     def monitor_health(self):
         with _mss_singleton as sct:
             while self.is_monitoring():
@@ -3046,7 +3052,7 @@ class HealthMonitor:
                     if not windows:
                         self.update_status("--", "--", "視窗未找到", "")
                         self.add_status_message(self.get_text("game_window_closed"), "warning")
-                        self._interruptible_sleep(1.0)
+                        interruptible_sleep(1.0, self.is_monitoring)
                         continue
 
                     window = windows[0]
@@ -3063,7 +3069,7 @@ class HealthMonitor:
                             self.add_status_message(self.get_text(msg_key), "warning")
                             self.root.after(0, self._show_health_preview_placeholder)
                             self.root.after(0, self._show_mana_preview_placeholder)
-                        self._interruptible_sleep(0.5)
+                        interruptible_sleep(0.5, self.is_monitoring)
                         continue
                     if self._preview_placeholder_shown:
                         self._preview_placeholder_shown = False
@@ -3082,8 +3088,13 @@ class HealthMonitor:
                     img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                     # 分析血量
-                    health_percent = self.analyze_health(img)
-                    main_color = self.get_main_color(img)
+                    health_percent = analyze_health(
+                        img,
+                        lambda seg: is_health_color(seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min, self.health_threshold),
+                        lambda seg: get_health_color_ratio(seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min),
+                        self.health_threshold,
+                    )
+                    main_color = get_main_color(img)
 
                     # 分析魔力（如果有設定魔力區域）
                     mana_percent = "--"
@@ -3102,7 +3113,7 @@ class HealthMonitor:
                             mana_img = cv2.cvtColor(mana_img, cv2.COLOR_BGRA2BGR)
 
                             # 分析魔力
-                            mana_percent = self.analyze_mana(mana_img)
+                            mana_percent = analyze_mana(mana_img, is_mana_color, get_mana_color_ratio)
 
                             # 動態更新魔力預覽圖片
                             self.update_live_mana_preview(mana_img, mana_percent)
@@ -3112,25 +3123,46 @@ class HealthMonitor:
 
                     # 更新狀態
                     mana_value = int(mana_percent) if mana_percent != "--" else None
-                    self.update_status(f"{health_percent}%", f"{mana_percent}%", main_color, self.check_triggers(health_percent, mana_value))
+                    self.update_status(
+                        f"{health_percent}%",
+                        f"{mana_percent}%",
+                        main_color,
+                        check_triggers(
+                            health_percent, mana_value,
+                            self.config, self.last_trigger_times,
+                            self.get_text, self.is_interface_ui_visible,
+                            self.window_var.get(),
+                            getattr(self, 'interface_ui_region', None),
+                            getattr(self, 'interface_ui_screenshot', None),
+                        ),
+                    )
 
                     # 動態更新血量預覽圖片
                     self.update_live_preview(img, health_percent)
 
                     # 觸發相應的動作
-                    self.trigger_actions(health_percent, mana_value)
+                    trigger_actions(
+                        health_percent, mana_value,
+                        self.config, self.last_trigger_times,
+                        self.multi_trigger_var.get(),
+                        self.add_status_message, self.get_text,
+                        self.is_interface_ui_visible, self.press_key_sequence,
+                        self.window_var.get(),
+                        getattr(self, 'interface_ui_region', None),
+                        getattr(self, 'interface_ui_screenshot', None),
+                    )
 
                     # 使用選擇的檢查頻率
                     try:
                         interval_ms = int(self.monitor_interval_var.get())
-                        self._interruptible_sleep(interval_ms / 1000.0)  # 轉換為秒
+                        interruptible_sleep(interval_ms / 1000.0, self.is_monitoring)  # 轉換為秒
                     except (ValueError, AttributeError):
-                        self._interruptible_sleep(0.1)  # 預設100ms
+                        interruptible_sleep(0.1, self.is_monitoring)  # 預設100ms
 
                 except Exception as e:
                     print(f"監控錯誤: {e}")
                     self.update_status("--", "--", "--", f"錯誤: {str(e)}")
-                    self._interruptible_sleep(1)
+                    interruptible_sleep(1, self.is_monitoring)
 
     def update_live_preview(self, img, health_percent):
         """動態更新預覽圖片，減少更新頻率以避免閃爍"""
@@ -3190,393 +3222,6 @@ class HealthMonitor:
 
         except Exception as e:
             print(f"更新預覽圖片失敗: {e}")
-
-            core_end = int(height * 0.7)
-            core_segment = img[core_start:core_end, :]
-            core_ratio = self.get_health_color_ratio(core_segment)
-
-            # 多重條件判斷滿血
-            is_full_blood = False
-
-            # 條件1：下半部分血量比例很高
-            if bottom_ratio > (self.health_threshold * 0.6):
-                is_full_blood = True
-                debug_info.append(f"滿血檢測1：下半部血量比例 {bottom_ratio:.3f} > 0.6閾值")
-
-            # 條件2：核心區域表現良好且檢測點很多
-            elif core_ratio > (self.health_threshold * 0.5) and health_count >= 16:
-                is_full_blood = True
-                debug_info.append(f"滿血檢測2：核心區域 {core_ratio:.3f} > 0.5閾值，{health_count}個檢測點有血量")
-
-            # 條件3：所有檢測點都有血量
-            elif health_count == 18:
-                is_full_blood = True
-                debug_info.append("滿血檢測3：所有18個檢測點都有血量")
-
-            # 應用滿血修正
-            if is_full_blood:
-                health_count = 18  # 18個檢測點都滿血
-
-        result = (health_count / 18) * 100  # 轉換為百分比
-
-        # 在控制台輸出調試信息
-        if health_count >= 6:  # 只在血量較高時輸出調試信息
-            print(f"血量分析結果: {result:.1f}%")
-            for info in debug_info:
-                print(info)
-
-        return result
-
-    def is_health_color(self, segment):
-        # 轉換為HSV
-        hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
-
-        # 紅色範圍 (考慮色環) - 提高飽和度和亮度閾值以排除生命藥劑特效
-        # 真實血量：高飽和度(120+)、高亮度(100+)的鮮豔紅色
-        # 藥劑特效：低飽和度、低亮度的暗紅色，應被排除
-        lower_red1 = np.array([0, self.red_saturation_min, self.red_value_min])
-        upper_red1 = np.array([self.red_h_range, 255, 255])
-        lower_red2 = np.array([170, self.red_saturation_min, self.red_value_min])
-        upper_red2 = np.array([180, 255, 255])
-
-        # 綠色範圍 - 也提高品質要求
-        lower_green = np.array([self.green_h_range, self.green_saturation_min, self.green_value_min])
-        upper_green = np.array([self.green_h_range + 40, 255, 255])
-
-        # 檢查像素比例
-        red_mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        green_mask = cv2.inRange(hsv, lower_green, upper_green)
-
-        red_pixels = np.count_nonzero(red_mask1 | red_mask2)
-        green_pixels = np.count_nonzero(green_mask)
-        total_pixels = segment.shape[0] * segment.shape[1]
-
-        health_ratio = (red_pixels + green_pixels) / total_pixels
-
-        return health_ratio > self.health_threshold
-
-    def get_health_color_ratio(self, segment):
-        """獲取分段中血量顏色的比例，用於精確判斷"""
-        # 轉換為HSV
-        hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
-
-        # 紅色範圍 (考慮色環) - 使用與is_health_color相同的高品質閾值
-        lower_red1 = np.array([0, self.red_saturation_min, self.red_value_min])
-        upper_red1 = np.array([self.red_h_range, 255, 255])
-        lower_red2 = np.array([170, self.red_saturation_min, self.red_value_min])
-        upper_red2 = np.array([180, 255, 255])
-
-        # 綠色範圍 - 同樣提高品質要求
-        lower_green = np.array([self.green_h_range, self.green_saturation_min, self.green_value_min])
-        upper_green = np.array([self.green_h_range + 40, 255, 255])
-
-        # 檢查像素比例
-        red_mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        green_mask = cv2.inRange(hsv, lower_green, upper_green)
-
-        red_pixels = np.count_nonzero(red_mask1 | red_mask2)
-        green_pixels = np.count_nonzero(green_mask)
-        total_pixels = segment.shape[0] * segment.shape[1]
-
-        health_ratio = (red_pixels + green_pixels) / total_pixels
-        return health_ratio
-
-    def analyze_mana(self, img):
-        """分析魔力條，使用18個等間隔位置檢測以提高精度"""
-        height = img.shape[0]
-
-        # 定義18個等間隔檢測位置的百分比（從上到下：95%, 90%, 85%, ..., 5%）
-        detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
-
-        mana_count = 0
-        debug_info = []
-
-        # 在每個檢測位置附近取樣檢測
-        for i, pos_percent in enumerate(detection_positions):
-            # 計算檢測位置的Y坐標
-            y_center = int(height * (1 - pos_percent))  # 從上往下計算
-
-            # 在檢測位置附近取一個小的區域（垂直5像素，水平全寬）
-            sample_height = 5
-            y_start = max(0, y_center - sample_height // 2)
-            y_end = min(height, y_center + sample_height // 2)
-
-            segment = img[y_start:y_end, :]
-
-            # 檢查是否為魔力顏色
-            is_mana = self.is_mana_color(segment)
-
-            debug_info.append(f"魔力檢測點{i+1} ({int(pos_percent*100)}%): Y範圍[{y_start}-{y_end}], 有魔力色彩: {is_mana}")
-
-            if is_mana:
-                mana_count += 1
-
-        # 改進滿魔力檢測邏輯
-        if mana_count >= 16:  # 至少16個檢測點有魔力
-            # 檢查下半部分區域的整體魔力比例
-            bottom_half_start = height // 2
-            bottom_segment = img[bottom_half_start:height, :]
-            bottom_ratio = self.get_mana_color_ratio(bottom_segment)
-
-            # 檢查核心區域（30%-70%）
-            core_start = int(height * 0.3)
-            core_end = int(height * 0.7)
-            core_segment = img[core_start:core_end, :]
-            core_ratio = self.get_mana_color_ratio(core_segment)
-
-            # 多重條件判斷滿魔力
-            is_full_mana = False
-
-            # 條件1：下半部分魔力比例很高
-            if bottom_ratio > 0.4:  # 魔力閾值可能與血量不同
-                is_full_mana = True
-                debug_info.append(f"滿魔力檢測1：下半部魔力比例 {bottom_ratio:.3f} > 0.4閾值")
-
-            # 條件2：核心區域表現良好且檢測點很多
-            elif core_ratio > 0.3 and mana_count >= 16:
-                is_full_mana = True
-                debug_info.append(f"滿魔力檢測2：核心區域 {core_ratio:.3f} > 0.3閾值，{mana_count}個檢測點有魔力")
-
-            # 條件3：所有檢測點都有魔力
-            elif mana_count == 18:
-                is_full_mana = True
-                debug_info.append("滿魔力檢測3：所有18個檢測點都有魔力")
-
-            # 應用滿魔力修正
-            if is_full_mana:
-                mana_count = 18  # 18個檢測點都滿魔力
-
-        result = (mana_count / 18) * 100  # 轉換為百分比
-
-        # 在控制台輸出調試信息
-        if mana_count >= 6:  # 只在魔力較高時輸出調試信息
-            print(f"魔力分析結果: {result:.1f}%")
-            for info in debug_info:
-                print(info)
-
-        return result
-
-    def is_mana_color(self, segment):
-        """檢查區段是否為魔力顏色（藍色）"""
-        # 轉換為HSV
-        hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
-
-        # 藍色範圍
-        lower_blue = np.array([90, 50, 50])
-        upper_blue = np.array([130, 255, 255])
-
-        # 檢查像素比例
-        blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-        blue_pixels = np.count_nonzero(blue_mask)
-        total_pixels = segment.shape[0] * segment.shape[1]
-
-        mana_ratio = blue_pixels / total_pixels
-        return mana_ratio > 0.3  # 30%以上的像素為魔力顏色
-
-    def get_mana_color_ratio(self, segment):
-        """獲取分段中魔力顏色的比例，用於精確判斷"""
-        # 轉換為HSV
-        hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
-
-        # 藍色範圍
-        lower_blue = np.array([90, 50, 50])
-        upper_blue = np.array([130, 255, 255])
-
-        # 檢查像素比例
-        blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-        blue_pixels = np.count_nonzero(blue_mask)
-        total_pixels = segment.shape[0] * segment.shape[1]
-
-        mana_ratio = blue_pixels / total_pixels
-        return mana_ratio
-
-    def get_main_color(self, img):
-        # 獲取主要顏色
-        pixels = img.reshape(-1, 3)
-        pixels = np.float32(pixels)
-
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        K = 3
-        _, labels, centers = cv2.kmeans(pixels, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-        # 轉換為RGB
-        centers = np.uint8(centers)
-        dominant_color = centers[np.argmax(np.bincount(labels.flatten()))]
-
-        return f"RGB({dominant_color[2]}, {dominant_color[1]}, {dominant_color[0]})"
-
-    def check_triggers(self, health_percent, mana_percent=None):
-        """檢查當前應該觸發哪個設定（優先顯示最低百分比的設定）"""
-        # === 介面UI戰鬥狀態檢查 ===
-        # 如果設定了介面UI區域，檢查是否在戰鬥狀態
-        if hasattr(self, 'interface_ui_region') and self.interface_ui_region and hasattr(self, 'interface_ui_screenshot') and self.interface_ui_screenshot is not None:
-            try:
-                # 獲取遊戲視窗
-                windows = gw.getWindowsWithTitle(self.window_var.get())
-                if windows:
-                    game_window = windows[0]
-                    # 檢查介面UI是否可見（是否在戰鬥狀態）
-                    if not self.is_interface_ui_visible(game_window):
-                        return self.get_text("interface_ui_not_detected")
-                else:
-                    return self.get_text("game_window_not_found_for_ui_check")
-            except Exception as e:
-                return f"{self.get_text('interface_ui_check_failed')}: {str(e)}"
-
-        # 分離HP和MP設定
-        health_settings = []
-        mana_settings = []
-
-        for setting in self.config.get('settings', []):
-            setting_type = setting.get('type', 'HP')
-            if setting_type == 'HP':
-                health_settings.append(setting)
-            else:
-                mana_settings.append(setting)
-
-        # 按照百分比從低到高排序（低百分比優先）
-        health_settings.sort(key=lambda x: x['percent'])
-        mana_settings.sort(key=lambda x: x['percent'])
-
-        # 檢查血量設定
-        if health_settings:
-            for setting in health_settings:
-                if health_percent <= setting['percent']:
-                    # 檢查冷卻狀態
-                    cooldown = setting.get('cooldown', 500)
-                    last_trigger = self.last_trigger_times.get(setting['percent'], 0)
-                    current_time = time.time()
-
-                    if current_time - last_trigger >= cooldown / 1000:
-                        return self.get_text("trigger_health").format(percent=setting['percent'], key=setting['key'])
-                    else:
-                        remaining = cooldown - (current_time - last_trigger) * 1000
-                        return self.get_text("cooldown_health").format(percent=setting['percent'], key=setting['key'], remaining=f"{remaining:.0f}")
-
-        # 檢查魔力設定
-        if mana_percent is not None and mana_settings:
-            for setting in mana_settings:
-                if mana_percent <= setting['percent']:
-                    # 檢查冷卻狀態
-                    cooldown = setting.get('cooldown', 500)
-                    last_trigger = self.last_trigger_times.get(f"mana_{setting['percent']}", 0)
-                    current_time = time.time()
-
-                    if current_time - last_trigger >= cooldown / 1000:
-                        return self.get_text("trigger_mana").format(percent=setting['percent'], key=setting['key'])
-                    else:
-                        remaining = cooldown - (current_time - last_trigger) * 1000
-                        return self.get_text("cooldown_mana").format(percent=setting['percent'], key=setting['key'], remaining=f"{remaining:.0f}")
-
-        return self.get_text("normal")
-
-    def trigger_actions(self, health_percent, mana_percent=None):
-        """根據血量/魔力百分比觸發對應的快捷鍵動作，優先處理低百分比設定"""
-
-        # === 介面UI戰鬥狀態檢查 ===
-        # 如果設定了介面UI區域，檢查是否在戰鬥狀態
-        if hasattr(self, 'interface_ui_region') and self.interface_ui_region and hasattr(self, 'interface_ui_screenshot') and self.interface_ui_screenshot is not None:
-            try:
-                # 獲取遊戲視窗
-                windows = gw.getWindowsWithTitle(self.window_var.get())
-                if windows:
-                    game_window = windows[0]
-                    # 檢查介面UI是否可見（是否在戰鬥狀態）
-                    if not self.is_interface_ui_visible(game_window):
-                        print(f"血魔檢查: 介面UI不存在，不在戰鬥狀態，跳過治療動作 (血量:{health_percent}%, 魔力:{mana_percent}%)")
-                        return  # 不執行任何治療動作
-                    else:
-                        print("血魔檢查: 介面UI存在，正在戰鬥狀態，繼續執行治療動作")
-                else:
-                    print("血魔檢查: 找不到遊戲視窗，跳過介面UI檢查")
-            except Exception as e:
-                print(f"血魔檢查: 介面UI檢查失敗: {e}，繼續執行治療動作")
-        else:
-            print("血魔檢查: 未設定介面UI區域，跳過戰鬥狀態檢查")
-
-        # 分離HP和MP設定
-        health_settings = []
-        mana_settings = []
-
-        for setting in self.config.get('settings', []):
-            setting_type = setting.get('type', 'HP')
-            if setting_type == 'HP':
-                health_settings.append(setting)
-            else:
-                mana_settings.append(setting)
-
-        # 按照百分比從低到高排序（低百分比優先）
-        health_settings.sort(key=lambda x: x['percent'])
-        mana_settings.sort(key=lambda x: x['percent'])
-
-        # 處理血量設定
-        if health_settings:
-            for setting in health_settings:
-                if health_percent <= setting['percent']:
-                    # 檢查冷卻時間
-                    cooldown = setting.get('cooldown', 500)  # 預設500ms
-                    last_trigger = self.last_trigger_times.get(setting['percent'], 0)
-                    current_time = time.time()
-                    time_diff = current_time - last_trigger
-
-                    print(f" 血量觸發檢查: {health_percent}% <= {setting['percent']}% (設定閾值)")
-                    print(f" 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown/1000:.1f}秒")
-
-                    if time_diff >= cooldown / 1000:  # 轉換為秒
-                        try:
-                            print(f"[OK] 準備觸發: 血量{setting['percent']}%, 按鍵{setting['key']}")
-                            # 添加狀態訊息
-                            self.add_status_message(self.get_text("health_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
-                            self.press_key_sequence(setting['key'], setting['percent'])
-                            print(f" 已完成按鍵序列: {setting['key']}")
-                        except Exception as e:
-                            print(f"[ERROR] 按鍵觸發失敗: {e}")
-                            pass
-                    else:
-                        remaining = cooldown - (time_diff) * 1000
-                        print(f"冷卻中: 還需等待 {remaining:.0f}ms")
-
-                    # 找到第一個匹配的設定後就停止，避免執行更高百分比的設定
-                    # 但是如果啟用了多重觸發，則繼續檢查其他設定
-                    if not self.multi_trigger_var.get():
-                        print(" 單一觸發模式: 停止檢查其他設定")
-                        break
-                    else:
-                        print(" 多重觸發模式: 繼續檢查其他設定")
-                        pass
-                else:
-                    print(f" 血量未達觸發條件: {health_percent}% > {setting['percent']}%")
-                    pass
-
-        # 處理魔力設定
-        if mana_percent is not None and mana_settings:
-            for setting in mana_settings:
-                if mana_percent <= setting['percent']:
-                    # 檢查冷卻時間
-                    cooldown = setting.get('cooldown', 500)  # 預設500ms
-                    last_trigger = self.last_trigger_times.get(f"mana_{setting['percent']}", 0)
-                    current_time = time.time()
-
-                    if current_time - last_trigger >= cooldown / 1000:  # 轉換為秒
-                        try:
-                            # 添加狀態訊息
-                            self.add_status_message(self.get_text("mana_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
-                            self.press_key_sequence(setting['key'], f"mana_{setting['percent']}")
-                        except Exception:
-                            pass
-                    else:
-                        remaining = cooldown - (current_time - last_trigger) * 1000
-
-                    # 找到第一個匹配的設定後就停止，避免執行更高百分比的設定
-                    # 但是如果啟用了多重觸發，則繼續檢查其他設定
-                    if not self.multi_trigger_var.get():
-                        break
-                    else:
-                        pass
-                else:
-                    pass
 
     def press_key_sequence(self, key_sequence, health_percent=None):
         """處理多鍵序列，按順序按下每個鍵 - 血魔監控專用"""
