@@ -5,22 +5,7 @@ import json
 import os
 import threading
 import time
-import mss
 
-# mss 單例：所有截圖操作共用一個 _mss_singleton 實例，避免重複初始化 DXGI/DirectX 後端
-class _MssSingleton:
-    _instance = None
-    _lock = threading.Lock()
-    def __enter__(self):
-        if self._instance is None:
-            with self._lock:
-                if self._instance is None:
-                    self._instance = mss.mss()
-        return self._instance
-    def __exit__(self, *args):
-        pass
-
-_mss_singleton = _MssSingleton()
 
 try:
     import cv2
@@ -65,6 +50,8 @@ from monitor_analyzer import (
     trigger_actions,
     interruptible_sleep,
 )
+from capture_utils import _mss_singleton, capture_region_to_pil, capture_region_to_cv2
+from capture_utils import build_game_window_monitor, save_screenshot, load_screenshot_from_file
 
 # 版本資訊
 CURRENT_VERSION = f"v{__version__}"
@@ -2492,34 +2479,21 @@ class HealthMonitor:
             return
 
         try:
-            # 獲取遊戲視窗位置
-            window = gw.getWindowsWithTitle(self.window_var.get())[0]
-            x, y, w, h = self.selected_mana_region
+            monitor = build_game_window_monitor(self.window_var.get(), self.selected_mana_region)
+            img = capture_region_to_pil(monitor)
+            img.thumbnail((200, 200))
 
-            # 計算絕對螢幕座標
-            abs_x = window.left + x
-            abs_y = window.top + y
+            save_screenshot(img, "health_monitor_mana_preview.png")
 
-            with _mss_singleton as sct:
-                monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
-                screenshot = sct.grab(monitor)
-                img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-                img.thumbnail((200, 200))
+            # 繪製刻度線
+            draw_scale_lines(img)
 
-                # 儲存魔力預覽圖片
-                mana_preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_mana_preview.png")
-                os.makedirs(os.path.dirname(mana_preview_path), exist_ok=True)
-                img.save(mana_preview_path)
-
-                # 繪製刻度線
-                draw_scale_lines(img)
-
-                # 等比例縮放圖片到合適尺寸
-                resized_img = resize_and_center_image(img, self.preview_size)
-                self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-                if hasattr(self, 'mana_preview_label'):
-                    self.mana_preview_label.config(image=self.mana_preview_image, text="")
-                print("魔力預覽更新成功")
+            # 等比例縮放圖片到合適尺寸
+            resized_img = resize_and_center_image(img, self.preview_size)
+            self.mana_preview_image = ImageTk.PhotoImage(resized_img)
+            if hasattr(self, 'mana_preview_label'):
+                self.mana_preview_label.config(image=self.mana_preview_image, text="")
+            print("魔力預覽更新成功")
         except Exception as e:
             print(f"魔力預覽擷取失敗: {e}")
             if hasattr(self, 'mana_preview_label'):
@@ -2535,34 +2509,21 @@ class HealthMonitor:
             return
 
         try:
-            # 獲取遊戲視窗位置
-            window = gw.getWindowsWithTitle(self.window_var.get())[0]
-            x, y, w, h = self.selected_region
+            monitor = build_game_window_monitor(self.window_var.get(), self.selected_region)
+            img = capture_region_to_pil(monitor)
+            img.thumbnail((200, 200))
 
-            # 計算絕對螢幕座標
-            abs_x = window.left + x
-            abs_y = window.top + y
+            save_screenshot(img, "health_monitor_preview.png")
 
-            with _mss_singleton as sct:
-                monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
-                screenshot = sct.grab(monitor)
-                img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-                img.thumbnail((200, 200))
+            # 繪製刻度線
+            draw_scale_lines(img)
 
-                # 儲存預覽圖片到檔案
-                preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_preview.png")
-                os.makedirs(os.path.dirname(preview_path), exist_ok=True)
-                img.save(preview_path)
-
-                # 繪製刻度線
-                draw_scale_lines(img)
-
-                # 等比例縮放圖片到合適尺寸
-                resized_img = resize_and_center_image(img, self.preview_size)
-                self.preview_image = ImageTk.PhotoImage(resized_img)
-                if hasattr(self, 'preview_label'):
-                    self.preview_label.config(image=self.preview_image, text="")
-                print("血量預覽更新成功")
+            # 等比例縮放圖片到合適尺寸
+            resized_img = resize_and_center_image(img, self.preview_size)
+            self.preview_image = ImageTk.PhotoImage(resized_img)
+            if hasattr(self, 'preview_label'):
+                self.preview_label.config(image=self.preview_image, text="")
+            print("血量預覽更新成功")
         except Exception as e:
             print(f"預覽擷取失敗: {e}")
             if hasattr(self, 'preview_label'):
@@ -2579,36 +2540,27 @@ class HealthMonitor:
                 return
 
             try:
-                window = gw.getWindowsWithTitle(self.window_var.get())[0]
-                x, y, w, h = self.selected_region
-                abs_x = window.left + x
-                abs_y = window.top + y
+                monitor = build_game_window_monitor(self.window_var.get(), self.selected_region)
+                img = capture_region_to_pil(monitor)
+                img.thumbnail((200, 200))
 
-                with _mss_singleton as sct:
-                    monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
-                    screenshot = sct.grab(monitor)
-                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-                    img.thumbnail((200, 200))
+                save_screenshot(img, "health_monitor_preview.png")
 
-                    preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_preview.png")
-                    os.makedirs(os.path.dirname(preview_path), exist_ok=True)
-                    img.save(preview_path)
+                draw_scale_lines(img)
+                resized_img = resize_and_center_image(img, self.preview_size)
 
-                    draw_scale_lines(img)
-                    resized_img = resize_and_center_image(img, self.preview_size)
+                def _update_preview():
+                    try:
+                        self.preview_image = ImageTk.PhotoImage(resized_img)
+                        if hasattr(self, 'preview_label'):
+                            self.preview_label.config(image=self.preview_image, text="")
+                        print("血量預覽更新成功")
+                    except Exception as e:
+                        print(f"血量預覽更新失敗: {e}")
+                        if hasattr(self, 'preview_label'):
+                            self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
 
-                    def _update_preview():
-                        try:
-                            self.preview_image = ImageTk.PhotoImage(resized_img)
-                            if hasattr(self, 'preview_label'):
-                                self.preview_label.config(image=self.preview_image, text="")
-                            print("血量預覽更新成功")
-                        except Exception as e:
-                            print(f"血量預覽更新失敗: {e}")
-                            if hasattr(self, 'preview_label'):
-                                self.preview_label.config(text=f"預覽擷取失敗\n{str(e)}", image="")
-
-                    self.root.after(0, _update_preview)
+                self.root.after(0, _update_preview)
             except Exception as e:
                 print(f"預覽擷取失敗: {e}")
                 _err_msg = str(e)
@@ -2660,36 +2612,27 @@ class HealthMonitor:
                 return
 
             try:
-                window = gw.getWindowsWithTitle(self.window_var.get())[0]
-                x, y, w, h = self.selected_mana_region
-                abs_x = window.left + x
-                abs_y = window.top + y
+                monitor = build_game_window_monitor(self.window_var.get(), self.selected_mana_region)
+                img = capture_region_to_pil(monitor)
+                img.thumbnail((200, 200))
 
-                with _mss_singleton as sct:
-                    monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
-                    screenshot = sct.grab(monitor)
-                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-                    img.thumbnail((200, 200))
+                save_screenshot(img, "health_monitor_mana_preview.png")
 
-                    mana_preview_path = os.path.join(get_app_dir(), "screenshots", "health_monitor_mana_preview.png")
-                    os.makedirs(os.path.dirname(mana_preview_path), exist_ok=True)
-                    img.save(mana_preview_path)
+                draw_scale_lines(img)
+                resized_img = resize_and_center_image(img, self.preview_size)
 
-                    draw_scale_lines(img)
-                    resized_img = resize_and_center_image(img, self.preview_size)
+                def _update_preview():
+                    try:
+                        self.mana_preview_image = ImageTk.PhotoImage(resized_img)
+                        if hasattr(self, 'mana_preview_label'):
+                            self.mana_preview_label.config(image=self.mana_preview_image, text="")
+                        print("魔力預覽更新成功")
+                    except Exception as e:
+                        print(f"魔力預覽更新失敗: {e}")
+                        if hasattr(self, 'mana_preview_label'):
+                            self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{str(e)}", image="")
 
-                    def _update_preview():
-                        try:
-                            self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-                            if hasattr(self, 'mana_preview_label'):
-                                self.mana_preview_label.config(image=self.mana_preview_image, text="")
-                            print("魔力預覽更新成功")
-                        except Exception as e:
-                            print(f"魔力預覽更新失敗: {e}")
-                            if hasattr(self, 'mana_preview_label'):
-                                self.mana_preview_label.config(text=f"魔力預覽擷取失敗\n{str(e)}", image="")
-
-                    self.root.after(0, _update_preview)
+                self.root.after(0, _update_preview)
             except Exception as e:
                 print(f"魔力預覽擷取失敗: {e}")
                 _err_msg = str(e)
@@ -3040,7 +2983,7 @@ class HealthMonitor:
         self.monitor_thread.start()
 
     def monitor_health(self):
-        with _mss_singleton as sct:
+        with _mss_singleton:
             while self.is_monitoring():
                 # 提前檢查監控狀態，避免不必要的處理
                 if not self.is_monitoring():
@@ -3080,12 +3023,8 @@ class HealthMonitor:
                     abs_x = window.left + x
                     abs_y = window.top + y
 
-                    # 擷取區域
                     monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
-                    screenshot = sct.grab(monitor)
-                    img = np.frombuffer(screenshot.bgra, dtype=np.uint8)
-                    img = img.reshape((screenshot.height, screenshot.width, 4))
-                    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+                    img = capture_region_to_cv2(monitor)
 
                     # 分析血量
                     health_percent = analyze_health(
@@ -3105,12 +3044,8 @@ class HealthMonitor:
                             mana_abs_x = window.left + mx
                             mana_abs_y = window.top + my
 
-                            # 擷取魔力區域
                             mana_monitor = {"top": mana_abs_y, "left": mana_abs_x, "width": mw, "height": mh}
-                            mana_screenshot = sct.grab(mana_monitor)
-                            mana_img = np.frombuffer(mana_screenshot.bgra, dtype=np.uint8)
-                            mana_img = mana_img.reshape((mana_screenshot.height, mana_screenshot.width, 4))
-                            mana_img = cv2.cvtColor(mana_img, cv2.COLOR_BGRA2BGR)
+                            mana_img = capture_region_to_cv2(mana_monitor)
 
                             # 分析魔力
                             mana_percent = analyze_mana(mana_img, is_mana_color, get_mana_color_ratio)
@@ -4421,34 +4356,29 @@ class HealthMonitor:
                 print("檢測到GUI可能遮擋背包區域，正在縮小GUI...")
                 self.minimize_gui_for_clear(game_window)
 
-            # 擷取背包區域
-            with _mss_singleton as sct:
-                monitor = {
-                    "top": game_window.top + self.inventory_region['y'],
-                    "left": game_window.left + self.inventory_region['x'],
-                    "width": self.inventory_region['width'],
-                    "height": self.inventory_region['height']
-                }
+            monitor = {
+                "top": game_window.top + self.inventory_region['y'],
+                "left": game_window.left + self.inventory_region['x'],
+                "width": self.inventory_region['width'],
+                "height": self.inventory_region['height']
+            }
+            img = capture_region_to_cv2(monitor)
 
-                screenshot = sct.grab(monitor)
-                img = np.array(screenshot)
-                img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-
-                # 檢查是否需要清空
-                needs_clearing, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
-                if needs_clearing:
-                    self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
-                    print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
-                    self.clear_inventory_item(game_window, img)
-                    if self.inventory_clear_interrupt:
-                        self.add_status_message(self.get_text("f3_cancel_user_interrupt"), "warning")
-                        print("F3: 清包被中斷")
-                    else:
-                        self.add_status_message(self.get_text("f3_completed_inventory_cleared"), "success")
-                        print("F3: 已清空背包物品")
+            # 檢查是否需要清空
+            needs_clearing, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
+            if needs_clearing:
+                self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
+                print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
+                self.clear_inventory_item(game_window, img)
+                if self.inventory_clear_interrupt:
+                    self.add_status_message(self.get_text("f3_cancel_user_interrupt"), "warning")
+                    print("F3: 清包被中斷")
                 else:
-                    self.add_status_message("F3 執行完成 - 背包已為空狀態", "success")
-                    print("F3: 背包已淨空，無需操作")
+                    self.add_status_message(self.get_text("f3_completed_inventory_cleared"), "success")
+                    print("F3: 已清空背包物品")
+            else:
+                self.add_status_message("F3 執行完成 - 背包已為空狀態", "success")
+                print("F3: 背包已淨空，無需操作")
 
         except Exception as e:
             self.add_status_message(self.get_text("f3_fail_error_occurred").format(error=str(e)), "error")
@@ -5121,24 +5051,19 @@ class HealthMonitor:
                     self._preview_has_image = False
                 return
 
-            # 擷取背包區域
-            with _mss_singleton as sct:
-                monitor = {
-                    "top": game_window.top + self.inventory_region['y'],
-                    "left": game_window.left + self.inventory_region['x'],
-                    "width": self.inventory_region['width'],
-                    "height": self.inventory_region['height']
-                }
+            monitor = {
+                "top": game_window.top + self.inventory_region['y'],
+                "left": game_window.left + self.inventory_region['x'],
+                "width": self.inventory_region['width'],
+                "height": self.inventory_region['height']
+            }
+            img = capture_region_to_cv2(monitor)
 
-                screenshot = sct.grab(monitor)
-                img = np.array(screenshot)
-                img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+            # 分析背包狀態
+            should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
 
-                # 分析背包狀態
-                should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
-
-                # 更新預覽
-                self.update_inventory_preview_with_items(img, occupied_slots)
+            # 更新預覽
+            self.update_inventory_preview_with_items(img, occupied_slots)
 
         except Exception as e:
             print(f"重新獲取預覽失敗: {e}")
