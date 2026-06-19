@@ -79,17 +79,12 @@ def global_f12_handler():
 
 def emergency_exit_handler(signum=None, frame=None):
     """緊急退出處理器 - 確保在任何異常情況下都能關閉應用程序"""
-    print("\n[STOP] 收到緊急退出信號，正在強制關閉應用程序...")
+    print("\n[STOP] 收到緊急退出信號，正在強制關閉應用程式...")
     try:
-        # 嘗試正常關閉
-        if 'app' in globals() and hasattr(app, 'close_app'):
-            app.close_app()
-        elif 'root' in globals() and root:
-            root.quit()
-            root.destroy()
+        if _app_instance and hasattr(_app_instance, 'close_app'):
+            _app_instance.close_app()
     except:
         pass
-    # 強制退出
     os._exit(1)
 
 
