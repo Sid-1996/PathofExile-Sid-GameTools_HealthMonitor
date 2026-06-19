@@ -30,7 +30,8 @@ The following tools are available in PATH and can be used by agents for searchin
   - `ruff check src/ --statistics` — summary view (good for large files)
   - `ruff check src/ --fix` — auto-fix safe issues (whitespace, f-string, etc.)
   - Config lives in `pyproject.toml` `[tool.ruff]`; aligned with existing `.flake8` rules
-  - Known baseline: 591 issues in `health_monitor.py` (mostly whitespace, 31 bare-except, 11 complex functions)
+  - Current baseline: 11 `C901` `complex-structure` errors in `health_monitor.py`
+  - Resolved: all `E722` (bare-except), `F821` (undefined-name), `E402` (import-order) — zero remaining
 
 - **pyright** (`pyright 1.1.410`, via pipx) — static type checker
   - `pyright src/health_monitor.py` — type-check main app
@@ -108,15 +109,15 @@ The following tools are available in PATH and can be used by agents for searchin
 
 ## Canonical Structure
 
-- `src/`: single source of truth for runtime code and language packs
-  - `health_monitor.py` (main app, ~10,400 lines)
-  - `config_manager.py`, `language_system.py`, `utils.py`, `custom_dialogs.py`, `skill_timer.py`
+  - `src/`: single source of truth for runtime code and language packs
+  - `health_monitor.py` (main app, ~9,800 lines)
+  - `capture_utils.py`, `config_manager.py`, `custom_dialogs.py`, `image_utils.py`
+  - `inventory_utils.py`, `language_system.py`, `monitor_analyzer.py`, `skill_timer.py`, `utils.py`
   - `language_packs.json`, `使用說明.md`, `auto_click.exe`
-- `scripts/`: one-click local workflows
-- `tools/build.py`: packaging pipeline (PyInstaller + package assembly)
-- `docs/`: user/developer documentation
-
-Note: `src for DEVELOPER/` has been **removed**. All assets live in `src/` only.
+  - `scripts/`: one-click local workflows (includes `auto_click.ahk` source)
+  - `tools/build.py`: packaging pipeline (PyInstaller + package assembly)
+  - `docs/`: user/developer documentation
+  - `.github/workflows/ci.yml`: lint + type check on push/PR
 
 ## One-Click Workflows
 
