@@ -39,6 +39,7 @@ from app_state import AppState
 from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
 from window_key_sender import WindowKeySender
+from tab_help import HelpTab
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -305,18 +306,8 @@ class HealthMonitor:
             print(f"更新狀態分頁語言時發生錯誤: {e}")
 
     def update_help_tab_language(self):
-        """更新幫助分頁的語言"""
-        try:
-            # 重新創建幫助分頁內容以應用新語言
-            if hasattr(self, 'help_frame'):
-                # 清除現有內容
-                for widget in self.help_frame.winfo_children():
-                    widget.destroy()
-
-                # 重新創建幫助分頁
-                self.create_help_tab()
-        except Exception as e:
-            print(f"更新幫助分頁語言時發生錯誤: {e}")
+        if hasattr(self, 'help_tab'):
+            self.help_tab.update_language()
 
     def update_version_tab_language(self):
         """更新版本分頁的語言"""
@@ -858,7 +849,7 @@ class HealthMonitor:
         self.create_inventory_tab()
         self.create_combo_tab()
         self.create_status_tab()  # 新增執行狀態分頁
-        self.create_help_tab()
+        self.help_tab = HelpTab(self, self.state, self.help_frame)
         self.create_version_tab()
         self.create_about_tab()  # 新增關於分頁
 
@@ -1713,222 +1704,6 @@ class HealthMonitor:
             count = len(self.status_log)
             self.status_count_label.config(text=self.get_text("total_records").format(count=count))
 
-    def create_help_tab(self):
-        """創建美觀的使用說明分頁"""
-        # 創建滾動區域
-        canvas = tk.Canvas(self.help_frame, bg='#f8f9fa')
-        scrollbar = ttk.Scrollbar(self.help_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas, style='Card.TFrame')
-
-        # 儲存Canvas引用供滾輪使用
-        self.help_canvas = canvas
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas_window_id_help = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set, bg='#f8f9fa')
-
-        def _on_canvas_resize_help(event):
-            canvas.itemconfig(canvas_window_id_help, width=event.width)
-        canvas.bind("<Configure>", _on_canvas_resize_help)
-
-        def _on_mousewheel_help(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _on_mousewheel_help))
-        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
-
-        # 佈局
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # 主標題區域
-        header_frame = ttk.Frame(scrollable_frame, style='Card.TFrame')
-        header_frame.pack(fill="x", padx=20, pady=(20, 10))
-
-        title_label = ttk.Label(header_frame, text=self.get_text("poe_sid_tools_title"),
-                               font=("Microsoft YaHei", 24, "bold"), foreground='#2c3e50')
-        title_label.pack(pady=(10, 5))
-
-        subtitle_label = ttk.Label(header_frame, text=self.get_text("opensource_subtitle"),
-                                  font=("Microsoft YaHei", 12), foreground='#7f8c8d')
-        subtitle_label.pack(pady=(0, 10))
-
-        # 影片連結按鈕
-        video_frame = ttk.Frame(header_frame)
-        video_frame.pack(pady=(0, 10))
-
-        video_button = ttk.Button(video_frame, text=self.get_text("watch_demo_video"),
-                                 command=lambda: self.open_video_link("https://dai.ly/xa9cau2"))
-        video_button.pack()
-
-        video_note_label = ttk.Label(video_frame, text=self.get_text("video_recommendation"),
-                                    font=("Microsoft YaHei", 9), foreground='#e74c3c')
-        video_note_label.pack(pady=(5, 0))
-
-        # 主要內容區域 - 使用網格佈局充分利用空間
-        content_frame = ttk.Frame(scrollable_frame, style='Card.TFrame')
-        content_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-
-        # 配置網格佈局
-        content_frame.columnconfigure(0, weight=1)
-        content_frame.columnconfigure(1, weight=1)
-        content_frame.columnconfigure(2, weight=1)
-        content_frame.rowconfigure(0, weight=0)  # 快捷鍵區域
-        content_frame.rowconfigure(1, weight=1)  # 功能說明區域
-        content_frame.rowconfigure(2, weight=0)  # 設定流程區域
-
-        # === 第一行：快捷鍵和基本資訊 ===
-        # 快捷鍵卡片
-        hotkey_card = self.create_info_card(content_frame, self.get_text("global_hotkeys_title"), [
-            ("F3", self.get_text("hotkey_f3_desc"), "#e74c3c"),
-            ("F5", self.get_text("hotkey_f5_desc"), "#3498db"),
-            ("F6", self.get_text("hotkey_f6_desc"), "#2ecc71"),
-            ("F9", self.get_text("hotkey_f9_desc"), "#f39c12"),
-            ("F10", self.get_text("hotkey_f10_desc"), "#9b59b6"),
-            ("F12", self.get_text("hotkey_f12_desc"), "#95a5a6"),
-            ("CTRL+Click", self.get_text("hotkey_ctrl_click_desc"), "#1abc9c")
-        ])
-        hotkey_card.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10), pady=(0, 10))
-
-        # 版本資訊卡片
-        version_card = ttk.LabelFrame(content_frame, text=self.get_text("version_info"), padding="15")
-        version_card.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10), pady=(0, 10))
-
-        version_info = self.get_text("version_info_text").format(version=CURRENT_VERSION)
-        ttk.Label(version_card, text=version_info, justify="left",
-                 font=('Microsoft YaHei', 10)).pack(anchor="w")
-
-        # 快速開始卡片
-        quickstart_card = ttk.LabelFrame(content_frame, text=self.get_text("quick_start"), padding="15")
-        quickstart_card.grid(row=0, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 0), pady=(0, 10))
-
-        quickstart_text = self.get_text("quickstart_text")
-        ttk.Label(quickstart_card, text=quickstart_text, justify="left",
-                 font=('Microsoft YaHei', 10)).pack(anchor="w")
-
-        # === 第二行：功能詳細說明 ===
-        # 核心功能卡片
-        features_card = ttk.LabelFrame(content_frame, text=self.get_text("core_features"), padding="15")
-        features_card.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10), pady=(0, 10))
-
-        # 使用子框架來組織功能說明
-        features_container = ttk.Frame(features_card)
-        features_container.pack(fill="both", expand=True)
-
-        # 左側功能
-        left_features = ttk.Frame(features_container)
-        left_features.pack(side="left", fill="both", expand=True, padx=(0, 15))
-
-        ttk.Label(left_features, text=self.get_text("health_monitor_system"), font=('Microsoft YaHei', 12, 'bold'),
-                 foreground='#e74c3c').pack(anchor="w", pady=(0, 5))
-        ttk.Label(left_features, text=self.get_text("health_monitor_desc"),
-                 font=('Microsoft YaHei', 9), justify="left").pack(anchor="w", pady=(0, 15))
-
-        ttk.Label(left_features, text=self.get_text("smart_inventory_system"), font=('Microsoft YaHei', 12, 'bold'),
-                 foreground='#3498db').pack(anchor="w", pady=(0, 5))
-        ttk.Label(left_features, text=self.get_text("smart_inventory_desc"),
-                 font=('Microsoft YaHei', 9), justify="left").pack(anchor="w", pady=(0, 15))
-
-        # 右側功能
-        right_features = ttk.Frame(features_container)
-        right_features.pack(side="right", fill="both", expand=True, padx=(15, 0))
-
-        ttk.Label(right_features, text=self.get_text("skill_combo_system"), font=('Microsoft YaHei', 12, 'bold'),
-                 foreground='#2ecc71').pack(anchor="w", pady=(0, 5))
-        ttk.Label(right_features, text=self.get_text("skill_combo_desc"),
-                 font=('Microsoft YaHei', 9), justify="left").pack(anchor="w", pady=(0, 15))
-
-        ttk.Label(right_features, text=self.get_text("automation_tools"), font=('Microsoft YaHei', 12, 'bold'),
-                 foreground='#9b59b6').pack(anchor="w", pady=(0, 5))
-        ttk.Label(right_features, text=self.get_text("automation_tools_desc"),
-                 font=('Microsoft YaHei', 9), justify="left").pack(anchor="w")
-
-        # 設定指南卡片
-        setup_card = ttk.LabelFrame(content_frame, text=self.get_text("detailed_setup_guide"), padding="15")
-        setup_card.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 0), pady=(0, 10))
-
-        setup_guide = self.get_text("setup_guide_text")
-        ttk.Label(setup_card, text=setup_guide, justify="left",
-                 font=('Microsoft YaHei', 9)).pack(anchor="w")
-
-        # === 第三行：注意事項和開源資訊 ===
-        # 注意事項卡片
-        notes_card = ttk.LabelFrame(scrollable_frame, text=self.get_text("important_notes"), padding="15")
-        notes_card.pack(fill="x", padx=20, pady=(0, 10))
-
-        notes_text = self.get_text("notes_text")
-        ttk.Label(notes_card, text=notes_text, justify="left",
-                 font=('Microsoft YaHei', 10)).pack(anchor="w")
-
-        # 開源資訊卡片
-        opensource_card = ttk.LabelFrame(scrollable_frame, text=self.get_text("opensource_info"), padding="15")
-        opensource_card.pack(fill="x", padx=20, pady=(0, 20))
-
-        # 開源資訊使用網格佈局
-        opensource_container = ttk.Frame(opensource_card)
-        opensource_container.pack(fill="x")
-
-        opensource_container.columnconfigure(0, weight=1)
-        opensource_container.columnconfigure(1, weight=1)
-
-        # 左側：專案資訊
-        left_info = ttk.Frame(opensource_container)
-        left_info.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 20))
-
-        ttk.Label(left_info, text=self.get_text("github_repo_label"), font=('Microsoft YaHei', 11, 'bold')).pack(anchor="w")
-        ttk.Label(left_info, text="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor",
-                 font=('Consolas', 9), foreground='#3498db').pack(anchor="w", pady=(0, 5))
-
-        # GitHub倉庫訪問按鈕
-        github_button = ttk.Button(left_info, text=self.get_text("visit_github_button"),
-                                  command=lambda: self.open_video_link("https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"))
-        github_button.pack(anchor="w", pady=(0, 10))
-
-        ttk.Label(left_info, text=self.get_text("license_label"), font=('Microsoft YaHei', 11, 'bold')).pack(anchor="w")
-        ttk.Label(left_info, text=self.get_text("license_text"), font=('Microsoft YaHei', 10)).pack(anchor="w", pady=(0, 10))
-
-        # 右側：功能狀態
-        right_info = ttk.Frame(opensource_container)
-        right_info.grid(row=0, column=1, sticky=(tk.W, tk.E))
-
-        ttk.Label(right_info, text=self.get_text("features_list_label"), font=('Microsoft YaHei', 11, 'bold')).pack(anchor="w", pady=(0, 5))
-
-        free_features = [
-            self.get_text("feature_f3"),
-            self.get_text("feature_f5"),
-            self.get_text("feature_f6"),
-            self.get_text("feature_f9"),
-            self.get_text("feature_f10"),
-            self.get_text("feature_skill_combo"),
-            self.get_text("feature_auto_click")
-        ]
-
-        for feature in free_features:
-            ttk.Label(right_info, text=feature, font=('Microsoft YaHei', 9)).pack(anchor="w")
-
-    def create_info_card(self, parent, title, items):
-        """創建資訊卡片"""
-        card = ttk.LabelFrame(parent, text=title, padding="15")
-
-        for item in items:
-            # 創建項目框架
-            item_frame = ttk.Frame(card)
-            item_frame.pack(fill="x", pady=(0, 8))
-
-            # 快捷鍵標籤
-            key_label = ttk.Label(item_frame, text=f" {item[0]} ", font=('Consolas', 10, 'bold'),
-                                 background=item[2], foreground='white', padding=(5, 2))
-            key_label.pack(side="left")
-
-            # 說明文字
-            desc_label = ttk.Label(item_frame, text=f" {item[1]}", font=('Microsoft YaHei', 10))
-            desc_label.pack(side="left", padx=(10, 0))
-
-        return card
-
     def setup_global_scroll(self):
         """設置全域滾輪支持，讓整個視窗都能使用滾輪"""
         # 為主視窗綁定滾輪事件
@@ -1966,8 +1741,9 @@ class HealthMonitor:
                 return "break"
 
         elif current_tab_index == 4:  # 使用說明分頁
-            if hasattr(self, 'help_canvas') and self.help_canvas:
-                self.help_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            help_canvas = self.help_tab.help_canvas if hasattr(self, 'help_tab') else None
+            if help_canvas:
+                help_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
                 return "break"
 
         elif current_tab_index == 6:  # 關於作者分頁
