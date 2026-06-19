@@ -6,6 +6,22 @@ import os
 import threading
 import time
 import mss
+
+# mss 單例：所有截圖操作共用一個 _mss_singleton 實例，避免重複初始化 DXGI/DirectX 後端
+class _MssSingleton:
+    _instance = None
+    _lock = threading.Lock()
+    def __enter__(self):
+        if self._instance is None:
+            with self._lock:
+                if self._instance is None:
+                    self._instance = mss.mss()
+        return self._instance
+    def __exit__(self, *args):
+        pass
+
+_mss_singleton = _MssSingleton()
+
 try:
     import cv2
     import numpy as np
@@ -2471,7 +2487,7 @@ class HealthMonitor:
             abs_x = window.left + x
             abs_y = window.top + y
 
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
                 screenshot = sct.grab(monitor)
                 img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
@@ -2514,7 +2530,7 @@ class HealthMonitor:
             abs_x = window.left + x
             abs_y = window.top + y
 
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
                 screenshot = sct.grab(monitor)
                 img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
@@ -2555,7 +2571,7 @@ class HealthMonitor:
                 abs_x = window.left + x
                 abs_y = window.top + y
 
-                with mss.mss() as sct:
+                with _mss_singleton as sct:
                     monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
                     screenshot = sct.grab(monitor)
                     img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
@@ -2636,7 +2652,7 @@ class HealthMonitor:
                 abs_x = window.left + x
                 abs_y = window.top + y
 
-                with mss.mss() as sct:
+                with _mss_singleton as sct:
                     monitor = {"top": abs_y, "left": abs_x, "width": w, "height": h}
                     screenshot = sct.grab(monitor)
                     img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
@@ -3091,7 +3107,7 @@ class HealthMonitor:
             time.sleep(0.01)  # 10ms的小睡眠，允許快速響應停止
 
     def monitor_health(self):
-        with mss.mss() as sct:
+        with _mss_singleton as sct:
             while self.is_monitoring():
                 # 提前檢查監控狀態，避免不必要的處理
                 if not self.is_monitoring():
@@ -4942,7 +4958,7 @@ class HealthMonitor:
                 self.minimize_gui_for_clear(game_window)
 
             # 擷取背包區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
                     "left": game_window.left + self.inventory_region['x'],
@@ -5642,7 +5658,7 @@ class HealthMonitor:
                 return
 
             # 擷取背包區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
                     "left": game_window.left + self.inventory_region['x'],
@@ -5910,7 +5926,7 @@ class HealthMonitor:
                 return
 
             # 擷取整個背包區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
                     "left": game_window.left + self.inventory_region['x'],
@@ -6203,7 +6219,7 @@ class HealthMonitor:
                     abs_x = game_window.left + self.inventory_ui_region['x']
                     abs_y = game_window.top + self.inventory_ui_region['y']
 
-                    with mss.mss() as sct:
+                    with _mss_singleton as sct:
                         monitor = {
                             "top": abs_y,
                             "left": abs_x,
@@ -6374,7 +6390,7 @@ class HealthMonitor:
                     abs_x = game_window.left + self.interface_ui_region['x']
                     abs_y = game_window.top + self.interface_ui_region['y']
 
-                    with mss.mss() as sct:
+                    with _mss_singleton as sct:
                         monitor = {
                             "top": abs_y,
                             "left": abs_x,
@@ -6583,7 +6599,7 @@ class HealthMonitor:
 
         try:
             # 擷取當前背包UI區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_ui_region['y'],
                     "left": game_window.left + self.inventory_ui_region['x'],
@@ -6633,7 +6649,7 @@ class HealthMonitor:
 
         try:
             # 擷取當前介面UI區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.interface_ui_region['y'],
                     "left": game_window.left + self.interface_ui_region['x'],
@@ -6867,7 +6883,7 @@ class HealthMonitor:
                     pyautogui.moveTo(center_x, center_y, duration=0.015)
                     time.sleep(0.025)  # 等待滑鼠移動完成
 
-                    with mss.mss() as sct:
+                    with _mss_singleton as sct:
                         current_screenshot = sct.grab(monitor)
                         current_img = np.frombuffer(current_screenshot.rgb, dtype=np.uint8).reshape(current_screenshot.height, current_screenshot.width, 3)
                         current_img = cv2.cvtColor(current_img, cv2.COLOR_RGB2BGR)
@@ -6946,7 +6962,7 @@ class HealthMonitor:
                     pyautogui.moveTo(center_x, center_y, duration=0.015)
                     time.sleep(0.025)  # 等待滑鼠移動完成
 
-                    with mss.mss() as sct:
+                    with _mss_singleton as sct:
                         check_screenshot = sct.grab(monitor)
                         check_img = np.frombuffer(check_screenshot.rgb, dtype=np.uint8).reshape(check_screenshot.height, check_screenshot.width, 3)
                         check_img = cv2.cvtColor(check_img, cv2.COLOR_RGB2BGR)
@@ -6984,7 +7000,7 @@ class HealthMonitor:
                 time.sleep(0.025)  # 等待滑鼠移動完成
 
                 # 重新擷取最終的背包狀態
-                with mss.mss() as sct:
+                with _mss_singleton as sct:
                     final_screenshot = sct.grab(monitor)
                     final_img = np.frombuffer(final_screenshot.rgb, dtype=np.uint8).reshape(final_screenshot.height, final_screenshot.width, 3)
                     final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
@@ -7071,7 +7087,7 @@ class HealthMonitor:
                         time.sleep(0.025)  # 等待滑鼠移動完成
 
                         # 重試後最終更新
-                        with mss.mss() as sct:
+                        with _mss_singleton as sct:
                             retry_final_screenshot = sct.grab(monitor)
                             retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
                             retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
@@ -7515,7 +7531,7 @@ class HealthMonitor:
                         print("警告: 背包可能未正確開啟，但繼續執行")
 
             # 4. 擷取並分析背包區域（GUI已經在需要時縮小了）
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
                     "left": game_window.left + self.inventory_region['x'],
@@ -9097,7 +9113,7 @@ class HealthMonitor:
 
         try:
             # 擷取當前背包UI區域
-            with mss.mss() as sct:
+            with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_ui_region['y'],
                     "left": game_window.left + self.inventory_ui_region['x'],
