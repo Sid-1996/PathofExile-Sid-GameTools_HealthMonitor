@@ -38,6 +38,7 @@ from _version import __version__
 from app_state import AppState
 from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
+from window_key_sender import WindowKeySender
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -679,7 +680,8 @@ class HealthMonitor:
         except Exception as e:
             print(f": {e}")
 
-        self.root.after(500, self._start_window_focus_watcher)
+        self.window_key_sender = WindowKeySender(self)
+        self.root.after(500, self.window_key_sender._start_window_focus_watcher)
 
         self.add_status_message(self.get_text("tool_started_successfully"), "success")
         self.add_status_message(self.get_text("hotkey_info"), "info")
@@ -884,11 +886,11 @@ class HealthMonitor:
             try:
                 tab_index = self.notebook.index(self.notebook.select())
                 if tab_index == 1:
-                    self._focus_watcher_interval = 200
-                    if self._is_game_window_visible() and self.inventory_region:
+                    self.window_key_sender._focus_watcher_interval = 200
+                    if self.window_key_sender._is_game_window_visible() and self.inventory_region:
                         self.root.after(0, self.update_inventory_preview_from_current)
                 else:
-                    self._focus_watcher_interval = 1000
+                    self.window_key_sender._focus_watcher_interval = 1000
             except Exception:
                 pass
 
@@ -1022,9 +1024,9 @@ class HealthMonitor:
                         print(self.get_text("restored_last_tab").format(last_tab=last_tab))
                         # 同步更新 focus watcher 間隔
                         if i == 1:  # 一鍵清包分頁
-                            self._focus_watcher_interval = 200
+                            self.window_key_sender._focus_watcher_interval = 200
                         else:
-                            self._focus_watcher_interval = 1000
+                            self.window_key_sender._focus_watcher_interval = 1000
                         break
         except Exception as e:
             print(f"{self.get_text('restore_tab_error')} {e}")
@@ -1512,24 +1514,6 @@ class HealthMonitor:
             test_settings.lift()
             test_settings.focus_force()
             test_settings.attributes("-topmost", True)
-
-    def activate_game_window(self):
-        """激活遊戲視窗"""
-        try:
-            if self.window_var.get():
-                import pygetwindow as gw
-                windows = gw.getWindowsWithTitle(self.window_var.get())
-                if windows:
-                    game_window = windows[0]
-                    game_window.activate()
-                    print(f"已激活遊戲視窗: {self.window_var.get()}")
-                    time.sleep(0.5)  # 等待視窗激活
-                else:
-                    print("找不到指定的遊戲視窗")
-            else:
-                print("未設定遊戲視窗")
-        except Exception as e:
-            print(f"激活遊戲視窗時發生錯誤: {e}")
 
     def create_status_tab(self):
         """創建執行狀態分頁"""
@@ -2389,7 +2373,7 @@ class HealthMonitor:
         if not self.selected_mana_region:
             return
 
-        if not self._is_game_window_active():
+        if not self.window_key_sender._is_game_window_active():
             if hasattr(self, 'mana_preview_label'):
                 self.mana_preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
             return
@@ -2419,7 +2403,7 @@ class HealthMonitor:
         if not self.selected_region:
             return
 
-        if not self._is_game_window_active():
+        if not self.window_key_sender._is_game_window_active():
             if hasattr(self, 'preview_label'):
                 self.preview_label.config(text=self.get_text("waiting_for_game_window"), image="")
             return
@@ -2447,7 +2431,7 @@ class HealthMonitor:
 
     def capture_preview_async(self):
         """非同步擷取預覽圖，避免阻塞UI線程"""
-        if not self._is_game_window_active():
+        if not self.window_key_sender._is_game_window_active():
             self.root.after(0, lambda: hasattr(self, 'preview_label') and self.preview_label.config(text=self.get_text("waiting_for_game_window"), image=""))
             return
 
@@ -2519,7 +2503,7 @@ class HealthMonitor:
 
     def capture_mana_preview_async(self):
         """非同步擷取魔力預覽圖片，避免阻塞UI"""
-        if not self._is_game_window_active():
+        if not self.window_key_sender._is_game_window_active():
             self.root.after(0, lambda: hasattr(self, 'mana_preview_label') and self.mana_preview_label.config(text=self.get_text("waiting_for_game_window"), image=""))
             return
 
@@ -3121,15 +3105,15 @@ class HealthMonitor:
         print(f" 血魔監控解析後的按鍵列表: {keys}")
 
         # 獲取遊戲窗口句柄
-        game_hwnd = self.get_game_window_handle()
+        game_hwnd = self.window_key_sender.get_game_window_handle()
         if game_hwnd:
             print(f" 血魔監控使用全局發送到遊戲窗口: {game_hwnd}")
             # 使用修復版本的按鍵發送（keyboard庫 + 防重複）
             for i, key in enumerate(keys):
-                vk_code = self.map_key_to_vk_code(key)
+                vk_code = self.window_key_sender.map_key_to_vk_code(key)
                 if vk_code:
                     print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> VK_{vk_code}")
-                    self.send_key_to_window(game_hwnd, vk_code)  # 使用修復版本
+                    self.window_key_sender.send_key_to_window(game_hwnd, vk_code)  # 使用修復版本
                 else:
                     print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> 無法映射鍵碼")
 
@@ -3142,7 +3126,7 @@ class HealthMonitor:
             # 回退到全局鍵盤事件
             for i, key in enumerate(keys):
                 # 處理特殊鍵名映射
-                mapped_key = self.map_key_name(key)
+                mapped_key = self.window_key_sender.map_key_name(key)
                 print(f"按鍵 {i+1}/{len(keys)}: {key} -> {mapped_key}")
                 # 按下並釋放鍵
                 keyboard.press_and_release(mapped_key)
@@ -3167,194 +3151,6 @@ class HealthMonitor:
                 self.state.last_trigger_times[health_percent] = time.time()
                 print(f"記錄血量觸發時間: {health_percent}")
 
-
-    def get_game_window_handle(self):
-        """獲取遊戲窗口的句柄"""
-        try:
-            if not self.window_var.get():
-                return None
-
-            windows = gw.getWindowsWithTitle(self.window_var.get())
-            if windows:
-                return windows[0]._hWnd
-            return None
-        except Exception:
-            return None
-
-    def map_key_to_vk_code(self, key):
-        """將鍵名映射到Windows虛擬鍵碼"""
-        key = key.lower()
-
-        # 數字鍵
-        if key.isdigit():
-            return ord(key)
-
-        # 字母鍵
-        if len(key) == 1 and key.isalpha():
-            return ord(key.upper())
-
-        # 特殊鍵映射
-        key_mapping = {
-            'esc': VK_ESCAPE,
-            'escape': VK_ESCAPE,
-            'enter': VK_RETURN,
-            'return': VK_RETURN,
-            'space': VK_SPACE,
-            'tab': VK_TAB,
-            'backspace': VK_BACK,
-            'delete': VK_DELETE,
-            'home': VK_HOME,
-            'end': VK_END,
-            'left': VK_LEFT,
-            'up': VK_UP,
-            'right': VK_RIGHT,
-            'down': VK_DOWN,
-            'f3': VK_F3,
-            'f5': VK_F5,
-            'f6': VK_F6,
-            'f7': VK_F7,
-            'f8': VK_F8,
-            'f9': VK_F9,
-            'f10': VK_F10,
-            'f12': VK_F12,
-        }
-
-        return key_mapping.get(key)
-
-    def send_key_to_window(self, hwnd, vk_code):
-        """發送鍵盤事件到指定窗口 - 血魔監控專用（修復版本）"""
-        try:
-            # 增加防重複機制 - 檢查是否剛剛發送過相同的鍵
-            current_time = time.time()
-            key_id = f"{hwnd}_{vk_code}"
-
-            # 檢查是否在200毫秒內發送過相同的鍵（增加到200ms防重複）
-            if hasattr(self, '_last_key_send_times'):
-                last_send_time = self._last_key_send_times.get(key_id, 0)
-                if current_time - last_send_time < 0.2:  # 200毫秒防重複
-                    print(f" 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time)*1000:.1f}ms)")
-                    return
-            else:
-                self._last_key_send_times = {}
-
-            # 記錄發送時間
-            self._last_key_send_times[key_id] = current_time
-
-            print(f" 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
-
-            # 🔄 使用最穩定的方法: keyboard庫全局按鍵 + 激活窗口
-            try:
-                import keyboard
-                import pygetwindow as gw
-
-                # 首先激活遊戲窗口
-                windows = gw.getWindowsWithTitle(self.window_var.get())
-                if windows:
-                    windows[0].activate()
-                    time.sleep(0.05)  # 等待窗口激活
-
-                # 使用keyboard庫發送按鍵 - 最穩定的方法
-                key_name = self.vk_to_key_name(vk_code)
-                if key_name:
-                    print(f" 血魔使用keyboard庫發送: {key_name}")
-                    keyboard.press_and_release(key_name)
-                    print(f"[OK] 血魔keyboard庫發送成功: {key_name}")
-                else:
-                    # 回退到PostMessage方法
-                    self._send_with_postmessage(hwnd, vk_code)
-
-            except ImportError:
-                print("[WARN] keyboard庫未安裝，血魔使用PostMessage方法")
-                self._send_with_postmessage(hwnd, vk_code)
-            except Exception as keyboard_error:
-                print(f"[WARN] keyboard庫發送失敗，血魔回退到PostMessage: {keyboard_error}")
-                self._send_with_postmessage(hwnd, vk_code)
-
-        except Exception as e:
-            print(f"[ERROR] 血魔按鍵發送失敗: {e}")
-            pass
-
-    def send_key_to_window_combo(self, hwnd, vk_code):
-        """發送鍵盤事件到指定窗口 - 技能連段專用（原始版本）"""
-        try:
-            print(f"[SKILL] 技能連段發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
-
-            # 使用原始的SendMessage方法 - 針對特定窗口，不會干擾聊天
-            SendMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
-            time.sleep(0.01)  # 原始的10毫秒延遲
-            SendMessageW(hwnd, WM_KEYUP, vk_code, 0)
-
-            print(f"[OK] 技能連段SendMessage發送成功: VK_{vk_code}")
-
-        except Exception as e:
-            print(f"[ERROR] 技能連段按鍵發送失敗: {e}")
-            pass
-
-    def _send_with_postmessage(self, hwnd, vk_code):
-        """使用PostMessage發送按鍵的備用方法"""
-        try:
-            from ctypes import windll
-            PostMessageW = windll.user32.PostMessageW
-
-            print(f" 使用PostMessage備用方法: VK_{vk_code}")
-            # 使用PostMessage (異步)
-            result1 = PostMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
-            time.sleep(0.1)  # 增加到100毫秒延遲
-            result2 = PostMessageW(hwnd, WM_KEYUP, vk_code, 0)
-
-            print(f"[OK] PostMessage發送成功: VK_{vk_code} (down:{result1}, up:{result2})")
-        except Exception as e:
-            print(f"[ERROR] PostMessage發送失敗: {e}")
-
-    def vk_to_key_name(self, vk_code):
-        """將虛擬鍵碼轉換為keyboard庫能識別的鍵名"""
-        vk_mapping = {
-            0x1B: 'esc',  # ESC
-            0x31: '1', 0x32: '2', 0x33: '3', 0x34: '4', 0x35: '5',
-            0x36: '6', 0x37: '7', 0x38: '8', 0x39: '9', 0x30: '0',
-            0x41: 'a', 0x42: 'b', 0x43: 'c', 0x44: 'd', 0x45: 'e',
-            0x46: 'f', 0x47: 'g', 0x48: 'h', 0x49: 'i', 0x4A: 'j',
-            0x4B: 'k', 0x4C: 'l', 0x4D: 'm', 0x4E: 'n', 0x4F: 'o',
-            0x50: 'p', 0x51: 'q', 0x52: 'r', 0x53: 's', 0x54: 't',
-            0x55: 'u', 0x56: 'v', 0x57: 'w', 0x58: 'x', 0x59: 'y',
-            0x5A: 'z',
-            0x70: 'f1', 0x71: 'f2', 0x72: 'f3', 0x73: 'f4', 0x74: 'f5',
-            0x75: 'f6', 0x76: 'f7', 0x77: 'f8', 0x78: 'f9', 0x79: 'f10',
-            0x7A: 'f11', 0x7B: 'f12',
-            0x20: 'space', 0x0D: 'enter', 0x09: 'tab',
-        }
-        return vk_mapping.get(vk_code, None)
-
-    def map_key_name(self, key):
-        """映射鍵名到 keyboard 模組能識別的格式"""
-        key = key.lower()
-
-        # 特殊鍵映射
-        key_mapping = {
-            'esc': 'esc',
-            'escape': 'esc',
-            'enter': 'enter',
-            'return': 'enter',
-            'space': 'space',
-            'tab': 'tab',
-            'backspace': 'backspace',
-            'delete': 'delete',
-            'home': 'home',
-            'end': 'end',
-            'pageup': 'page up',
-            'pagedown': 'page down',
-            'uparrow': 'up',
-            'downarrow': 'down',
-            'leftarrow': 'left',
-            'rightarrow': 'right',
-            'ctrl': 'ctrl',
-            'alt': 'alt',
-            'shift': 'shift',
-            'win': 'windows',
-            'cmd': 'windows',  # mac 兼容
-        }
-
-        return key_mapping.get(key, key)
 
     def open_video_link(self, url):
         """打開影片連結"""
@@ -3389,97 +3185,6 @@ class HealthMonitor:
             self.trigger_label.config(text=trigger)
         except Exception as e:
             print(f"更新狀態標籤失敗: {e}")
-
-    def is_game_window_foreground(self, window_title):
-        """檢查遊戲視窗是否處於前台（活躍狀態）"""
-        try:
-            # 獲取當前前台視窗的句柄
-            foreground_hwnd = GetForegroundWindow()
-
-            # 獲取前台視窗標題的長度
-            length = GetWindowTextLengthW(foreground_hwnd)
-            if length > 0:
-                # 創建緩衝區來存儲視窗標題
-                buffer = ctypes.create_unicode_buffer(length + 1)
-                GetWindowTextW(foreground_hwnd, buffer, length + 1)
-                foreground_title = buffer.value
-
-                # 檢查前台視窗標題是否包含遊戲視窗標題
-                return window_title.lower() in foreground_title.lower()
-            else:
-                return False
-
-        except Exception as e:
-            print(f"檢查前台視窗失敗: {e}")
-            return False
-
-    def is_gui_foreground(self):
-        """檢查GUI視窗是否處於前台（活躍狀態）"""
-        try:
-            # 獲取當前前台視窗的句柄
-            foreground_hwnd = GetForegroundWindow()
-
-            # 獲取前台視窗標題的長度
-            length = GetWindowTextLengthW(foreground_hwnd)
-            if length > 0:
-                # 創建緩衝區來存儲視窗標題
-                buffer = ctypes.create_unicode_buffer(length + 1)
-                GetWindowTextW(foreground_hwnd, buffer, length + 1)
-                foreground_title = buffer.value
-
-                # 檢查前台視窗標題是否包含GUI標題
-                gui_title = f"Sid輔助工具 {CURRENT_VERSION} - 血魔監控 + 一鍵清包 + 自動化工具"
-                return gui_title.lower() in foreground_title.lower()
-            else:
-                return False
-
-        except Exception as e:
-            print(f"檢查GUI前台狀態失敗: {e}")
-            return False
-
-    def _start_window_focus_watcher(self):
-        """啟動獨立的視窗焦點監聽器，不依賴監控狀態"""
-        try:
-            tab_index = self.notebook.index(self.notebook.select())
-            self._focus_watcher_interval = 200 if tab_index == 1 else 1000
-        except Exception:
-            self._focus_watcher_interval = 1000
-        self._focus_watcher_tick()
-
-    def _focus_watcher_tick(self):
-        """定期檢查遊戲視窗焦點，僅在一鍵清包分頁時刷新庫存預覽"""
-        if getattr(self, '_is_closing', False):
-            return
-        try:
-            interval = getattr(self, '_focus_watcher_interval', 1000)
-            if interval <= 200:
-                if self.inventory_region:
-                    self.update_inventory_preview_from_current()
-        except Exception:
-            pass
-        self.root.after(getattr(self, '_focus_watcher_interval', 1000), self._focus_watcher_tick)
-
-    def _is_game_window_active(self):
-        """檢查遊戲視窗是否在前台且可用（非最小化）"""
-        try:
-            windows = gw.getWindowsWithTitle(self.window_var.get())
-            if not windows:
-                return False
-            w = windows[0]
-            return not w.isMinimized and w.isActive
-        except Exception:
-            return False
-
-    def _is_game_window_visible(self):
-        """檢查遊戲視窗是否存在且非最小化（不要求前景激活）"""
-        try:
-            windows = gw.getWindowsWithTitle(self.window_var.get())
-            if not windows:
-                return False
-            w = windows[0]
-            return not w.isMinimized
-        except Exception:
-            return False
 
     def _show_health_preview_placeholder(self):
         """在血量預覽上顯示等待激活提示（主線程呼叫）"""
@@ -4215,7 +3920,7 @@ class HealthMonitor:
             return
 
         # 檢查遊戲視窗是否處於前台
-        if not self.is_game_window_foreground(window_title):
+        if not self.window_key_sender.is_game_window_foreground(window_title):
             self.add_status_message(self.get_text("f3_cancel_game_not_foreground"), "warning")
             print(f"F3: 遊戲視窗 '{window_title}' 不在前台，跳過清包操作")
             return
@@ -4919,7 +4624,7 @@ class HealthMonitor:
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
-            if not self._is_game_window_visible():
+            if not self.window_key_sender._is_game_window_visible():
                 if hasattr(self, 'inventory_preview_label'):
                     self.inventory_preview_label.delete("all")
                     self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self.get_text("waiting_for_game_window"), anchor='nw', fill='gray')
@@ -6899,7 +6604,7 @@ class HealthMonitor:
                 return
 
             # 檢查遊戲視窗是否在前台
-            if not self.is_game_window_foreground(window_title):
+            if not self.window_key_sender.is_game_window_foreground(window_title):
                 print(f"F5: 遊戲視窗 '{window_title}' 不在前台，跳過返回藏身操作")
                 self.add_status_message("F5 執行取消 - 遊戲視窗不在前台", "warning")
                 return
@@ -7062,7 +6767,7 @@ class HealthMonitor:
                     print(f"F6(worker): 激活遊戲視窗失敗: {e}")
 
                 # 再次確認遊戲視窗在前台
-                if not self.is_game_window_foreground(window_title_local):
+                if not self.window_key_sender.is_game_window_foreground(window_title_local):
                     print("F6(worker): 警告 - 遊戲視窗可能未在前台")
 
                 # 檢查背包UI是否可見
@@ -8672,7 +8377,7 @@ class HealthMonitor:
 
         # 檢查遊戲視窗是否在前台
         if self.window_var.get():
-            if not self.is_game_window_foreground(self.window_var.get()):
+            if not self.window_key_sender.is_game_window_foreground(self.window_var.get()):
                 print(f"遊戲視窗 '{self.window_var.get()}' 不在前台，跳過連段執行")
                 return
 
@@ -8724,12 +8429,12 @@ class HealthMonitor:
                 is_stationary = combo_set.get('stationary_attacks', [False] * 5)[i]
 
                 # 嘗試獲取遊戲窗口句柄進行選擇性按鍵發送
-                game_hwnd = self.get_game_window_handle()
+                game_hwnd = self.window_key_sender.get_game_window_handle()
                 if game_hwnd:
                     if is_stationary:
                         # 原地攻擊：先按下Shift，然後按技能鍵，最後釋放Shift
-                        shift_vk = self.map_key_to_vk_code('shift')
-                        skill_vk = self.map_key_to_vk_code(key.lower())
+                        shift_vk = self.window_key_sender.map_key_to_vk_code('shift')
+                        skill_vk = self.window_key_sender.map_key_to_vk_code(key.lower())
 
                         if shift_vk and skill_vk:
                             # 按下Shift
@@ -8760,9 +8465,9 @@ class HealthMonitor:
                             print(f"  原地攻擊模式: Shift+{key} (全局按鍵)")
                     else:
                         # 普通攻擊：直接按技能鍵
-                        vk_code = self.map_key_to_vk_code(key.lower())
+                        vk_code = self.window_key_sender.map_key_to_vk_code(key.lower())
                         if vk_code:
-                            self.send_key_to_window_combo(game_hwnd, vk_code)  # 使用技能連段專用方法
+                            self.window_key_sender.send_key_to_window_combo(game_hwnd, vk_code)  # 使用技能連段專用方法
                             self.add_status_message(self.get_text("combo_skill_execution").format(
                                 index=i+1, skill=key, type=self.get_text("normal_attack"), method=self.get_text("selective_send")), "success")
                             print(f"  [SKILL] 技能連段選擇性按下技能鍵: {key} (發送到遊戲窗口)")
