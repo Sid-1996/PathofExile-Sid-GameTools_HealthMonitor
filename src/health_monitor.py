@@ -40,6 +40,7 @@ from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
 from window_key_sender import WindowKeySender
 from tab_help import HelpTab
+from tab_about import AboutTab
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -324,16 +325,9 @@ class HealthMonitor:
             print(f"更新版本分頁語言時發生錯誤: {e}")
 
     def update_about_tab_language(self):
-        """更新關於分頁的語言"""
         try:
-            # 重新創建關於分頁內容以應用新語言
-            if hasattr(self, 'about_frame'):
-                # 清除現有內容
-                for widget in self.about_frame.winfo_children():
-                    widget.destroy()
-
-                # 重新創建關於分頁
-                self.create_about_tab()
+            if hasattr(self, 'about_tab'):
+                self.about_tab.update_language()
         except Exception as e:
             print(f"更新關於分頁語言時發生錯誤: {e}")
 
@@ -851,7 +845,7 @@ class HealthMonitor:
         self.create_status_tab()  # 新增執行狀態分頁
         self.help_tab = HelpTab(self, self.state, self.help_frame)
         self.create_version_tab()
-        self.create_about_tab()  # 新增關於分頁
+        self.about_tab = AboutTab(self, self.state, self.about_frame)
 
         # 初始化：設定當前分頁的視窗大小
         self.root.after(100, self.adjust_window_for_current_tab)
@@ -1747,8 +1741,8 @@ class HealthMonitor:
                 return "break"
 
         elif current_tab_index == 6:  # 關於作者分頁
-            if hasattr(self, 'about_canvas') and self.about_canvas:
-                self.about_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            if hasattr(self, 'about_tab') and self.about_tab.about_canvas:
+                self.about_tab.about_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
                 return "break"
 
         return "break"  # 阻止事件繼續傳播
@@ -8708,167 +8702,6 @@ class HealthMonitor:
                   command=switch_to_version_tab).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self.get_text("remind_later_button"),
                   command=update_window.destroy).pack(side=tk.RIGHT)
-
-    def create_about_tab(self):
-        """創建關於分頁 - 現代化卡片式設計"""
-        main_frame = self.about_frame
-
-        # 創建可滾動框架
-        canvas = tk.Canvas(main_frame, bg='#f8f9fa', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas, style='Card.TFrame')
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas_window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        def _on_canvas_resize_about(event):
-            canvas.itemconfig(canvas_window_id, width=event.width)
-        canvas.bind("<Configure>", _on_canvas_resize_about)
-
-        # 打包canvas和滾動條
-        canvas.pack(side="left", fill="both", expand=True)
-        self.about_canvas = canvas
-        scrollbar.pack(side="right", fill="y")
-
-        # 主標題區域 - 現代化設計
-        header_frame = ttk.Frame(scrollable_frame, style='Card.TFrame')
-        header_frame.pack(fill="x", padx=20, pady=(20, 10))
-
-        title_label = ttk.Label(header_frame, text=self.get_text("about_title"),
-                               font=("Microsoft YaHei", 24, "bold"), foreground='#2c3e50')
-        title_label.pack(pady=(10, 5))
-
-        subtitle_label = ttk.Label(header_frame, text=self.get_text("about_subtitle"),
-                                  font=("Microsoft YaHei", 12), foreground='#7f8c8d')
-        subtitle_label.pack(pady=(0, 10))
-
-        # 主要內容區域 - 使用網格佈局充分利用空間
-        content_frame = ttk.Frame(scrollable_frame, style='Card.TFrame')
-        content_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-
-        # 左側：軟體資訊
-        left_frame = ttk.Frame(content_frame)
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
-
-        # 軟體資訊卡片
-        info_card = ttk.LabelFrame(left_frame, text=self.get_text("software_info"), padding="20")
-        info_card.pack(fill=tk.X, pady=(0, 10))
-
-        ttk.Label(info_card, text=self.get_text("version_display").format(version=CURRENT_VERSION),
-                 font=('Microsoft YaHei', 14, 'bold')).pack(anchor=tk.W, pady=(0, 8))
-        ttk.Label(info_card, text=self.get_text("status_display"),
-                 font=('Microsoft YaHei', 12), foreground='#27ae60').pack(anchor=tk.W, pady=(0, 8))
-
-        # 使用時間顯示
-        usage_time_text = format_usage_time(self.total_usage_time)
-        self.usage_time_label = ttk.Label(info_card, text=self.get_text("total_usage_time").format(time=usage_time_text),
-                                         font=('Microsoft YaHei', 12), foreground='#1976D2')
-        self.usage_time_label.pack(anchor=tk.W, pady=(0, 8))
-
-        ttk.Label(info_card, text=self.get_text("license_display"),
-                 font=('Microsoft YaHei', 12)).pack(anchor=tk.W)
-
-        # 官方連結卡片
-        links_card = ttk.LabelFrame(left_frame, text=self.get_text("official_links"), padding="20")
-        links_card.pack(fill=tk.X, pady=(10, 0))
-
-        # 連結按鈕 - 2x2網格佈局
-        links_grid = ttk.Frame(links_card)
-        links_grid.pack(fill=tk.X)
-
-        # 第一行：GitHub 和 Discord
-        row1_frame = ttk.Frame(links_grid)
-        row1_frame.pack(fill=tk.X, pady=(0, 8))
-
-        # GitHub 按鈕
-        def open_github():
-            try:
-                import webbrowser
-                webbrowser.open("https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor")
-            except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開 GitHub 頁面: {e}")
-
-        github_btn = ttk.Button(row1_frame, text=self.get_text("github_button"), command=open_github, width=12)
-        github_btn.pack(side=tk.LEFT, padx=(0, 8))
-
-        # Discord 按鈕（暫無連結）
-        def discord_placeholder():
-            messagebox.showinfo("提示", self.get_text("discord_placeholder_message"))
-
-        discord_btn = ttk.Button(row1_frame, text=self.get_text("discord_button"), command=discord_placeholder,
-                                state='disabled', width=12)
-        discord_btn.pack(side=tk.LEFT)
-
-        # 第二行：Sid工具箱
-        row2_frame = ttk.Frame(links_grid)
-        row2_frame.pack(fill=tk.X)
-
-        # Sid流亡工具箱按鈕
-        def open_sid_toolbox():
-            try:
-                import webbrowser
-                webbrowser.open("https://lelive.weebly.com/")
-            except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開 Sid流亡工具箱 頁面: {e}")
-
-        sid_btn = ttk.Button(row2_frame, text=self.get_text("sid_toolbox_button"), command=open_sid_toolbox, width=12)
-        sid_btn.pack(side=tk.LEFT)
-
-        # 右側：支持開發者
-        right_frame = ttk.Frame(content_frame)
-        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
-
-        # 支持卡片
-        support_card = ttk.LabelFrame(right_frame, text=self.get_text("support_developer"), padding="20")
-        support_card.pack(fill=tk.BOTH, expand=True)
-
-        support_text = ttk.Label(support_card,
-                                text=self.get_text("support_text"),
-                                font=('Microsoft YaHei', 12), foreground='#2E7D32',
-                                justify=tk.CENTER)
-        support_text.pack(pady=(0, 15))
-
-        # 贊助按鈕 - 水平排列
-        sponsor_frame = ttk.Frame(support_card)
-        sponsor_frame.pack(fill=tk.X)
-
-        # ECPay 按鈕
-        def open_ecpay():
-            try:
-                import webbrowser
-                webbrowser.open("https://p.ecpay.com.tw/E0E3A")
-            except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開ECPay頁面: {e}")
-
-        ecpay_btn = ttk.Button(sponsor_frame, text=self.get_text("ecpay_button"), command=open_ecpay)
-        ecpay_btn.pack(side=tk.LEFT, padx=(0, 8), expand=True, fill=tk.X)
-
-        # PayPal 按鈕
-        def open_paypal():
-            try:
-                import webbrowser
-                webbrowser.open("https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4")
-            except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開PayPal頁面: {e}")
-
-        paypal_btn = ttk.Button(sponsor_frame, text=self.get_text("paypal_button"), command=open_paypal)
-        paypal_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        # 底部免責聲明 - 全寬
-        disclaimer_frame = ttk.LabelFrame(scrollable_frame, text=self.get_text("important_disclaimer"), padding="20")
-        disclaimer_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
-
-        disclaimer_text = self.get_text("disclaimer_text")
-
-        disclaimer_label = ttk.Label(disclaimer_frame, text=disclaimer_text,
-                                   wraplength=800, font=('Microsoft YaHei', 11),
-                                   justify=tk.LEFT, foreground='#d32f2f')
-        disclaimer_label.pack(anchor=tk.W)
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
