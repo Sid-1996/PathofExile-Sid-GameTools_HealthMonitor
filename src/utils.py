@@ -169,7 +169,7 @@ def format_usage_time(total_seconds):
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
     seconds = total_seconds % 60
-    
+
     if hours > 0:
         return f"{hours}小時{minutes}分鐘"
     elif minutes > 0:

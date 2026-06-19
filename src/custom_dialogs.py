@@ -22,9 +22,9 @@ SendMessageW.restype = ctypes.c_long
 
 class CustomMessageBox:
     """自訂對話框類，支援動態尺寸調整和本地化文本"""
-    
+
     result = None
-    
+
     # 對話框尺寸限制
     MIN_WIDTH = 420
     MAX_WIDTH = 760
@@ -195,7 +195,7 @@ class CustomMessageBox:
 def setup_custom_messagebox():
     """設置自訂對話框為預設 messagebox"""
     from tkinter import messagebox
-    
+
     def _custom_messagebox_info(title=None, message=None, **options):
         return CustomMessageBox.show_info(title or 'Info', message or '', parent=options.get('parent'))
 

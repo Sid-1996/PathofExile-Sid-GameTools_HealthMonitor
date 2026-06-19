@@ -34,10 +34,10 @@ def load_language_packs():
         print(f"[DEBUG] 語言包載入 - 應用程式目錄: {app_dir}")
         print(f"[DEBUG] 語言包載入 - 檔案路徑: {language_file}")
         print(f"[DEBUG] 語言包載入 - 檔案存在: {os.path.exists(language_file)}")
-        
+
         with open(language_file, 'r', encoding='utf-8') as f:
             language_packs = json.load(f)
-            
+
         print(f"[DEBUG] 語言包載入成功 - 可用語言: {list(language_packs.keys())}")
         if 'zh-tw' in language_packs:
             print(f"[DEBUG] zh-tw 語言包包含的鍵數量: {len(language_packs['zh-tw'])}")
@@ -47,7 +47,7 @@ def load_language_packs():
                     print(f"[DEBUG] zh-tw['{key}'] = '{language_packs['zh-tw'][key]}'")
                 else:
                     print(f"[DEBUG] zh-tw 缺少鍵: {key}")
-        
+
         return language_packs
     except Exception as e:
         print(f"[DEBUG] 語言包載入失敗: {e}")
@@ -61,7 +61,7 @@ LANGUAGE_PACKS = load_language_packs()
 
 class LanguageManager:
     """語言管理器"""
-    
+
     def __init__(self, default_language='zh-tw'):
         self.current_language = default_language
         self.language_display_map = {
@@ -69,7 +69,7 @@ class LanguageManager:
             "English": "en"
         }
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
-    
+
     def get_text(self, key):
         """獲取本地化文字"""
         try:
@@ -83,34 +83,34 @@ class LanguageManager:
         except:
             print(f"[DEBUG] get_text('{key}') 異常 (語言: {self.current_language})")
             return f"[{key}]"
-    
+
     def change_language_display(self, display_name):
         """處理顯示名稱的語言切換"""
         language_code = self.language_display_map.get(display_name, "zh-tw")
         return self.change_language(language_code)
-    
+
     def change_language(self, new_language):
         """切換語言"""
         print(f"[DEBUG] 語言管理器 change_language 被調用: {new_language}")
         print(f"[DEBUG] 當前語言管理器語言: {self.current_language}")
-        
+
         if new_language == self.current_language:
-            print(f"[DEBUG] 語言相同，無需切換")
+            print("[DEBUG] 語言相同，無需切換")
             return False  # 如果選擇的語言和當前語言相同，不做任何動作
-        
+
         old_language = self.current_language
         self.current_language = new_language
         print(f"[DEBUG] 語言管理器語言已切換: {old_language} -> {new_language}")
         return True
-    
+
     def get_current_display_name(self):
         """獲取當前語言的顯示名稱"""
         return self.language_reverse_map.get(self.current_language, "繁體中文")
-    
+
     def get_language_display_map(self):
         """獲取語言顯示映射"""
         return self.language_display_map.copy()
-    
+
     def get_language_reverse_map(self):
         """獲取語言反向映射"""
         return self.language_reverse_map.copy()

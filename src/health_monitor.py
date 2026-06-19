@@ -33,7 +33,7 @@ import winreg
 from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
 from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler, Tooltip
-from custom_dialogs import setup_custom_messagebox
+from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
 
@@ -85,190 +85,7 @@ GetWindowTextW.restype = ctypes.c_int
 SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_long]
 SendMessageW.restype = ctypes.c_long
 
-# ========== 自訂對話框類 ==========
-class CustomMessageBox:
-    """Shared modal dialogs with dynamic sizing for long localized text."""
-    result = None
 
-    MIN_WIDTH = 420
-    MAX_WIDTH = 760
-    MIN_HEIGHT = 180
-    MAX_HEIGHT = 560
-    MESSAGE_WRAP = 520
-
-    @staticmethod
-    def _resolve_parent(parent=None):
-        candidate = parent or tk._default_root
-        if candidate is None:
-            return None
-
-        try:
-            if not candidate.winfo_exists():
-                return None
-            if candidate.state() == 'withdrawn':
-                return None
-        except Exception:
-            return None
-
-        return candidate
-
-    @staticmethod
-    def _build_dialog(title, message, buttons, parent=None, accent=None, close_result=False):
-        CustomMessageBox.result = None
-        parent = CustomMessageBox._resolve_parent(parent)
-
-        window = tk.Toplevel(parent)
-        window.title(title or 'Message')
-        window.resizable(False, False)
-        window.minsize(CustomMessageBox.MIN_WIDTH, CustomMessageBox.MIN_HEIGHT)
-
-        if parent is not None:
-            window.transient(parent)
-        window.grab_set()
-
-        container = ttk.Frame(window, padding=(20, 18, 20, 14))
-        container.pack(fill=tk.BOTH, expand=True)
-
-        message_font = tkfont.nametofont('TkDefaultFont')
-        message_widget = tk.Message(
-            container,
-            text=message or '',
-            width=CustomMessageBox.MESSAGE_WRAP,
-            justify=tk.LEFT,
-            anchor='w',
-            font=message_font,
-            foreground=accent or 'black',
-            padx=0,
-            pady=0,
-        )
-        message_widget.pack(fill=tk.BOTH, expand=True)
-
-        button_frame = ttk.Frame(container)
-        button_frame.pack(fill=tk.X, pady=(18, 0))
-
-        focus_button = None
-        for button in reversed(buttons):
-            btn = ttk.Button(
-                button_frame,
-                text=button['text'],
-                command=lambda value=button['result']: CustomMessageBox._close(window, value),
-                width=max(12, len(button['text']) + 2),
-            )
-            btn.pack(side=tk.RIGHT, padx=(8, 0))
-            if button.get('default') and focus_button is None:
-                btn.configure(default=tk.ACTIVE)
-                focus_button = btn
-
-        if focus_button is not None:
-            focus_button.focus_set()
-
-        default_result = next((button['result'] for button in buttons if button.get('default')), True)
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, default_result))
-        window.bind('<KP_Enter>', lambda e: CustomMessageBox._close(window, default_result))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, close_result))
-        window.protocol('WM_DELETE_WINDOW', lambda: CustomMessageBox._close(window, close_result))
-
-        window.update_idletasks()
-
-        width = min(max(container.winfo_reqwidth() + 8, CustomMessageBox.MIN_WIDTH), CustomMessageBox.MAX_WIDTH)
-        if width != CustomMessageBox.MIN_WIDTH:
-            message_widget.configure(width=max(320, width - 70))
-            window.update_idletasks()
-
-        height = min(max(container.winfo_reqheight() + 8, CustomMessageBox.MIN_HEIGHT), CustomMessageBox.MAX_HEIGHT)
-
-        if parent is not None and parent.winfo_exists():
-            parent.update_idletasks()
-            parent_x = parent.winfo_rootx()
-            parent_y = parent.winfo_rooty()
-            parent_width = parent.winfo_width()
-            parent_height = parent.winfo_height()
-            x = parent_x + max(0, (parent_width - width) // 2)
-            y = parent_y + max(0, (parent_height - height) // 2)
-        else:
-            screen_width = window.winfo_screenwidth()
-            screen_height = window.winfo_screenheight()
-            x = max(0, (screen_width - width) // 2)
-            y = max(0, (screen_height - height) // 2)
-
-        window.geometry(f'{width}x{height}+{x}+{y}')
-        window.wait_window()
-        return CustomMessageBox.result
-
-    @staticmethod
-    def show_info(title, message, parent=None):
-        CustomMessageBox._build_dialog(
-            title,
-            message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
-            parent=parent,
-            close_result=True,
-        )
-        return True
-
-    @staticmethod
-    def show_warning(title, message, parent=None):
-        CustomMessageBox._build_dialog(
-            title,
-            message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
-            parent=parent,
-            accent='#8a6d00',
-            close_result=True,
-        )
-        return True
-
-    @staticmethod
-    def show_error(title, message, parent=None):
-        CustomMessageBox._build_dialog(
-            title,
-            message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
-            parent=parent,
-            accent='#b00020',
-            close_result=True,
-        )
-        return True
-
-    @staticmethod
-    def ask_yes_no(title, message, parent=None):
-        return CustomMessageBox._build_dialog(
-            title,
-            message,
-            buttons=[
-                {'text': 'No (Esc)', 'result': False},
-                {'text': 'Yes (Enter)', 'result': True, 'default': True},
-            ],
-            parent=parent,
-            close_result=False,
-        )
-
-    @staticmethod
-    def _close(window, result):
-        CustomMessageBox.result = result
-        window.destroy()
-
-
-def _custom_messagebox_info(title=None, message=None, **options):
-    return CustomMessageBox.show_info(title or 'Info', message or '', parent=options.get('parent'))
-
-
-def _custom_messagebox_warning(title=None, message=None, **options):
-    return CustomMessageBox.show_warning(title or 'Warning', message or '', parent=options.get('parent'))
-
-
-def _custom_messagebox_error(title=None, message=None, **options):
-    return CustomMessageBox.show_error(title or 'Error', message or '', parent=options.get('parent'))
-
-
-def _custom_messagebox_askyesno(title=None, message=None, **options):
-    return CustomMessageBox.ask_yes_no(title or 'Confirm', message or '', parent=options.get('parent'))
-
-
-messagebox.showinfo = _custom_messagebox_info
-messagebox.showwarning = _custom_messagebox_warning
-messagebox.showerror = _custom_messagebox_error
-messagebox.askyesno = _custom_messagebox_askyesno
 
 class HealthMonitor:
     def get_text(self, key):
@@ -678,6 +495,9 @@ class HealthMonitor:
 
         # 【核心修正 3】這時候語言已經準備好了，才可以開始設定視窗標題與執行 get_text
         self.root.title(self.get_text("window_title"))
+
+        # 初始化自訂對話框（替換 tkinter.messagebox）
+        setup_custom_messagebox()
 
         # 初始設定為中等大小的視窗
         self.root.geometry("800x600")
