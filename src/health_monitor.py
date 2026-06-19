@@ -2636,6 +2636,44 @@ class HealthMonitor:
         except Exception as e:
             CustomMessageBox.show_error(self.get_text("error"), self.get_text("add_setting_failed").format(error=str(e)), self.root)
 
+    def add_setting_new(self):
+        try:
+            setting_type = self.type_var.get()
+            percent = int(self.percent_var.get())
+            key = self.key_var.get().strip()
+            cooldown = int(self.cooldown_var.get())
+
+            if not (0 <= percent <= 100):
+                raise ValueError("百分比必須在0-100之間")
+
+            if not key:
+                raise ValueError("請輸入快捷鍵")
+
+            if cooldown < 0:
+                raise ValueError("冷卻時間不能為負數")
+
+            if not self.validate_key_sequence(key):
+                raise ValueError("無效的快捷鍵格式。支援格式：單鍵（如 '5'）或多鍵序列（如 '1-5-esc'）")
+
+            if 'settings' not in self.config:
+                self.config['settings'] = []
+            self.config['settings'].append({
+                'type': setting_type,
+                'percent': percent,
+                'key': key,
+                'cooldown': cooldown
+            })
+
+            type_display = "HP" if setting_type == "HP" else "MP"
+            self.settings_tree.insert("", tk.END, values=(type_display, percent, key, cooldown))
+
+            self.on_type_changed()
+
+        except ValueError as e:
+            CustomMessageBox.show_error(self.get_text("input_error"), str(e), self.root)
+        except Exception as e:
+            CustomMessageBox.show_error(self.get_text("error"), self.get_text("add_setting_failed").format(error=str(e)), self.root)
+
     def validate_key_sequence(self, key_sequence):
         """驗證鍵序列格式"""
         if not key_sequence:
