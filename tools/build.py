@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 GameTools Health Monitor - Build Script
@@ -54,17 +54,17 @@ class GameToolBuilder:
 
     def start_step(self, step_name):
         self.step_times[step_name] = datetime.now()
-        self.log(f"??: {step_name}")
+        self.log(f"Step: {step_name}")
 
     def end_step(self, step_name):
         if step_name in self.step_times:
             duration = datetime.now() - self.step_times[step_name]
             minutes = duration.total_seconds() / 60
-            self.log(f"摰?: {step_name} (??: {minutes:.1f} ??)")
+            self.log(f"Done: {step_name} ({minutes:.1f} min)")
 
     def check_dependencies(self):
-        """瑼Ｘ靘陷"""
-        self.log("瑼Ｘ靘陷...")
+        """Check build dependencies"""
+        self.log("Checking dependencies...")
         required_packages = ["PyInstaller"]
 
         for package in required_packages:
@@ -75,7 +75,7 @@ class GameToolBuilder:
                 self.log(f"{package} missing")
                 return False
 
-        self.log("?????鞈游歇皛輯雲")
+        self.log("All dependencies available")
         return True
 
     def build_main_tool(self):
@@ -97,17 +97,17 @@ class GameToolBuilder:
         os.makedirs(spec_path, exist_ok=True)
 
         try:
-            # ?萄遣摰??PyInstaller ?賭誘嚗Ⅱ靽???鞈湧鋡怠???
+            # Build PyInstaller command for the main executable
             cmd = [
                 sys.executable, "-m", "PyInstaller",
                 "--onefile",
-                "--noconsole",  # ?梯??賭誘閬?嚗憿舐內GUI
+                "--noconsole",  # No console window for GUI app
                 "--noconfirm",
                 "--workpath", work_path,
                 "--specpath", spec_path,
                 "--name", "GameTools_HealthMonitor",
                 "--icon", self.icon_file,
-                # ?詨?靘陷
+                # Hidden imports
                 "--hidden-import", "PIL",
                 "--hidden-import", "PIL.Image",
                 "--hidden-import", "PIL.ImageTk",
@@ -120,7 +120,7 @@ class GameToolBuilder:
                 "--collect-data", "cv2",
                 # NumPy
                 "--hidden-import", "numpy",
-                # 蝟餌絞撌亙
+                # Automation libs
                 "--hidden-import", "mss",
                 "--hidden-import", "keyboard",
                 "--hidden-import", "pygetwindow",
@@ -128,14 +128,14 @@ class GameToolBuilder:
                 "--hidden-import", "psutil",
                 "--hidden-import", "psutil._psutil_windows",
                 "--hidden-import", "psutil._pswindows",
-                # Windows ?孵?璅∠? (?冽雿輻??餈質馱)
+                # Windows API (screen capture helpers)
                 "--hidden-import", "winreg",
                 "--hidden-import", "ctypes",
                 "--hidden-import", "ctypes.wintypes",
-                # 蝬脰楝隢?
+                # HTTP / network
                 "--hidden-import", "requests",
                 "--hidden-import", "urllib3",
-                # PyAutoGUI 摮?鞈?
+                # PyAutoGUI deps
                 "--hidden-import", "pymsgbox",
                 "--hidden-import", "pytweening",
                 "--hidden-import", "pyscreeze",
@@ -146,26 +146,31 @@ class GameToolBuilder:
                 "--hidden-import", "tkinter.messagebox",
                 "--hidden-import", "_tkinter",
                 "--collect-data", "tkinter",
-                # ?嗡??航?箸???鞈?
+                # Misc
                 "--hidden-import", "webbrowser",
                 "--hidden-import", "win32gui",
                 "--hidden-import", "traceback",
                 "--collect-data", "pywin32",
-                # ?豢?瑼?
+                # Data files
                 "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
+                "--paths", self.src_dir,
                 source_file
             ]
 
-            if auto_click_exe_file:
+            if os.path.exists(auto_click_exe_file):
                 cmd.extend(["--add-data", f"{auto_click_exe_file};."])
-            if language_pack_file:
+            else:
+                self.log("WARNING: auto_click.exe not found in src/, skipping")
+            if language_pack_file and os.path.exists(language_pack_file):
                 cmd.extend(["--add-data", f"{language_pack_file};."])
+            else:
+                self.log("WARNING: language_packs.json not found in src/, skipping")
 
-            # 瘛餃? Tkinter ??Pillow 鈭脖?瑼?
+            # Collect binary dependencies (Tkinter, Pillow, OpenCV)
             self._add_binary_dependencies(cmd)
 
-            self.log(f"?瑁? PyInstaller ?賭誘...")
-            self.log(f"撌乩??桅?: {self.project_dir}")
+            self.log("Running PyInstaller...")
+            self.log(f"Build dir: {self.project_dir}")
 
             result = subprocess.run(
                 cmd,
@@ -177,21 +182,21 @@ class GameToolBuilder:
             )
 
             if result.returncode != 0:
-                self.log(f"??PyInstaller 憭望?: {result.stderr}")
+                self.log(f"PyInstaller error: {result.stderr}")
                 return False
 
-            # 蝘餃? exe ??package ?桅?
+            # Move exe to package
             self._move_exe_to_package(package_dir)
 
             self.log("Main tool build completed")
             return True
 
         except Exception as e:
-            self.log(f"??瑽遣憭望?: {e}")
+            self.log(f"Build failed: {e}")
             return False
 
     def _add_binary_dependencies(self, cmd):
-        """瘛餃?鈭脖?靘陷"""
+        """Collect binary dependencies (DLLs, pyds)"""
         try:
             # Tkinter DLL
             python_home = os.path.normpath(sys.exec_prefix)
@@ -201,12 +206,12 @@ class GameToolBuilder:
                 if os.path.exists(dll_path):
                     cmd.extend(["--add-binary", f"{dll_path};."])
 
-            # Tcl 鞈?
+            # Tcl libs
             tcl_base = os.path.join(python_home, 'tcl')
             if os.path.exists(tcl_base):
                 cmd.extend(["--add-data", f"{tcl_base};tcl"])
 
-            # Pillow 鈭脖?瑼?
+            # Pillow binary modules
             try:
                 import PIL
                 import sysconfig
@@ -225,9 +230,9 @@ class GameToolBuilder:
                     if os.path.exists(pyd_path):
                         cmd.extend(["--add-binary", f"{pyd_path};PIL"])
             except Exception as e:
-                self.log(f"?? Pillow 鈭脖?瑼?瘛餃?憭望?: {e}")
+                self.log(f"Failed to collect Pillow binaries: {e}")
 
-            # OpenCV 鈭脖?瑼?
+            # OpenCV binary modules
             try:
                 import cv2
                 cv2_dir = os.path.dirname(cv2.__file__)
@@ -235,13 +240,13 @@ class GameToolBuilder:
                 if os.path.exists(cv2_pyd):
                     cmd.extend(["--add-binary", f"{cv2_pyd};cv2"])
             except Exception as e:
-                self.log(f"?? OpenCV 鈭脖?瑼?瘛餃?憭望?: {e}")
+                self.log(f"Failed to collect OpenCV binaries: {e}")
 
         except Exception as e:
-            self.log(f"?? 瘛餃?鈭脖?靘陷憭望?: {e}")
+            self.log(f"Failed to collect binary dependencies: {e}")
 
     def _move_exe_to_package(self, package_dir):
-        """蝘餃? exe ??package ?桅?"""
+        """Move built exe into package directory"""
         possible_sources = [
             os.path.join(self.dist_dir, "GameTools_HealthMonitor.exe"),
             os.path.join(self.dist_dir, "GameTools_HealthMonitor", "GameTools_HealthMonitor.exe")
@@ -253,14 +258,14 @@ class GameToolBuilder:
                 if os.path.exists(dst):
                     os.remove(dst)
                 shutil.move(src, dst)
-                self.log(f"??蝘餃? exe: {dst}")
+                self.log(f"Moved exe: {dst}")
                 break
 
     def create_installation_package(self):
         """Create installation package."""
         package_dir = os.path.join(self.dist_dir, "GameTools_Package")
 
-        # 銴ˊ敹?瑼?
+        # Copy release assets
         files_to_copy = [
             (
                 os.path.join(self.src_dir, "auto_click.exe"),
@@ -281,7 +286,9 @@ class GameToolBuilder:
 
             if os.path.exists(src_path):
                 shutil.copy2(src_path, dst_full)
-                self.log(f"??銴ˊ: {dst_name}")
+                self.log(f"Copied: {dst_name}")
+            else:
+                self.log(f"WARNING: {src_path} not found, skipping {dst_name}")
 
         # Create launch bat
         bat_content = '''@echo off
@@ -302,7 +309,7 @@ start "" "GameTools_HealthMonitor.exe"
             f.write(bat_content)
         self.log("Created 啟動工具.bat")
 
-        # ?萄遣 README.txt
+        # Create README.txt
         readme_content = f"""# Sid Game Tools
 
 ## Quick Start
@@ -329,30 +336,29 @@ start "" "GameTools_HealthMonitor.exe"
         readme_path = os.path.join(package_dir, "README.txt")
         with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
-        self.log("???萄遣README.txt")
+        self.log("Created README.txt")
 
         # =============================================================================
-        # ? ?蝯?鋆??批捆閬? (IMPORTANT - DO NOT MODIFY)
+        # Package structure notes (IMPORTANT - DO NOT MODIFY)
         # =============================================================================
-        # 憯葬瑼??????府?芸??思誑銝?隞塚?隢瘛餃???支遙雿?隞塚?
+        # The release ZIP contains:
+        #   auto_click.exe              (AutoHotkey auto-clicker)
+        #   GameTools_HealthMonitor.exe (Main application)
+        #   language_packs.json         (Language strings)
+        #   README.txt                  (Quick start)
+        #   使用說明.md                 (User documentation)
+        #   啟動工具.bat                (Launcher)
         #
-        # ??敹????隞?
-        #   ??auto_click.exe              (AutoHotkey?芸?暺?撌亙)
-        #   ??GameTools_HealthMonitor.exe (銝餌?撘?瑁??辣)
-        #   ??language_packs.json         (隤???蝵?
-        #   ??README.txt                  (雿輻隤芣?)
-        #   ??雿輻隤芣?.md                 (閰喟敦隤芣???)
-        #   ????撌亙.bat               (???單)
+        # Runtime-generated files excluded from ZIP:
+        #   screenshots/                (Captured during use)
+        #   health_monitor_config.json  (User settings)
+        #   health_monitor_config.json.backup (Auto-backup)
         #
-        # ??蝳迫???隞?
-        #   ??screenshots/                (????嚗?????)
-        #   ??health_monitor_config.json  (?冽?蔭嚗?????)
-        #   ??隞颱??嗡??冽??葫閰行?隞?
-        #
-        # 靽格甇日?頛臬?隢?蝝啗?隡啣蔣?選?
+        # When changing packaged files, update both the copy list above
+        # and this comment block to stay in sync.
         # =============================================================================
 
-        # ?萄遣 ZIP
+        # Create ZIP
         # 壓 ZIP 前清理執行期殘留（使用者個人設定/截圖）
         for item_name in ['health_monitor_config.json', 'health_monitor_config.json.backup', 'screenshots']:
             item_path = os.path.join(package_dir, item_name)
@@ -368,17 +374,17 @@ start "" "GameTools_HealthMonitor.exe"
         zip_path = os.path.join(self.dist_dir, zip_name)
 
         shutil.make_archive(zip_path, 'zip', package_dir)
-        self.log(f"???萄遣摰??? {zip_name}.zip")
+        self.log(f"Created ZIP: {zip_name}.zip")
 
         return True
 
     def build_all(self):
-        """?瑁?摰瑽遣"""
-        self.log("?? ??瑽遣 Sid頛撌亙 - 摰靽桀儔?")
+        """Run full build pipeline"""
+        self.log("=== Build Sid GameTools Health Monitor - Full Pipeline ===")
 
         try:
             steps = [
-                ("靘陷瑼Ｘ", self.check_dependencies),
+                ("Check Dependencies", self.check_dependencies),
                 ("Build main tool", self.build_main_tool),
                 ("Create package", self.create_installation_package)
             ]
@@ -386,7 +392,7 @@ start "" "GameTools_HealthMonitor.exe"
             for step_name, step_func in steps:
                 self.start_step(step_name)
                 if not step_func():
-                    self.log(f"??瑽遣憭望??? {step_name}")
+                    self.log(f"Build failed at step: {step_name}")
                     return False
                 self.end_step(step_name)
 
@@ -399,20 +405,20 @@ start "" "GameTools_HealthMonitor.exe"
 
             total_time = datetime.now() - self.start_time
             minutes = total_time.total_seconds() / 60
-            self.log(f"? 蝮質?: {minutes:.1f} ??")
+            self.log(f"Total build time: {minutes:.1f} min")
             self.log("Build completed successfully")
-            self.log("? 摰?????dist/ ?桅?")
+            self.log("Output ZIP in dist/")
 
             return True
 
         except Exception as e:
-            self.log(f"??瑽遣?啣虜: {e}")
+            self.log(f"Build pipeline error: {e}")
             return False
 
 def main():
     builder = GameToolBuilder()
     success = builder.build_all()
-    # input("\n?遙?蝯?...")  # 蝘駁隞交??鈭??啣?
+    # input("\nPress Enter to exit...")  # Uncomment to pause before exit
     return 0 if success else 1
 
 if __name__ == "__main__":
