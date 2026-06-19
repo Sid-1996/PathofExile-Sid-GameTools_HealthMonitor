@@ -52,6 +52,7 @@ from utils import set_app_instance, setup_signal_handlers, setup_exception_handl
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
+from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 
 # 版本資訊
 CURRENT_VERSION = f"v{__version__}"
@@ -278,11 +279,11 @@ class HealthMonitor:
             if hasattr(self, 'window_frame'):
                 self.window_frame.config(text=self.get_text("game_window_settings"))
                 if hasattr(self, 'region_label'):
-                    self.region_label.config(text=self.get_region_text())
+                    self.region_label.config(text=get_region_text(self.config))
                 if hasattr(self, 'mana_region_label'):
-                    self.mana_region_label.config(text=self.get_mana_region_text())
+                    self.mana_region_label.config(text=get_mana_region_text(self.config))
                 if hasattr(self, 'interface_ui_label'):
-                    self.interface_ui_label.config(text=self.get_interface_ui_region_text())
+                    self.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region))
                 if hasattr(self, 'select_health_btn'):
                     self.select_health_btn.config(text=self.get_text("select_health_region"))
                 if hasattr(self, 'select_mana_btn'):
@@ -1141,15 +1142,15 @@ class HealthMonitor:
         ttk.Button(window_frame, text=self.get_text("refresh"), command=self.refresh_windows).grid(row=0, column=2, padx=(5, 0))
 
         ttk.Label(window_frame, text=self.get_text("health_bar_region")).grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.region_label = ttk.Label(window_frame, text=self.get_region_text(), background="lightgray", relief="sunken", padding=2)
+        self.region_label = ttk.Label(window_frame, text=get_region_text(self.config), background="lightgray", relief="sunken", padding=2)
         self.region_label.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         ttk.Label(window_frame, text=self.get_text("mana_bar_region")).grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.mana_region_label = ttk.Label(window_frame, text=self.get_mana_region_text(), background="lightgray", relief="sunken", padding=2)
+        self.mana_region_label = ttk.Label(window_frame, text=get_mana_region_text(self.config), background="lightgray", relief="sunken", padding=2)
         self.mana_region_label.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         ttk.Label(window_frame, text=self.get_text("interface_ui_region")).grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.interface_ui_label = ttk.Label(window_frame, text=self.get_interface_ui_region_text(), background="lightgray", relief="sunken", padding=2)
+        self.interface_ui_label = ttk.Label(window_frame, text=get_interface_ui_region_text(self.interface_ui_region), background="lightgray", relief="sunken", padding=2)
         self.interface_ui_label.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         btn = ttk.Button(window_frame, text=self.get_text("select_health_region"), command=self.start_selection)
@@ -2214,7 +2215,7 @@ class HealthMonitor:
 
             # 儲存區域
             self.config['region'] = self.selected_region
-            self.region_label.config(text=self.get_region_text(), background="lightgreen")
+            self.region_label.config(text=get_region_text(self.config), background="lightgreen")
 
             # 非同步擷取預覽圖，避免阻塞UI線程
             self.root.after(100, self.capture_preview_async)
@@ -2455,7 +2456,7 @@ class HealthMonitor:
 
             # 儲存區域
             self.config['mana_region'] = self.selected_mana_region
-            self.mana_region_label.config(text=self.get_mana_region_text(), background="lightgreen")
+            self.mana_region_label.config(text=get_mana_region_text(self.config), background="lightgreen")
 
             # 非同步擷取魔力預覽圖，避免阻塞UI線程
             self.root.after(100, self.capture_mana_preview_async)
@@ -2499,10 +2500,10 @@ class HealthMonitor:
                 img.save(mana_preview_path)
 
                 # 繪製刻度線
-                self.draw_scale_lines(img)
+                draw_scale_lines(img)
 
                 # 等比例縮放圖片到合適尺寸
-                resized_img = self.resize_and_center_image(img, self.preview_size)
+                resized_img = resize_and_center_image(img, self.preview_size)
                 self.mana_preview_image = ImageTk.PhotoImage(resized_img)
                 if hasattr(self, 'mana_preview_label'):
                     self.mana_preview_label.config(image=self.mana_preview_image, text="")
@@ -2542,10 +2543,10 @@ class HealthMonitor:
                 img.save(preview_path)
 
                 # 繪製刻度線
-                self.draw_scale_lines(img)
+                draw_scale_lines(img)
 
                 # 等比例縮放圖片到合適尺寸
-                resized_img = self.resize_and_center_image(img, self.preview_size)
+                resized_img = resize_and_center_image(img, self.preview_size)
                 self.preview_image = ImageTk.PhotoImage(resized_img)
                 if hasattr(self, 'preview_label'):
                     self.preview_label.config(image=self.preview_image, text="")
@@ -2581,8 +2582,8 @@ class HealthMonitor:
                     os.makedirs(os.path.dirname(preview_path), exist_ok=True)
                     img.save(preview_path)
 
-                    self.draw_scale_lines(img)
-                    resized_img = self.resize_and_center_image(img, self.preview_size)
+                    draw_scale_lines(img)
+                    resized_img = resize_and_center_image(img, self.preview_size)
 
                     def _update_preview():
                         try:
@@ -2614,9 +2615,9 @@ class HealthMonitor:
             try:
                 img = Image.open(preview_path)
                 # 在預覽圖上繪製10等分刻度線
-                self.draw_scale_lines(img)
+                draw_scale_lines(img)
                 # 等比例縮放圖片到合適尺寸
-                resized_img = self.resize_and_center_image(img, self.preview_size)
+                resized_img = resize_and_center_image(img, self.preview_size)
                 self.preview_image = ImageTk.PhotoImage(resized_img)
                 if hasattr(self, 'preview_label'):
                     self.preview_label.config(image=self.preview_image, text="")
@@ -2662,8 +2663,8 @@ class HealthMonitor:
                     os.makedirs(os.path.dirname(mana_preview_path), exist_ok=True)
                     img.save(mana_preview_path)
 
-                    self.draw_scale_lines(img)
-                    resized_img = self.resize_and_center_image(img, self.preview_size)
+                    draw_scale_lines(img)
+                    resized_img = resize_and_center_image(img, self.preview_size)
 
                     def _update_preview():
                         try:
@@ -2696,9 +2697,9 @@ class HealthMonitor:
             try:
                 img = Image.open(mana_preview_path)
                 # 在預覽圖上繪製10等分刻度線
-                self.draw_scale_lines(img)
+                draw_scale_lines(img)
                 # 等比例縮放圖片到合適尺寸
-                resized_img = self.resize_and_center_image(img, self.preview_size)
+                resized_img = resize_and_center_image(img, self.preview_size)
                 self.mana_preview_image = ImageTk.PhotoImage(resized_img)
                 if hasattr(self, 'mana_preview_label'):
                     self.mana_preview_label.config(image=self.mana_preview_image, text="")
@@ -2723,80 +2724,6 @@ class HealthMonitor:
                 self.mana_preview_label.config(text=self.get_text("select_mana_bar_first"), image="")
                 return False
 
-    def draw_scale_lines(self, img):
-        """在預覽圖上繪製10等分刻度線"""
-        # 正確處理 PIL Image 對象的寬度和高度
-        if hasattr(img, 'shape'):  # numpy array
-            width, height = img.shape[1], img.shape[0]
-        else:  # PIL Image
-            width, height = img.width, img.height
-
-        # 創建繪圖物件
-        draw = ImageDraw.Draw(img)
-
-        # 繪製水平刻度線（10等分）
-        for i in range(1, 10):
-            y = int(height * i / 10)
-            # 繪製刻度線
-            draw.line([(0, y), (width, y)], fill=(255, 0, 0), width=1)
-            # 繪製百分比標籤
-            percent = 100 - (i * 10)
-            draw.text((5, y - 15), f"{percent}%", fill=(255, 0, 0), font=None)
-
-    def get_region_text(self):
-        if self.config.get('region'):
-            x, y, w, h = self.config['region']
-            return f"x={x}, y={y}, w={w}, h={h}"
-        return "未設定"
-
-    def get_mana_region_text(self):
-        if self.config.get('mana_region'):
-            x, y, w, h = self.config['mana_region']
-            return f"x={x}, y={y}, w={w}, h={h}"
-        return "未設定"
-
-    def get_interface_ui_region_text(self):
-        if self.interface_ui_region:
-            x, y, w, h = self.interface_ui_region['x'], self.interface_ui_region['y'], self.interface_ui_region['width'], self.interface_ui_region['height']
-            return f"x={x}, y={y}, w={w}, h={h}"
-        return "尚未記錄"
-
-    def add_setting(self):
-        try:
-            percent = int(self.percent_var.get())
-            key = self.key_var.get().strip()
-            cooldown = int(self.cooldown_var.get())
-
-            if not (0 <= percent <= 100):
-                raise ValueError("百分比必須在0-100之間")
-
-            if not key:
-                raise ValueError("請輸入快捷鍵")
-
-            if cooldown < 0:
-                raise ValueError("冷卻時間不能為負數")
-
-            # 驗證鍵序列
-            if not self.validate_key_sequence(key):
-                raise ValueError("無效的快捷鍵格式。支援格式：單鍵（如 '5'）或多鍵序列（如 '1-5-esc'）")
-
-            # 新增到設定
-            if 'settings' not in self.config:
-                self.config['settings'] = []
-            self.config['settings'].append({'percent': percent, 'key': key, 'cooldown': cooldown})
-
-            # 更新樹狀圖
-            self.settings_tree.insert("", tk.END, values=(percent, key, cooldown))
-
-            # 清空輸入
-            self.percent_var.set("50")
-            self.key_var.set("5")
-            self.cooldown_var.set("1000")
-
-        except ValueError as e:
-            CustomMessageBox.show_error(self.get_text("error"), str(e), self.root)
-
-    def add_setting_new(self):
         try:
             setting_type = self.type_var.get()
             percent = int(self.percent_var.get())
@@ -3248,13 +3175,13 @@ class HealthMonitor:
             pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
             # 在圖片上繪製當前血量指示器
-            self.draw_health_indicator(pil_img, health_percent)
+            draw_health_indicator(pil_img, health_percent)
 
             # 在圖片上繪製刻度線
-            self.draw_scale_lines(pil_img)
+            draw_scale_lines(pil_img)
 
             # 等比例縮放圖片到合適尺寸
-            resized_img = self.resize_and_center_image(pil_img, self.preview_size)
+            resized_img = resize_and_center_image(pil_img, self.preview_size)
 
             # 更新預覽圖片
             self.preview_image = ImageTk.PhotoImage(resized_img)
@@ -3264,114 +3191,6 @@ class HealthMonitor:
         except Exception as e:
             print(f"更新預覽圖片失敗: {e}")
 
-    def resize_and_center_image(self, pil_img, target_size):
-        """將圖片等比例縮放到適合預覽標籤的尺寸，讓圖片更大更清楚"""
-        # 獲取原始尺寸和目標尺寸
-        original_width, original_height = pil_img.size
-        target_width, target_height = target_size
-
-        # 計算縮放比例，保持長寬比，但確保圖片有合適的大小
-        scale_x = target_width / original_width
-        scale_y = target_height / original_height
-
-        # 使用較大的縮放比例讓圖片更清楚，但不超過目標尺寸
-        scale = min(scale_x, scale_y)
-
-        # 確保最小縮放比例不會讓圖片太小
-        min_scale = 2.0  # 最小2倍放大
-        scale = max(scale, min_scale)
-
-        # 如果放大後超過目標尺寸，則使用適合的縮放比例
-        if scale * original_width > target_width or scale * original_height > target_height:
-            scale = min(scale_x, scale_y)
-
-        # 計算縮放後的尺寸
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-
-        # 縮放圖片，保持高質量
-        resized_img = pil_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-        return resized_img
-
-    def draw_health_indicator(self, img, health_percent):
-        """在預覽圖片上繪製當前血量指示器"""
-        width, height = img.size
-
-        # 計算血量對應的高度位置
-        health_height = int(height * (100 - health_percent) / 100)
-
-        # 繪製血量指示線（紅色粗線）
-        draw = ImageDraw.Draw(img)
-        draw.line([(0, health_height), (width, health_height)],
-                 fill=(255, 0, 0), width=3)
-
-        # 繪製血量百分比文字在指示線下方
-        text = f"{health_percent:.1f}%"
-        bbox = draw.textbbox((0, 0), text, font=None)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-
-        # 計算文字位置：指示線下方5像素，水平居中
-        text_x = (width - text_width) // 2
-        text_y = health_height + 5
-
-        # 確保文字不會超出圖片邊界
-        if text_y + text_height > height:
-            text_y = health_height - text_height - 5  # 如果下方空間不夠，放在上方
-
-        # 繪製文字背景（半透明黑色矩形）
-        draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2],
-                      fill=(0, 0, 0, 128))
-
-        # 繪製白色文字
-        draw.text((text_x, text_y), text, fill=(255, 255, 255), font=None)
-
-        # 添加黑色邊框讓文字更清楚
-        draw.text((text_x + 1, text_y), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x - 1, text_y), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x, text_y + 1), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x, text_y - 1), text, fill=(0, 0, 0), font=None)
-
-    def analyze_health(self, img):
-        """分析血量條，使用18個等間隔位置檢測以提高精度"""
-        height = img.shape[0]
-
-        # 定義18個等間隔檢測位置的百分比（從上到下：95%, 90%, 85%, ..., 5%）
-        detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
-
-        health_count = 0
-        debug_info = []
-
-        # 在每個檢測位置附近取樣檢測
-        for i, pos_percent in enumerate(detection_positions):
-            # 計算檢測位置的Y坐標
-            y_center = int(height * (1 - pos_percent))  # 從上往下計算
-
-            # 在檢測位置附近取一個小的區域（垂直5像素，水平全寬）
-            sample_height = 5
-            y_start = max(0, y_center - sample_height // 2)
-            y_end = min(height, y_center + sample_height // 2)
-
-            segment = img[y_start:y_end, :]
-
-            # 檢查是否為血量顏色
-            is_health = self.is_health_color(segment)
-
-            debug_info.append(f"檢測點{i+1} ({int(pos_percent*100)}%): Y範圍[{y_start}-{y_end}], 有血量色彩: {is_health}")
-
-            if is_health:
-                health_count += 1
-
-        # 改進滿血檢測邏輯
-        if health_count >= 16:  # 至少16個檢測點有血量
-            # 檢查下半部分區域的整體血量比例
-            bottom_half_start = height // 2
-            bottom_segment = img[bottom_half_start:height, :]
-            bottom_ratio = self.get_health_color_ratio(bottom_segment)
-
-            # 檢查核心區域（30%-70%）
-            core_start = int(height * 0.3)
             core_end = int(height * 0.7)
             core_segment = img[core_start:core_end, :]
             core_ratio = self.get_health_color_ratio(core_segment)
@@ -6415,7 +6234,7 @@ class HealthMonitor:
                         self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
                         # 更新UI顯示
-                        self.interface_ui_label.config(text=self.get_interface_ui_region_text(), background="lightgreen")
+                        self.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region), background="lightgreen")
 
                         # 更新介面UI預覽
                         self.update_interface_ui_preview()
@@ -6523,7 +6342,7 @@ class HealthMonitor:
 
                 # 更新UI標籤狀態
                 if hasattr(self, 'interface_ui_label'):
-                    self.interface_ui_label.config(text=self.get_interface_ui_region_text(), background="lightgreen")
+                    self.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region), background="lightgreen")
 
                 # 更新介面UI預覽
                 if hasattr(self, 'interface_ui_preview_canvas'):
@@ -8452,13 +8271,13 @@ class HealthMonitor:
             pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
             # 在圖片上繪製當前魔力指示器
-            self.draw_mana_indicator(pil_img, mana_percent)
+            draw_mana_indicator(pil_img, mana_percent)
 
             # 在圖片上繪製刻度線
-            self.draw_scale_lines(pil_img)
+            draw_scale_lines(pil_img)
 
             # 等比例縮放圖片到合適尺寸
-            resized_img = self.resize_and_center_image(pil_img, self.preview_size)
+            resized_img = resize_and_center_image(pil_img, self.preview_size)
 
             # 更新預覽圖片
             self.mana_preview_image = ImageTk.PhotoImage(resized_img)
@@ -8467,45 +8286,6 @@ class HealthMonitor:
 
         except Exception as e:
             print(f"更新魔力預覽圖片失敗: {e}")
-
-    def draw_mana_indicator(self, img, mana_percent):
-        """在預覽圖片上繪製當前魔力指示器"""
-        width, height = img.size
-
-        # 計算魔力對應的高度位置
-        mana_height = int(height * (100 - mana_percent) / 100)
-
-        # 繪製魔力指示線（藍色粗線）
-        draw = ImageDraw.Draw(img)
-        draw.line([(0, mana_height), (width, mana_height)],
-                 fill=(0, 0, 255), width=3)
-
-        # 繪製魔力百分比文字在指示線下方
-        text = f"{mana_percent:.1f}%"
-        bbox = draw.textbbox((0, 0), text, font=None)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-
-        # 計算文字位置：指示線下方5像素，水平居中
-        text_x = (width - text_width) // 2
-        text_y = mana_height + 5
-
-        # 確保文字不會超出圖片邊界
-        if text_y + text_height > height:
-            text_y = mana_height - text_height - 5  # 如果下方空間不夠，放在上方
-
-        # 繪製文字背景（半透明黑色矩形）
-        draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2],
-                      fill=(0, 0, 0, 128))
-
-        # 繪製白色文字
-        draw.text((text_x, text_y), text, fill=(255, 255, 255), font=None)
-
-        # 添加黑色邊框讓文字更清楚
-        draw.text((text_x + 1, text_y), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x - 1, text_y), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x, text_y + 1), text, fill=(0, 0, 0), font=None)
-        draw.text((text_x, text_y - 1), text, fill=(0, 0, 0), font=None)
 
     def load_config(self):
         """????"""
@@ -8556,7 +8336,7 @@ class HealthMonitor:
                         self.update_ui_preview()
 
             if hasattr(self, 'interface_ui_label') and self.interface_ui_region:
-                self.interface_ui_label.config(text=self.get_interface_ui_region_text(), background="lightgreen")
+                self.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region), background="lightgreen")
                 if hasattr(self, 'interface_ui_preview_canvas'):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
@@ -8699,12 +8479,12 @@ class HealthMonitor:
 
             if hasattr(self, 'region_label'):
                 self.region_label.config(
-                    text=self.get_region_text(),
+                    text=get_region_text(self.config),
                     background="lightgreen" if self.config.get('region') else "lightgray",
                 )
             if hasattr(self, 'mana_region_label'):
                 self.mana_region_label.config(
-                    text=self.get_mana_region_text(),
+                    text=get_mana_region_text(self.config),
                     background="lightgreen" if self.config.get('mana_region') else "lightgray",
                 )
 
