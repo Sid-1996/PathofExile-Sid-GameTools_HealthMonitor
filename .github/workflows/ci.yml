@@ -1,0 +1,36 @@
+name: Lint & Type Check
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        pip install ruff pyright
+
+    - name: Install runtime dependencies
+      run: |
+        pip install -r scripts/requirements.txt
+
+    - name: ruff check
+      run: ruff check src/ --output-format github
+
+    - name: pyright
+      run: pyright src/health_monitor.py
