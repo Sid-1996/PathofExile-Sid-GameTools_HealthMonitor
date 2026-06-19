@@ -80,7 +80,7 @@ class LanguageManager:
             if key in ['window_title', 'tab_health_monitor', 'control_panel']:
                 print(f"[DEBUG] get_text('{key}') -> '{result}' (語言: {self.current_language})")
             return result
-        except:
+        except Exception:
             print(f"[DEBUG] get_text('{key}') 異常 (語言: {self.current_language})")
             return f"[{key}]"
 

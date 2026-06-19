@@ -26,7 +26,7 @@ def emergency_cleanup():
         # 清理鍵盤監聽器
         keyboard.unhook_all()
         print("鍵盤監聽器已清理")
-    except:
+    except Exception:
         pass
 
     try:
@@ -37,13 +37,13 @@ def emergency_cleanup():
             try:
                 child.terminate()
                 child.wait(timeout=1)
-            except:
+            except Exception:
                 try:
                     child.kill()
-                except:
+                except Exception:
                     pass
         print("子進程已清理")
-    except:
+    except Exception:
         pass
 
 
@@ -72,7 +72,7 @@ def global_f12_handler():
             # 如果應用程序實例不可用，直接強制退出
             import os
             os._exit(1)
-    except:
+    except Exception:
         import os
         os._exit(1)
 
@@ -83,7 +83,7 @@ def emergency_exit_handler(signum=None, frame=None):
     try:
         if _app_instance and hasattr(_app_instance, 'close_app'):
             _app_instance.close_app()
-    except:
+    except Exception:
         pass
     os._exit(1)
 
@@ -98,7 +98,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     # 嘗試緊急關閉應用程序
     try:
         emergency_exit_handler()
-    except:
+    except Exception:
         os._exit(1)
 
 

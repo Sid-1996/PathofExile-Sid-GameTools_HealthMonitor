@@ -1525,7 +1525,7 @@ class HealthMonitor:
                 if isinstance(child, tk.Toplevel):
                     try:
                         child.attributes("-topmost", False)
-                    except:
+                    except Exception:
                         pass
 
             # 根據層級設置置頂
@@ -2700,7 +2700,7 @@ class HealthMonitor:
                 try:
                     self.capture_mana_preview_async()
                     return True
-                except:
+                except Exception:
                     self.mana_preview_label.config(text=self.get_text("mana_region_set_waiting_preview"), image="")
                     return False
             elif hasattr(self, 'mana_preview_label'):
@@ -3073,7 +3073,7 @@ class HealthMonitor:
                 self.start_btn.config(state=tk.DISABLED)
             if hasattr(self, 'stop_btn') and self.stop_btn:
                 self.stop_btn.config(state=tk.NORMAL)
-        except:
+        except Exception:
             pass  # UI 更新失敗不影響功能
 
         # 開始監控時設置為非干擾模式
@@ -4098,7 +4098,7 @@ class HealthMonitor:
                 return False
             w = windows[0]
             return not w.isMinimized and w.isActive
-        except:
+        except Exception:
             return False
 
     def _is_game_window_visible(self):
@@ -7238,7 +7238,7 @@ class HealthMonitor:
                 else:  # 正常GUI尺寸
                     max_width = 700
                     max_height = 500
-            except:
+            except Exception:
                 # 如果獲取GUI尺寸失敗，使用預設值
                 max_width = 700
                 max_height = 500
@@ -7349,7 +7349,7 @@ class HealthMonitor:
                 else:  # 正常GUI尺寸
                     max_width = 700
                     max_height = 500
-            except:
+            except Exception:
                 # 如果獲取GUI尺寸失敗，使用預設值
                 max_width = 700
                 max_height = 500
@@ -7496,7 +7496,7 @@ class HealthMonitor:
                 try:
                     game_window.activate()
                     time.sleep(0.2)
-                except:
+                except Exception:
                     # 如果 activate 失敗，嘗試點擊視窗
                     pyautogui.click(game_window.left + game_window.width // 2,
                                   game_window.top + game_window.height // 2)
@@ -7577,7 +7577,7 @@ class HealthMonitor:
             # 確保GUI恢復正常
             try:
                 self.root.deiconify()
-            except:
+            except Exception:
                 pass
 
     def save_inventory_config(self, parent_window=None):
@@ -7675,14 +7675,14 @@ class HealthMonitor:
             # 在主線程更新狀態訊息
             try:
                 self.root.after(0, lambda: self.add_status_message(self.get_text("f6_skip_global_pause"), "warning"))
-            except:
+            except Exception:
                 pass
             return
 
         # 簡短回饋（主線程）
         try:
             self.root.after(0, lambda: self.add_status_message(self.get_text("f6_hotkey_pressed"), "hotkey"))
-        except:
+        except Exception:
             pass
 
         print("=== F6取物功能被調用（非阻塞版） ===")
@@ -7693,7 +7693,7 @@ class HealthMonitor:
             print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
             try:
                 self.root.after(0, lambda: self.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
-            except:
+            except Exception:
                 pass
             return
 
@@ -7708,7 +7708,7 @@ class HealthMonitor:
                 foreground_hwnd = GetForegroundWindow()
                 gui_hwnd = self.root.winfo_id()
                 gui_was_foreground = (foreground_hwnd == gui_hwnd)
-            except:
+            except Exception:
                 gui_was_foreground = False
 
         print(f"F6: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
@@ -7767,7 +7767,7 @@ class HealthMonitor:
 
         try:
             self.root.after(0, _hide_setting_windows)
-        except:
+        except Exception:
             pass
 
         # 現在啟動背景執行緒處理實際的取物工作
@@ -7780,7 +7780,7 @@ class HealthMonitor:
                     print("F6(worker): 找不到遊戲視窗")
                     try:
                         self.root.after(0, lambda: self.add_status_message(self.get_text("f6_fail_game_window_not_set"), "error"))
-                    except:
+                    except Exception:
                         pass
                     return
 
@@ -7803,13 +7803,13 @@ class HealthMonitor:
                     print("F6(worker): 背包UI未打開，無法執行取物功能")
                     try:
                         self.root.after(0, lambda: self.add_status_message(self.get_text("f6_cancel_inventory_ui_not_open"), "warning"))
-                    except:
+                    except Exception:
                         pass
                     return
 
                 try:
                     self.root.after(0, lambda: self.add_status_message(self.get_text("f6_processing_inventory_ui_check_passed"), "info"))
-                except:
+                except Exception:
                     pass
 
                 print(f"F6(worker): 開始執行取物，共 {len(valid_coords_local)} 個座標")
@@ -7817,7 +7817,7 @@ class HealthMonitor:
                 # 記錄原始滑鼠位置
                 try:
                     original_pos = pyautogui.position()
-                except:
+                except Exception:
                     original_pos = None
 
                 # 按住 Ctrl
@@ -7840,19 +7840,19 @@ class HealthMonitor:
                     print("F6(worker): 取物完成")
                     try:
                         self.root.after(0, lambda: self.add_status_message(self.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success"))
-                    except:
+                    except Exception:
                         pass
 
                     if original_pos:
                         try:
                             pyautogui.moveTo(original_pos.x, original_pos.y, duration=0.05)
-                        except:
+                        except Exception:
                             pass
 
                 finally:
                     try:
                         pyautogui.keyUp('ctrl')
-                    except:
+                    except Exception:
                         pass
 
                 # 執行完畢後：如果 GUI 原本在前台或保持在最上方，安排主線程恢復 GUI
@@ -7878,7 +7878,7 @@ class HealthMonitor:
 
                 try:
                     self.root.after(0, _restore_gui)
-                except:
+                except Exception:
                     pass
 
             except Exception as e:
@@ -7886,12 +7886,12 @@ class HealthMonitor:
                 _err_msg = str(e)
                 try:
                     self.root.after(0, lambda: self.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
-                except:
+                except Exception:
                     pass
                 # 確保 ctrl 被釋放
                 try:
                     pyautogui.keyUp('ctrl')
-                except:
+                except Exception:
                     pass
 
         # 組裝有效座標（主線程）
@@ -8114,7 +8114,7 @@ class HealthMonitor:
                         print(f"設定座標 {i+1} 失敗: {coord_error}")
                         try:
                             hint_window.destroy()
-                        except:
+                        except Exception:
                             pass
                         break
 
@@ -8148,7 +8148,7 @@ class HealthMonitor:
                     keyboard.unhook_all()
                     # 重新設置全局熱鍵
                     self.setup_hotkeys()
-                except:
+                except Exception:
                     pass
 
         except Exception as e:
@@ -8159,7 +8159,7 @@ class HealthMonitor:
             try:
                 self.root.deiconify()
                 parent_window.deiconify()
-            except:
+            except Exception:
                 pass
 
     def update_coordinate_display(self):
@@ -8325,7 +8325,7 @@ class HealthMonitor:
         # 清理鍵盤監聽器
         try:
             keyboard.unhook_all()
-        except:
+        except Exception:
             pass
 
         self.monitoring = False
@@ -9591,7 +9591,7 @@ class HealthMonitor:
         for hotkey in self.combo_hotkeys.values():
             try:
                 keyboard.remove_hotkey(hotkey)
-            except:
+            except Exception:
                 pass
         self.combo_hotkeys.clear()
 
@@ -9636,7 +9636,7 @@ class HealthMonitor:
                 self.combo_stop_btn.config(state=tk.NORMAL)
             if hasattr(self, 'combo_status_label') and self.combo_status_label:
                 self.combo_status_label.config(text=self.get_text("combo_running"), foreground="green")
-        except:
+        except Exception:
             pass  # UI 更新失敗不影響功能
 
     def run_combo_system(self):
@@ -10520,7 +10520,7 @@ if __name__ == "__main__":
             elif 'root' in globals() and root:
                 root.quit()
                 root.destroy()
-        except:
+        except Exception:
             pass
         # 強制退出
         os._exit(1)
@@ -10545,7 +10545,7 @@ if __name__ == "__main__":
         # 嘗試緊急關閉應用程序
         try:
             emergency_exit_handler()
-        except:
+        except Exception:
             os._exit(1)
 
     # 安裝全局異常處理器
