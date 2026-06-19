@@ -42,6 +42,7 @@ from window_key_sender import WindowKeySender
 from tab_help import HelpTab
 from tab_about import AboutTab
 from tab_status import StatusTab
+from tab_version import VersionTab
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -61,8 +62,6 @@ from inventory_utils import should_clear_inventory, find_inventory_items, calcul
 
 # 版本資訊
 CURRENT_VERSION = f"v{__version__}"
-GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
-GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 # Windows API 常數和函數
 user32 = ctypes.windll.user32
@@ -302,16 +301,9 @@ class HealthMonitor:
             self.help_tab.update_language()
 
     def update_version_tab_language(self):
-        """更新版本分頁的語言"""
         try:
-            # 重新創建版本分頁內容以應用新語言
-            if hasattr(self, 'version_frame'):
-                # 清除現有內容
-                for widget in self.version_frame.winfo_children():
-                    widget.destroy()
-
-                # 重新創建版本分頁
-                self.create_version_tab()
+            if hasattr(self, 'version_tab'):
+                self.version_tab.update_language()
         except Exception as e:
             print(f"更新版本分頁語言時發生錯誤: {e}")
 
@@ -490,7 +482,6 @@ class HealthMonitor:
         # 獲取語言映射
         self.config = {}
         self.state = AppState(self)
-        self._silent_version_check_after_id = None
         self.language_display_map = self.language_manager.get_language_display_map()
         self.language_reverse_map = self.language_manager.get_language_reverse_map()
 
@@ -829,7 +820,7 @@ class HealthMonitor:
         self.create_combo_tab()
         self.status_tab = StatusTab(self, self.state, self.status_frame)
         self.help_tab = HelpTab(self, self.state, self.help_frame)
-        self.create_version_tab()
+        self.version_tab = VersionTab(self, self.state, self.version_frame)
         self.about_tab = AboutTab(self, self.state, self.about_frame)
 
         # 初始化：設定當前分頁的視窗大小
@@ -6815,12 +6806,12 @@ class HealthMonitor:
 
         self.state._is_closing = True
 
-        if self._silent_version_check_after_id:
+        if hasattr(self, 'version_tab') and self.version_tab._silent_version_check_after_id:
             try:
-                self.root.after_cancel(self._silent_version_check_after_id)
+                self.root.after_cancel(self.version_tab._silent_version_check_after_id)
             except Exception:
                 pass
-            self._silent_version_check_after_id = None
+            self.version_tab._silent_version_check_after_id = None
 
         if hasattr(self, 'usage_tracker'):
             self.usage_tracker.stop()
@@ -7406,80 +7397,6 @@ class HealthMonitor:
         except Exception as e:
             print(f"檢測背包UI存在性失敗: {e}")
             return False
-
-    def create_version_tab(self):
-        """創建版本檢查分頁"""
-        main_frame = self.version_frame
-
-        # 標題
-        title_label = ttk.Label(main_frame, text=self.get_text("version_check_title"), font=('Microsoft YaHei', 18, 'bold'))
-        title_label.pack(pady=(15, 35))
-
-        # 當前版本資訊框架
-        current_frame = ttk.LabelFrame(main_frame, text=self.get_text("current_version_info"), padding="20")
-        current_frame.pack(fill=tk.X, pady=(0, 20))
-
-        ttk.Label(current_frame, text=self.get_text("current_version_label"), font=('Microsoft YaHei', 12, 'bold')).pack(anchor=tk.W)
-        current_version_label = ttk.Label(current_frame, text=CURRENT_VERSION,
-                                        font=('Microsoft YaHei', 14, 'bold'), foreground='blue')
-        current_version_label.pack(anchor=tk.W, pady=(5, 0))
-
-        # 遠端版本資訊框架
-        remote_frame = ttk.LabelFrame(main_frame, text=self.get_text("latest_version_info"), padding="20")
-        remote_frame.pack(fill=tk.X, pady=(0, 20))
-
-        self.latest_version_var = tk.StringVar(value=self.get_text("checking_version"))
-        ttk.Label(remote_frame, text=self.get_text("latest_version_label"), font=('Microsoft YaHei', 12, 'bold')).pack(anchor=tk.W)
-        self.latest_version_label = ttk.Label(remote_frame, textvariable=self.latest_version_var,
-                                            font=('Microsoft YaHei', 14, 'bold'), foreground='green')
-        self.latest_version_label.pack(anchor=tk.W, pady=(5, 10))
-
-        # 版本狀態顯示
-        self.version_status_var = tk.StringVar(value=self.get_text("checking_version_status"))
-        self.version_status_label = ttk.Label(remote_frame, textvariable=self.version_status_var,
-                                            font=('Microsoft YaHei', 11))
-        self.version_status_label.pack(anchor=tk.W, pady=(0, 10))
-
-        # 更新說明 - 使用Text widget以獲得更好的格式
-        ttk.Label(remote_frame, text=self.get_text("update_notes_label"), font=('Microsoft YaHei', 11, 'bold')).pack(anchor=tk.W, pady=(5, 5))
-
-        # 創建Text widget來顯示更新說明
-        self.release_notes_text = tk.Text(remote_frame, height=6, wrap=tk.WORD,
-                                        font=('Microsoft YaHei', 10), foreground='gray',
-                                        bg=self.root.cget('bg'), relief='flat', borderwidth=0)
-        self.release_notes_text.pack(fill=tk.X, pady=(0, 10))
-        self.release_notes_text.insert(1.0, self.get_text("loading_text"))
-        self.release_notes_text.config(state='disabled')  # 預設為只讀
-
-        # 添加滾動條
-        scrollbar = ttk.Scrollbar(remote_frame, orient="vertical", command=self.release_notes_text.yview)
-        self.release_notes_text.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=(0, 10))
-        self.release_notes_text.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=(0, 10))
-
-        # 按鈕框架
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(25, 0))
-
-        # 檢查更新按鈕
-        self.check_update_btn = ttk.Button(button_frame, text=self.get_text("check_update_button"),
-                                         command=self.check_for_updates)
-        self.check_update_btn.pack(side=tk.LEFT, padx=(0, 10))
-        Tooltip(self.check_update_btn, self.get_text("check_update_button_tip"))
-
-        # 前往下載按鈕
-        self.download_btn = ttk.Button(button_frame, text=self.get_text("download_page_button"),
-                                     command=self.open_download_page, state='disabled')
-        self.download_btn.pack(side=tk.LEFT, padx=(0, 10))
-
-        # 檢查GitHub連接按鈕
-        self.test_connection_btn = ttk.Button(button_frame, text=self.get_text("test_connection_button"),
-                                            command=self.test_github_connection)
-        self.test_connection_btn.pack(side=tk.LEFT)
-        Tooltip(self.test_connection_btn, self.get_text("test_connection_button_tip"))
-
-        # 自動靜默檢查版本（只在有新版本時彈出提醒）
-        self._silent_version_check_after_id = self.root.after(2000, self.silent_version_check)
 
     def create_combo_tab(self):
         """創建技能連段分頁 - 橫向寬敞佈局"""
@@ -8158,337 +8075,6 @@ class HealthMonitor:
         except Exception as e:
             messagebox.showerror("錯誤", f"載入連段設定失敗: {str(e)}")
             print(f"載入連段設定失敗: {e}")
-
-    def check_for_updates(self):
-        """檢查GitHub上的最新版本"""
-        def _check():
-            try:
-                self.latest_version_var.set(self.get_text("checking_version"))
-                self.version_status_var.set(self.get_text("connecting_github"))
-
-                # 發送請求到GitHub API
-                response = requests.get(GITHUB_API_URL, timeout=10)
-
-                if response.status_code == 200:
-                    release_data = response.json()
-                    latest_version = release_data.get('tag_name', 'unknown')
-                    release_body = release_data.get('body', self.get_text("no_update_notes"))
-                    download_url = release_data.get('html_url', '')
-
-                    # 更新UI顯示
-                    self.latest_version_var.set(latest_version)
-                    self.download_url = download_url
-
-                    # 版本比較
-                    if self.compare_versions(CURRENT_VERSION, latest_version):
-                        self.version_status_var.set(self.get_text("new_version_found"))
-                        self.latest_version_label.config(foreground='red')
-                        self.download_btn.config(state='normal')
-                    else:
-                        self.version_status_var.set(self.get_text("using_latest_version"))
-                        self.latest_version_label.config(foreground='green')
-                        self.download_btn.config(state='disabled')
-
-                    # 顯示更新說明
-                    if release_body and release_body != self.get_text("no_update_notes"):
-                        self.update_release_notes_display(release_body)
-
-                else:
-                    self.latest_version_var.set(self.get_text("check_failed"))
-                    self.version_status_var.set(self.get_text("check_failed_http").format(status_code=response.status_code))
-                    self.latest_version_label.config(foreground='red')
-
-            except requests.exceptions.Timeout:
-                self.latest_version_var.set(self.get_text("connection_timeout"))
-                self.version_status_var.set(self.get_text("github_timeout"))
-                self.latest_version_label.config(foreground='red')
-            except requests.exceptions.ConnectionError:
-                self.latest_version_var.set(self.get_text("connection_failed"))
-                self.version_status_var.set(self.get_text("github_connection_failed"))
-                self.latest_version_label.config(foreground='red')
-            except Exception as e:
-                self.latest_version_var.set(self.get_text("check_error"))
-                self.version_status_var.set(self.get_text("check_error_with_message").format(error=str(e)))
-                self.latest_version_label.config(foreground='red')
-
-        # 在後台線程中執行檢查
-        threading.Thread(target=_check, daemon=True).start()
-
-    def compare_versions(self, current, latest):
-        """比較版本號，返回True如果latest > current"""
-        try:
-            # 移除 'v' 前綴並分割版本號
-            current_clean = current.lstrip('v').split('.')
-            latest_clean = latest.lstrip('v').split('.')
-
-            # 確保版本號有3個部分
-            while len(current_clean) < 3:
-                current_clean.append('0')
-            while len(latest_clean) < 3:
-                latest_clean.append('0')
-
-            # 逐一比較主版本、次版本、修訂版本
-            for i in range(3):
-                current_part = int(current_clean[i])
-                latest_part = int(latest_clean[i])
-
-                if latest_part > current_part:
-                    return True
-                elif latest_part < current_part:
-                    return False
-
-            return False  # 版本相同
-        except Exception as e:
-            print(f"版本比較錯誤: {e}")
-            return False
-
-    def open_download_page(self):
-        """打開下載頁面"""
-        try:
-            if hasattr(self, 'download_url') and self.download_url:
-                import webbrowser
-                webbrowser.open(self.download_url)
-            else:
-                # 備用URL
-                import webbrowser
-                webbrowser.open(f"https://github.com/{GITHUB_REPO}/releases")
-        except Exception as e:
-            messagebox.showerror(self.get_text("download_page_error_title"),
-                               self.get_text("download_page_error_message").format(error=e))
-
-    def test_github_connection(self):
-        """測試GitHub連接"""
-        def _test():
-            try:
-                self.version_status_var.set(self.get_text("testing_connection"))
-                response = requests.get("https://api.github.com", timeout=5)
-                if response.status_code == 200:
-                    self.version_status_var.set(self.get_text("github_connection_ok"))
-                else:
-                    self.version_status_var.set(self.get_text("github_connection_warning").format(status_code=response.status_code))
-            except Exception as e:
-                self.version_status_var.set(self.get_text("connection_test_failed").format(error=str(e)))
-
-        threading.Thread(target=_test, daemon=True).start()
-
-    def format_release_notes(self, markdown_text):
-        """將Markdown格式的更新說明轉換為易讀的純文本格式"""
-        if not markdown_text or markdown_text == self.get_text("no_update_notes"):
-            return self.get_text("no_update_notes")
-
-        import re
-
-        # 移除代碼塊標記
-        text = re.sub(r'```[\s\S]*?```', '', markdown_text)
-
-        # 轉換標題
-        text = re.sub(r'^### (.*)$', r'● \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^## (.*)$', r'◆ \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^# (.*)$', r'■ \1', text, flags=re.MULTILINE)
-
-        # 轉換列表項目
-        text = re.sub(r'^\* (.*)$', r'• \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^- (.*)$', r'• \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^\d+\. (.*)$', r'➤ \1', text, flags=re.MULTILINE)
-
-        # 移除連結語法，保留文字
-        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-
-        # 移除粗體和斜體標記
-        text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)
-        text = re.sub(r'\*([^\*]+)\*', r'\1', text)
-        text = re.sub(r'_([^_]+)_', r'\1', text)
-
-        # 移除多餘的空行
-        text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
-
-        # 限制長度，避免過長
-        if len(text) > 800:
-            text = text[:800] + "..."
-
-        return text.strip()
-
-    def update_release_notes_display(self, release_body):
-        """更新更新說明的顯示"""
-        formatted_notes = self.format_release_notes(release_body)
-
-        # 啟用Text widget進行編輯
-        self.release_notes_text.config(state='normal')
-        self.release_notes_text.delete(1.0, tk.END)
-        self.release_notes_text.insert(1.0, formatted_notes)
-        self.release_notes_text.config(state='disabled')
-
-    def silent_version_check(self):
-        self._silent_version_check_after_id = None
-        if self.state._is_closing:
-            return
-
-        """靜默檢查版本，更新UI顯示並在有新版本時彈出提醒"""
-        def _silent_check():
-            try:
-                # 發送請求到GitHub API
-                response = requests.get(GITHUB_API_URL, timeout=10)
-
-                if response.status_code == 200:
-                    release_data = response.json()
-                    latest_version = release_data.get('tag_name', 'unknown')
-                    release_body = release_data.get('body', self.get_text("no_update_notes"))
-                    download_url = release_data.get('html_url', '')
-
-                    # 在主線程中更新UI
-                    def update_ui():
-                        try:
-                            self.latest_version_var.set(latest_version)
-                            self.download_url = download_url
-
-                            # 版本比較
-                            if self.compare_versions(CURRENT_VERSION, latest_version):
-                                self.version_status_var.set(self.get_text("new_version_found"))
-                                self.latest_version_label.config(foreground='red')
-                                self.download_btn.config(state='normal')
-                                # 彈出更新提醒
-                                self.show_update_notification(latest_version, release_body, download_url)
-                            else:
-                                self.version_status_var.set(self.get_text("using_latest_version"))
-                                self.latest_version_label.config(foreground='green')
-                                self.download_btn.config(state='disabled')
-
-                            # 顯示更新說明
-                            if release_body and release_body != self.get_text("no_update_notes"):
-                                self.update_release_notes_display(release_body)
-
-                        except Exception as e:
-                            print(f"UI更新失敗: {e}")
-
-                    self.status_tab.schedule_ui_callback(update_ui)
-
-                else:
-                    # 連接失敗時的UI更新
-                    def update_error_ui():
-                        try:
-                            self.latest_version_var.set(self.get_text("check_failed"))
-                            self.version_status_var.set(self.get_text("check_failed_http").format(status_code=response.status_code))
-                            self.latest_version_label.config(foreground='red')
-                        except Exception as e:
-                            print(f"錯誤UI更新失敗: {e}")
-
-                    self.status_tab.schedule_ui_callback(update_error_ui)
-
-            except requests.exceptions.Timeout:
-                def update_timeout_ui():
-                    try:
-                        self.latest_version_var.set(self.get_text("connection_timeout"))
-                        self.version_status_var.set(self.get_text("github_timeout"))
-                        self.latest_version_label.config(foreground='red')
-                    except Exception as e:
-                        print(f"超時UI更新失敗: {e}")
-
-                self.status_tab.schedule_ui_callback(update_timeout_ui)
-
-            except requests.exceptions.ConnectionError:
-                def update_connection_ui():
-                    try:
-                        self.latest_version_var.set(self.get_text("connection_failed"))
-                        self.version_status_var.set(self.get_text("github_connection_failed"))
-                        self.latest_version_label.config(foreground='red')
-                    except Exception as e:
-                        print(f"連接UI更新失敗: {e}")
-
-                self.status_tab.schedule_ui_callback(update_connection_ui)
-
-            except Exception as e:
-                _err_msg = str(e)
-                def update_exception_ui():
-                    try:
-                        self.latest_version_var.set(self.get_text("check_error"))
-                        self.version_status_var.set(self.get_text("check_error_with_message").format(error=_err_msg))
-                        self.latest_version_label.config(foreground='red')
-                    except Exception as e2:
-                        print(f"異常UI更新失敗: {e2}")
-
-                self.status_tab.schedule_ui_callback(update_exception_ui)
-
-        # 在後台線程中執行檢查
-        threading.Thread(target=_silent_check, daemon=True).start()
-
-    def show_update_notification(self, latest_version, release_body, download_url):
-        """顯示更新通知視窗"""
-        # 創建更新通知視窗
-        update_window = tk.Toplevel(self.root)
-        update_window.title(self.get_text("new_version_found_title"))
-        update_window.geometry("500x350")
-        update_window.resizable(True, True)
-        update_window.transient(self.root)
-        update_window.grab_set()
-
-        # 讓視窗居中
-        update_window.geometry("+%d+%d" % (
-            self.root.winfo_rootx() + 50,
-            self.root.winfo_rooty() + 50
-        ))
-
-        # 標題
-        title_frame = ttk.Frame(update_window)
-        title_frame.pack(fill=tk.X, padx=20, pady=20)
-
-        ttk.Label(title_frame, text=self.get_text("new_version_found_title_2"),
-                 font=('Arial', 16, 'bold'), foreground='green').pack()
-
-        # 版本資訊
-        info_frame = ttk.LabelFrame(update_window, text=self.get_text("version_information"), padding="15")
-        info_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
-
-        ttk.Label(info_frame, text=self.get_text("current_version_display").format(version=CURRENT_VERSION),
-                 font=('Arial', 10)).pack(anchor=tk.W, pady=(0, 5))
-        ttk.Label(info_frame, text=self.get_text("latest_version_display").format(version=latest_version),
-                 font=('Arial', 10, 'bold'), foreground='red').pack(anchor=tk.W, pady=(0, 10))
-
-        # 更新說明
-        if release_body and release_body != self.get_text("no_update_notes"):
-            ttk.Label(info_frame, text=self.get_text("update_notes_label"), font=('Arial', 10, 'bold')).pack(anchor=tk.W)
-            notes_frame = ttk.Frame(info_frame)
-            notes_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
-            notes_scrollbar = ttk.Scrollbar(notes_frame)
-            notes_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            notes_text = tk.Text(notes_frame, height=6, font=('Arial', 9),
-                                wrap=tk.WORD, yscrollcommand=notes_scrollbar.set,
-                                state=tk.NORMAL)
-            notes_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            notes_scrollbar.config(command=notes_text.yview)
-            notes_text.insert(tk.END, release_body)
-            notes_text.config(state=tk.DISABLED)
-
-        # 按鈕框架
-        button_frame = ttk.Frame(update_window)
-        button_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
-
-        def open_download():
-            try:
-                import webbrowser
-                webbrowser.open(download_url)
-                update_window.destroy()
-            except Exception as e:
-                messagebox.showerror(self.get_text("download_page_error_title"),
-                                   self.get_text("download_page_error_message").format(error=e))
-
-        def switch_to_version_tab():
-            # 切換到版本檢查分頁並更新資訊
-            self.notebook.select(self.version_frame)
-            self.latest_version_var.set(latest_version)
-            self.version_status_var.set(self.get_text("new_version_found"))
-            self.update_release_notes_display(release_body)
-            self.latest_version_label.config(foreground='red')
-            self.download_btn.config(state='normal')
-            self.download_url = download_url
-            update_window.destroy()
-
-        # 按鈕
-        ttk.Button(button_frame, text=self.get_text("download_now_button"),
-                  command=open_download).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text=self.get_text("view_details_button"),
-                  command=switch_to_version_tab).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text=self.get_text("remind_later_button"),
-                  command=update_window.destroy).pack(side=tk.RIGHT)
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
