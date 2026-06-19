@@ -28,8 +28,6 @@ from datetime import datetime
 import psutil
 import requests
 import functools
-import winreg
-
 # Import new modularized components
 from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
@@ -39,6 +37,7 @@ from config_manager import get_config_manager
 from _version import __version__
 from app_state import AppState
 from auto_click_manager import AutoClickManager
+from usage_tracker import UsageTracker
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -116,57 +115,6 @@ class HealthMonitor:
         except Exception:
             # print(f"[DEBUG] 主程序 get_text('{key}') 異常: {e}")
             return f"[{key}]"
-
-    def load_usage_time_from_registry(self):
-        """從註冊表載入總使用時間"""
-        try:
-            # 開啟註冊表鍵
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                               r"Software\SidGameTools\HealthMonitor",
-                               0, winreg.KEY_READ)
-            # 讀取使用時間值
-            value, _ = winreg.QueryValueEx(key, "TotalUsageTime")
-            winreg.CloseKey(key)
-            return int(value)
-        except FileNotFoundError:
-            # 如果鍵不存在，返回0
-            return 0
-        except Exception as e:
-            print(f"載入使用時間失敗: {e}")
-            return 0
-
-    def save_usage_time_to_registry(self, total_seconds):
-        """保存總使用時間到註冊表"""
-        try:
-            # 創建或開啟註冊表鍵
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER,
-                                 r"Software\SidGameTools\HealthMonitor")
-            # 保存使用時間值
-            winreg.SetValueEx(key, "TotalUsageTime", 0, winreg.REG_DWORD, total_seconds)
-            winreg.CloseKey(key)
-            print(f"已保存總使用時間: {format_usage_time(total_seconds)}")
-        except Exception as e:
-            print(f"保存使用時間失敗: {e}")
-
-
-    def track_usage_time(self):
-        """追蹤並保存使用時間"""
-        try:
-            # 計算本次使用時間
-            end_time = datetime.now()
-            session_duration = int((end_time - self.start_time).total_seconds())
-
-            # 累加到總時間
-            self.total_usage_time += session_duration
-
-            # 保存到註冊表
-            self.save_usage_time_to_registry(self.total_usage_time)
-
-            print(f"本次使用時間: {format_usage_time(session_duration)}")
-            print(f"累計總使用時間: {format_usage_time(self.total_usage_time)}")
-
-        except Exception as e:
-            print(f"追蹤使用時間失敗: {e}")
 
     def change_language_display(self, display_name):
         """處理顯示名稱的語言切換"""
@@ -528,8 +476,7 @@ class HealthMonitor:
         print(f"{self.get_text('app_start_time')} {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # 初始化使用時間追蹤
-        self.total_usage_time = self.load_usage_time_from_registry()
-        print(f"載入總使用時間: {format_usage_time(self.total_usage_time)}")
+        self.usage_tracker = UsageTracker(self)
 
         # 存儲原始 exe 路徑（用於 exe 重啟）
         self.original_exe_path = None
@@ -567,7 +514,6 @@ class HealthMonitor:
         self.config = {}
         self.state = AppState(self)
         self._silent_version_check_after_id = None
-        self._usage_time_after_id = None
         self.language_display_map = self.language_manager.get_language_display_map()
         self.language_reverse_map = self.language_manager.get_language_reverse_map()
 
@@ -737,7 +683,7 @@ class HealthMonitor:
 
         self.add_status_message(self.get_text("tool_started_successfully"), "success")
         self.add_status_message(self.get_text("hotkey_info"), "info")
-        self._usage_time_after_id = self.root.after(60000, self.update_usage_time_periodically)
+        self.usage_tracker.start_periodic_update()
 
     def refresh_visual_previews_after_load(self):
         """Refresh heavier previews after startup so the main window appears sooner."""
@@ -7569,14 +7515,15 @@ class HealthMonitor:
 
         self.state._is_closing = True
 
-        for after_attr in ("_silent_version_check_after_id", "_usage_time_after_id"):
-            after_id = getattr(self, after_attr, None)
-            if after_id:
-                try:
-                    self.root.after_cancel(after_id)
-                except Exception:
-                    pass
-                setattr(self, after_attr, None)
+        if self._silent_version_check_after_id:
+            try:
+                self.root.after_cancel(self._silent_version_check_after_id)
+            except Exception:
+                pass
+            self._silent_version_check_after_id = None
+
+        if hasattr(self, 'usage_tracker'):
+            self.usage_tracker.stop()
 
         # 計算並記錄運行時間
         end_time = datetime.now()
@@ -9416,9 +9363,7 @@ class HealthMonitor:
             return
 
         try:
-            print("應用程式正在關閉，保存使用時間...")
-            self.track_usage_time()
-            print("使用時間已保存")
+            self.usage_tracker.track_usage_time()
         except Exception as e:
             print(f"保存使用時間時發生錯誤: {e}")
 
@@ -9427,30 +9372,6 @@ class HealthMonitor:
             self.skill_timer.stop_all()
 
         self.close_app()
-
-    def update_usage_time_display(self):
-        """更新使用時間顯示"""
-        try:
-            if hasattr(self, 'usage_time_label'):
-                usage_time_text = format_usage_time(self.total_usage_time)
-                self.usage_time_label.config(text=self.get_text("total_usage_time").format(time=usage_time_text))
-        except Exception as e:
-            print(f"更新使用時間顯示時發生錯誤: {e}")
-
-    def update_usage_time_periodically(self):
-        if self.state._is_closing:
-            self._usage_time_after_id = None
-            return
-
-        """定期更新使用時間顯示"""
-        try:
-            # 更新顯示
-            self.update_usage_time_display()
-
-            # 每分鐘再次調度
-            self._usage_time_after_id = self.root.after(60000, self.update_usage_time_periodically)
-        except Exception as e:
-            print(f"定期更新使用時間時發生錯誤: {e}")
 
     def show_loading_window(self):
         """顯示工具載入中的提示視窗"""
