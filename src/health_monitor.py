@@ -52,6 +52,7 @@ from monitor_analyzer import (
 )
 from capture_utils import _mss_singleton, capture_region_to_pil, capture_region_to_cv2
 from capture_utils import build_game_window_monitor, save_screenshot, load_screenshot_from_file
+from inventory_utils import should_clear_inventory, find_inventory_items, calculate_inventory_grid_positions
 
 # 版本資訊
 CURRENT_VERSION = f"v{__version__}"
@@ -4365,7 +4366,7 @@ class HealthMonitor:
             img = capture_region_to_cv2(monitor)
 
             # 檢查是否需要清空
-            needs_clearing, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
+            needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
             if needs_clearing:
                 self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
                 print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
@@ -4931,7 +4932,7 @@ class HealthMonitor:
 
         # 重新計算格子位置
         if self.inventory_region:
-            self.inventory_grid_positions = self.calculate_inventory_grid_positions()
+            self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
         # 如果有預覽圖片，立即更新
         if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
@@ -4949,7 +4950,7 @@ class HealthMonitor:
 
         # 重新計算格子位置
         if self.inventory_region:
-            self.inventory_grid_positions = self.calculate_inventory_grid_positions()
+            self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
         # 如果有預覽圖片，立即更新
         if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
@@ -4961,41 +4962,6 @@ class HealthMonitor:
             self.offset_x_label.config(text=str(self.grid_offset_x))
         if hasattr(self, 'offset_y_label'):
             self.offset_y_label.config(text=str(self.grid_offset_y))
-
-    def calculate_inventory_grid_positions(self):
-        """計算背包格子位置 (5x12 布局，總共60個格子)"""
-        if not self.inventory_region:
-            return []
-
-        # 背包區域的尺寸
-        region_width = self.inventory_region['width']
-        region_height = self.inventory_region['height']
-        region_x = self.inventory_region['x']
-        region_y = self.inventory_region['y']
-
-        # 5x12 布局的格子數量 (5行12列)
-        cols = 12  # 12列
-        rows = 5   # 5行
-
-        # 計算每個格子的寬度和高度
-        cell_width = region_width / cols
-        cell_height = region_height / rows
-
-        # 計算格子位置
-        positions = []
-        for row in range(rows):
-            for col in range(cols):
-                # 計算格子中心點的相對位置
-                center_x = (col + 0.5) * cell_width + self.grid_offset_x
-                center_y = (row + 0.5) * cell_height + self.grid_offset_y
-
-                # 轉換為絕對座標（遊戲視窗內的座標）
-                abs_x = int(region_x + center_x)
-                abs_y = int(region_y + center_y)
-
-                positions.append((abs_x, abs_y))
-
-        return positions
 
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
@@ -5060,7 +5026,7 @@ class HealthMonitor:
             img = capture_region_to_cv2(monitor)
 
             # 分析背包狀態
-            should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
+            should_clear, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
 
             # 更新預覽
             self.update_inventory_preview_with_items(img, occupied_slots)
@@ -5309,7 +5275,7 @@ class HealthMonitor:
             print("已縮小GUI並激活遊戲視窗，準備記錄顏色")
 
             # 計算格子位置
-            self.inventory_grid_positions = self.calculate_inventory_grid_positions()
+            self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
             if not self.inventory_grid_positions:
                 messagebox.showerror("錯誤", "無法計算格子位置")
                 return
@@ -6170,53 +6136,6 @@ class HealthMonitor:
                 self.interface_ui_preview_canvas.create_text(75, 50, text="預覽載入失敗",
                                                            fill="red", font=("Arial", 8))
 
-    def should_clear_inventory(self, img, skip_slots=None, current_slot=None):
-        """判斷是否需要清空背包 - 檢查60個格子，可選擇跳過指定格子和之前的格子"""
-        if not self.empty_inventory_colors or not self.inventory_grid_positions:
-            return False, []
-
-        # 檢查是否有任何格子的顏色不符合基準
-        occupied_slots = []
-        for i, (pos_x, pos_y) in enumerate(self.inventory_grid_positions):
-            # 如果指定了最後處理過的格子，跳過所有索引小於等於該格子的格子
-            # 這樣可以避免文字視窗被誤識別為道具
-            if current_slot is not None and i <= current_slot:
-                continue
-
-            # 跳過使用者排除的格子
-            if skip_slots is not None and i in skip_slots:
-                continue
-
-            if i >= len(self.empty_inventory_colors):
-                continue
-
-            # 確保座標在圖片範圍內
-            img_x = pos_x - self.inventory_region['x']
-            img_y = pos_y - self.inventory_region['y']
-
-            if 0 <= img_x < img.shape[1] and 0 <= img_y < img.shape[0]:
-                # 獲取20x20區域的平均顏色（與記錄時保持一致）
-                x1 = max(0, img_x - 10)
-                y1 = max(0, img_y - 10)
-                x2 = min(img.shape[1], img_x + 10)
-                y2 = min(img.shape[0], img_y + 10)
-
-                cell_pixels = img[y1:y2, x1:x2]
-                if cell_pixels.size > 0:
-                    avg_color = np.mean(cell_pixels, axis=(0, 1))
-                    current_rgb = (int(avg_color[2]), int(avg_color[1]), int(avg_color[0]))  # BGR to RGB
-
-                    # 比較顏色差異 - 降低閾值以提高靈敏度，特別針對黑色道具
-                    baseline_rgb = self.empty_inventory_colors[i]
-                    color_diff = sum(abs(a - b) for a, b in zip(current_rgb, baseline_rgb))
-
-                    # 如果顏色差異大於閾值，說明這個格子有物品
-                    # 降低閾值從30到15，提高檢測靈敏度
-                    if color_diff > 15:  # 進一步降低閾值
-                        occupied_slots.append(i)  # 返回格子索引而不是座標
-
-        return len(occupied_slots) > 0, occupied_slots
-
     def clear_inventory_item(self, game_window, img):
         """清空背包物品 - 動態辨識版：每次點擊後重新辨識，適應大物品清空多格的情況
 
@@ -6228,7 +6147,7 @@ class HealthMonitor:
 
             # === 階段1：初始識別一次，創建清包列表並計算辨識次數 ===
             print("階段1：開始初始識別，創建清包列表")
-            initial_item_positions = self.find_inventory_items(img, self.excluded_inventory_slots, -1)
+            initial_item_positions = find_inventory_items(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
             if not initial_item_positions:
                 print("沒有找到需要清空的物品")
@@ -6278,7 +6197,7 @@ class HealthMonitor:
                         current_img = cv2.cvtColor(current_img, cv2.COLOR_RGB2BGR)
 
                     # 分析當前背包狀態
-                    should_continue, current_occupied = self.should_clear_inventory(current_img, self.excluded_inventory_slots, -1)
+                    should_continue, current_occupied = should_clear_inventory(current_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                     # 更新預覽
                     progress_text = f"動態清包: {total_processed} 個道具已處理"
@@ -6295,7 +6214,7 @@ class HealthMonitor:
                     break
 
                 # 找到下一個要點擊的物品位置（跳過已標記無法清空的物品）
-                current_item_positions = self.find_inventory_items(current_img, self.excluded_inventory_slots, -1)
+                current_item_positions = find_inventory_items(current_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                 # 過濾掉已跳過的位置
                 available_positions = [pos for pos in current_item_positions if pos not in skipped_positions]
@@ -6357,7 +6276,7 @@ class HealthMonitor:
                         check_img = cv2.cvtColor(check_img, cv2.COLOR_RGB2BGR)
 
                     # 檢查點擊的位置是否還有物品
-                    check_item_positions = self.find_inventory_items(check_img, self.excluded_inventory_slots, -1)
+                    check_item_positions = find_inventory_items(check_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                     # 如果點擊的位置還有物品，說明無法清空（倉庫滿了）
                     if next_pos in check_item_positions:
@@ -6395,7 +6314,7 @@ class HealthMonitor:
                     final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
 
                 # 分析最終背包狀態
-                final_should_clear, final_occupied = self.should_clear_inventory(final_img, self.excluded_inventory_slots, -1)
+                final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                 # 在主線程中最終更新預覽
                 final_progress_text = f"清包完成: {total_processed} 個道具"
@@ -6412,7 +6331,7 @@ class HealthMonitor:
                     self.add_status_message(self.get_text("f3_retry_final"), "info")
 
                     # 重新擷取當前狀態作為重試的基礎
-                    retry_item_positions = self.find_inventory_items(final_img, self.excluded_inventory_slots, -1)
+                    retry_item_positions = find_inventory_items(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                     if retry_item_positions:
                         print(f"重試：找到 {len(retry_item_positions)} 個剩餘物品")
@@ -6481,7 +6400,7 @@ class HealthMonitor:
                             retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
                             retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
 
-                        _, retry_final_occupied = self.should_clear_inventory(retry_final_img, self.excluded_inventory_slots, -1)
+                        _, retry_final_occupied = should_clear_inventory(retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
 
                         final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
                         self.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
@@ -6504,16 +6423,6 @@ class HealthMonitor:
                 print("確保CTRL鍵已釋放")
             except Exception as e:
                 print(f"釋放CTRL鍵時發生錯誤: {e}")
-
-    def find_inventory_items(self, img, skip_slots=None, current_slot=None):
-        """分析圖片並找到有物品的格子位置"""
-        _, occupied_indices = self.should_clear_inventory(img, skip_slots, current_slot)
-        # 將索引轉換為座標
-        occupied_positions = []
-        for index in occupied_indices:
-            if index < len(self.inventory_grid_positions):
-                occupied_positions.append(self.inventory_grid_positions[index])
-        return occupied_positions
 
     def _draw_exclusion_overlay(self):
         """在 Canvas 上繪製排除格子的藍色疊加層（獨立於底圖，刷新後仍保留）"""
@@ -6933,7 +6842,7 @@ class HealthMonitor:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # 分析背包狀態
-                should_clear, occupied_slots = self.should_clear_inventory(img, self.excluded_inventory_slots)
+                should_clear, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
 
             # 5. 恢復GUI面板（如果之前縮小了）
             if gui_minimized_for_test:
