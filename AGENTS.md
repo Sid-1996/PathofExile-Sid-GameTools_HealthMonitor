@@ -45,79 +45,62 @@ The following tools are available in PATH and can be used by agents for searchin
 
 - **commitizen** (`cz 4.16.3`, via pipx) — structured commit messages + auto changelog
   - `cz commit` — interactive prompt instead of `git commit`
-  - `cz bump` — auto-increment version in `health_monitor.py` + `build.py` + `CHANGELOG.md`
+  - `cz bump` — auto-increment version in `_version.py` + `build.py` + `CHANGELOG.md`
   - Config lives in `pyproject.toml` `[tool.commitizen]`
   - Conventional commit format: `feat:`, `fix:`, `refactor:`, `chore:` etc.
 
 ## When to Use Each Tool
 
-**改任何 Python 之前**
-→ 先跑 `ruff check src/ --statistics` 確認現有 baseline，不要把歷史包袱誤認為自己造成的
+**Before editing any Python**
+→ run `ruff check src/ --statistics` to confirm the existing baseline; don't mistake pre-existing issues for your own
 
-**改 `close_app()`、threading、tkinter callback 等敏感路徑之前**
-→ 先跑 `pyright src/health_monitor.py`，確認型別沒有明顯錯誤再動手
+**Before touching `close_app()`, threading, or tkinter callbacks**
+→ run `pyright src/health_monitor.py` to catch type errors first
 
-**準備 commit**
-→ 用 `cz commit` 取代 `git commit`（互動式選擇 feat/fix/refactor/chore 等類型）
-→ 升版本號用 `cz bump`，它會自動同步 `health_monitor.py`、`build.py`、`CHANGELOG.md`，不要手動改三個地方
+**Before committing**
+→ `ruff check src/ --fix && ruff format src/` to auto-fix safe issues
+→ use `cz commit` instead of `git commit` for structured messages
+→ use `cz bump` to increment version — it syncs `_version.py`, `build.py`, `CHANGELOG.md` automatically
 
-**收到效能問題回報（截圖卡頓、監控延遲）**
-→ 請使用者跑起程式後，用 `py-spy top --pid <PID>` 觀察熱點函式
-→ 要產出 flamegraph 給人看：`py-spy record -o profile.svg --pid <PID>`
+**When ruff reports issues**
+→ `[*]` = auto-fixable, run `ruff check src/ --fix`
+→ `E722` (bare-except) = manual review needed
+→ `C901` (complex-structure) = pre-existing, add to refactor backlog, do not touch in current task
+→ `[ ]` = manual fix, decide case by case
 
-**ruff 掃出問題時的處理原則**
-→ `[*]` 標記 = 可自動修，直接 `ruff check src/ --fix` 處理（空白、f-string 等）
-→ `E722` (bare-except) = 需人工判斷，確認是否應改為具體 exception 類型
-→ `C901` (complex-structure) = 函式過複雜，列入重構待辦，不要在當次任務順手動它
-→ `[ ]` 標記 = 無法自動修，需人工處理，視情況決定是否在當次任務處理
-
-## Current Git State
-
-- Branch: `master`
-- Ahead of `origin/master` by **20 commits** (will be 21 after next commit)
-- Working tree: **clean** after F821 fixes
-- `git push` is **locked** — do not push unless explicitly instructed
-
-## Recent Changes (v1.0.8)
-
-### Activation-Aware Previews
-
-- `monitor_health()` now checks `window.isActive` on every iteration.
-- When the window loses focus, health/mana preview labels show "等待遊戲視窗激活" instead of capturing covered/desktop content.
-- Manual capture methods (`capture_preview`, `capture_mana_preview`, async variants) all check `_is_game_window_active()` before capturing.
-- Inventory preview refresh also checks activation state.
-- Flat check (no busy-wait loop), 0.5s re-check interval.
-- Helper: `_is_game_window_active()`, `_show_health_preview_placeholder()`, `_show_mana_preview_placeholder()`.
-
-### Exclusion Marker Canvas Overlay
-
-- Exclusion markers are drawn as a separate Canvas overlay (`_draw_exclusion_overlay`), independent of the background image.
-- Click toggles exclusion via `_on_preview_click` → calls `_draw_exclusion_overlay()`.
-- No full re-render of the inventory preview on exclusion toggle.
-
-### Max Preview Size
-
-- Default max_width: 500 → 700
-- Default max_height: 400 → 500
-
-### Known Issues / DXGI vs GDI
-
-- `PrintWindow` (GDI) returns all-black frames for Path of Exile 2 (DirectX) — confirmed via test harness.
-- `dxcam` (DXGI Desktop Duplication) captures the final composited desktop, so covered/minimized windows yield covered/desktop content — same as `mss`.
-- No reliable capture-before-activation solution exists without Windows.Graphics.Capture (Win10+).
-- Activation guard is the chosen mitigation path for now.
+**When a performance issue is reported**
+→ `py-spy top --pid <PID>` to find hot functions
+→ `py-spy record -o profile.svg --pid <PID>` for a flamegraph
 
 ## Canonical Structure
 
-  - `src/`: single source of truth for runtime code and language packs
-  - `health_monitor.py` (main app, ~9,800 lines)
-  - `capture_utils.py`, `config_manager.py`, `custom_dialogs.py`, `image_utils.py`
-  - `inventory_utils.py`, `language_system.py`, `monitor_analyzer.py`, `skill_timer.py`, `utils.py`
-  - `language_packs.json`, `使用說明.md`, `auto_click.exe`
-  - `scripts/`: one-click local workflows (includes `auto_click.ahk` source)
-  - `tools/build.py`: packaging pipeline (PyInstaller + package assembly)
-  - `docs/`: user/developer documentation
-  - `.github/workflows/ci.yml`: lint + type check on push/PR
+```text
+src/                          # Single source of truth for runtime code
+scripts/                      # One-click local workflows
+tools/build.py                # PyInstaller packaging pipeline
+docs/                         # User-facing documentation
+.github/workflows/ci.yml      # Lint + type check on push/PR
+```
+
+### src/ Module Responsibilities
+
+| Module | Role | Lines | Dependencies |
+|---|---|---|---|
+| `health_monitor.py` | Main entry, UI orchestration, event loop | ~9,800 | All other modules |
+| `monitor_analyzer.py` | Health/mana HSV analysis, trigger logic | 349 | cv2, numpy |
+| `capture_utils.py` | Screenshot capture, mss singleton | 72 | mss, PIL, numpy |
+| `image_utils.py` | Image drawing, resizing, preview utilities | 203 | PIL |
+| `inventory_utils.py` | Inventory slot analysis, item detection | 95 | numpy |
+| `config_manager.py` | JSON config load/save with backup | 208 | none |
+| `custom_dialogs.py` | Modal dialogs with dynamic sizing | 215 | tkinter |
+| `language_system.py` | Bilingual string lookup | 144 | JSON |
+| `skill_timer.py` | Skill cooldown timer module | 432 | tkinter |
+| `utils.py` | Emergency cleanup, F12 handler, Tooltip | 166 | keyboard, psutil |
+
+Runtime-generated files — do not treat as source:
+- `src/health_monitor_config.json` (user config state)
+- `src/health_monitor_config.json.backup`
+- `src/screenshots/`
 
 ## One-Click Workflows
 
@@ -128,8 +111,8 @@ The following tools are available in PATH and can be used by agents for searchin
 
 ## Version
 
-- Current: **v1.0.8**
-- Single source: `src/_version.py` (`__version__ = "1.0.8"`)
+- Current: **v1.1.0**
+- Single source: `src/_version.py` (`__version__ = "1.1.0"`)
 - `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
 - `build.py`: `APP_VERSION = __version__`
 - Managed by commitizen via `src/_version.py:__version__`
@@ -156,19 +139,17 @@ The following tools are available in PATH and can be used by agents for searchin
 - Background workers must not touch Tk widgets after shutdown begins.
 - When modifying startup or shutdown logic, re-check normal close flow, not just app launch.
 
-## Recent Cleanup History
-
-- 29 messy commits squashed into 12 themed commits.
-- ~185 lines of dead code removed from `health_monitor.py` (duplicate methods, uncalled functions, debug prints, commented-out blocks).
-- `src for DEVELOPER/` removed; build pipeline simplified.
-- Runtime-generated files (`screenshots/`, `health_monitor_config.json`) no longer tracked.
-- `.windsurf/` workflow docs cleaned out.
-
 ## Notes for Future Refactor
 
-- `health_monitor.py` at ~10,500 lines is the main refactor target.
-- Inventory exclusion feature: `excluded_inventory_slots` (set of ints), saved as `excluded_inventory_slots` in config JSON, rendered as blue overlay on preview, respected in all F3 clear paths.
+- `health_monitor.py` at ~9,800 lines is the main refactor target. Remaining 11 `C901` warnings are pre-existing complex functions.
+- Inventory exclusion feature: `excluded_inventory_slots` (set of ints), saved in config JSON, rendered as blue overlay on preview, respected in all F3 clear paths.
 - `_on_preview_click()` handles Canvas click → toggle exclusion → re-render.
 - `_preview_meta` stores rendered image dimensions for click coordinate mapping.
-- No automated test suite exists yet — manual diagnostic scripts were removed.
-- Do not assume `README_EN.md` exists today. If bilingual public docs are required again, add or restore the English counterpart first.
+- No automated test suite exists yet.
+- Do not assume `README_EN.md` exists. If bilingual public docs are required, add it explicitly.
+
+## Known Issues
+
+- `PrintWindow` (GDI) returns all-black frames for Path of Exile 2 (DirectX).
+- `dxcam` / `mss` both capture the composited desktop — covered/minimized windows yield desktop content, not game content.
+- Activation guard (`_is_game_window_active()`) is the current mitigation; no reliable capture-before-activation solution without Windows.Graphics.Capture (Win10+).

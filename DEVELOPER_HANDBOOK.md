@@ -10,38 +10,13 @@ This project is a Windows automation tool for Path of Exile workflows. The curre
 - global hotkeys
 - auto-click integration
 
-The project is still centered around `src/health_monitor.py`, but part of the codebase has already been modularized into helper modules under `src/`.
-
-## Current Architecture
-
-### Main Runtime Files
-
-- `src/health_monitor.py`
-  - main application entry
-  - Tkinter UI
-  - feature orchestration
-  - thread startup / shutdown flow
-- `src/config_manager.py`
-  - config persistence helpers
-- `src/language_system.py`
-  - language pack loading and translation lookup
-- `src/utils.py`
-  - shared runtime helpers
-  - cleanup helpers
-  - F12 emergency-close support
-- `src/custom_dialogs.py`
-  - shared dialog behavior
-
-### Project State
-
-- `src/` is the single source of truth.
-- `tools/build.py` sources all assets from `src/`.
+For project structure, module responsibilities, and available tooling, see `AGENTS.md`.
 
 ## Main Application Structure
 
 ### `health_monitor.py`
 
-`health_monitor.py` remains the integration layer. It imports the modularized helpers and still owns:
+`health_monitor.py` is the integration layer (~9,800 lines). It imports all modularized helpers and owns:
 
 - Tkinter root and UI composition
 - notebook tabs and controls
@@ -52,87 +27,47 @@ The project is still centered around `src/health_monitor.py`, but part of the co
 
 ### Key Classes
 
-- `CustomMessageBox`
-  - shared modal dialog wrapper used by the app
-- `HealthMonitor`
-  - main application controller
+- `CustomMessageBox` — shared modal dialog wrapper
+- `HealthMonitor` — main application controller
 
 ## Important Runtime Concepts
 
 ### Configuration
 
-Configuration is stored in `src/health_monitor_config.json`.
+Configuration is stored in `src/health_monitor_config.json` (runtime state, not canonical source).
 
-Key points:
+- Loaded through `ConfigManager`
+- `health_monitor.py` maps loaded config into runtime/UI state
+- Old config entries using `health` / `mana` are migrated to `HP` / `MP`
 
-- runtime config is not canonical source code
-- config is loaded through `ConfigManager`
-- `health_monitor.py` still maps loaded config into runtime/UI state
-- old config entries using `health` / `mana` are migrated to `HP` / `MP`
-
-Common config areas:
-
-- monitor regions
-- trigger settings
-- inventory regions and colors
-- combo settings
-- language
-- window geometry
-- preview settings
+Common config areas: monitor regions, trigger settings, inventory regions and colors, combo settings, language, window geometry, preview settings.
 
 ### Language System
 
 UI text comes from `src/language_packs.json`.
 
-Key points:
+- Default runtime language is managed by `language_system.py`
+- UI strings should use language keys via `get_text()`, not hardcoded text
+- Language switching works at runtime; app must be restarted to apply
 
-- default runtime language is managed by `language_system.py`
-- UI strings should use language keys, not hardcoded text where practical
-- language switching is expected to work at runtime
+### Hotkeys
 
-### Build and Packaging
+| Key | Action |
+|---|---|
+| F3 | Inventory clear flow |
+| F5 | Return to hideout |
+| F6 | Pickup helper |
+| F9 | Global pause |
+| F10 | Toggle monitoring |
+| F12 | Emergency close (safety path via `utils.global_f12_handler()`) |
 
-Packaging is driven by `tools/build.py`.
-
-Current packaging assumptions:
-
-- all assets sourced from `src/`
-- package expected release assets such as:
-  - `GameTools_HealthMonitor.exe`
-  - `auto_click.exe`
-  - `language_packs.json`
-  - `使用說明.md`
-  - `啟動工具.bat`
-  - `README.txt`
-
-Current runtime note:
-
-- `src/auto_click.exe` and `src/auto_click.ahk` are not currently present in this checkout
-- missing auto-click assets should be treated as runtime/package availability issues, not automatic proof that modularization is broken
-
-## Hotkeys
-
-The current hotkey set includes:
-
-- `F3`: inventory clear flow
-- `F5`: return to hideout
-- `F6`: pickup helper
-- `F9`: global pause
-- `F10`: toggle monitoring
-- `F12`: emergency close path
-
-Important note:
-
-- `F12` is intentionally a safety path, not just a normal UI close button
-- the runtime includes a forced-exit fallback through `utils.global_f12_handler()`
+F12 is intentionally a forced-exit fallback, not just a normal close button.
 
 ## Threading and Lifecycle
 
 ### Active Background Work
 
-The app uses background work for things such as:
-
-- health/mana monitoring
+- health/mana monitoring loop
 - combo execution
 - mouse interrupt monitoring
 - version check worker callbacks
@@ -140,71 +75,50 @@ The app uses background work for things such as:
 
 ### Close Lifecycle
 
-Shutdown is a sensitive area.
-
-Current expectations:
+Shutdown is a sensitive area. Current expectations:
 
 - `_is_closing` must be set early in close flow
 - pending `after(...)` callbacks must be treated carefully
-- background threads must not keep touching Tk widgets after shutdown starts
+- background threads must not touch Tk widgets after shutdown starts
 - UI callbacks scheduled from worker threads must be closing-aware
 
-Recent recovery work specifically fixed issues around:
-
-- `load_config()` recovery after modularization damage
-- `self.config` initialization order before UI access
-- `silent_version_check` / usage-time callback cleanup
-- background thread interaction with Tk during close
-- cp950 terminal failures from emoji-bearing `print(...)`
-
-Any future work that changes startup or shutdown logic must re-test:
-
-- app launch
-- smoke flow
+Any future work touching startup or shutdown logic must re-test:
+- app launch and smoke flow
 - normal close flow
 - callback/thread cleanup after close
+
+Specific things to verify when modularization or cleanup code is touched:
+- no `invalid command name` errors from stale Tk callbacks
+- no `RuntimeError: main thread is not in main loop`
+- no background worker updating destroyed widgets
 
 ## Development Workflow
 
 ### Recommended Local Flow
 
-1. Install dependencies with `scripts/install_dependencies.bat`
-2. Run locally with `scripts/run_monitor.bat`
+1. Install dependencies: `scripts/install_dependencies.bat`
+2. Run locally: `scripts/run_monitor.bat`
 3. Make request-scoped code changes in `src/`
-4. Validate with targeted checks
-5. Build/package only when needed
+4. Validate with targeted checks (see below)
+5. Build/package only when needed: `scripts/build_exe.bat`
 
 ### Minimum Validation for Runtime Changes
 
-- `python -m py_compile src/health_monitor.py`
-- targeted smoke test for changed feature
-- normal launch and close verification when lifecycle-sensitive code changes
+```
+python -m py_compile src/health_monitor.py
+ruff check src/ --fix && ruff format src/
+```
 
-When modularization or cleanup code is touched, also verify:
+Then: targeted smoke test for the changed feature + normal launch/close verification.
 
-- no `invalid command name` errors from stale Tk callbacks
-- no `RuntimeError: main thread is not in main loop`
-- no background worker trying to update destroyed widgets
+When lifecycle-sensitive code changes, also verify:
+- no stale Tk callback errors
+- no thread-safety issues on close
 
-## Source of Truth Rules
+### Source of Truth Rules
 
-- `src/` is the single source of truth.
-- Do not stage unrelated runtime-generated files in mixed worktrees.
-
-Examples of runtime-generated or user-state files that need extra care:
-
-- `src/health_monitor_config.json`
-- `src/health_monitor_config.json.backup`
-- files under `src/screenshots/`
-
-## Documentation Status
-
-- `README.md` exists
-- `README_EN.md` is not currently present
-- if bilingual public documentation is required again, the English counterpart must be added or restored explicitly
-
-## Release Status Note
-
-The latest verified recovery pass is functionally restored and smoke-tested, but `git push` is still locked pending final review.
-
-This handbook should describe the current verified state, not the pre-recovery broken state.
+- `src/` is the single source of truth. Edit runtime code only here.
+- Do not stage runtime-generated files in mixed worktrees:
+  - `src/health_monitor_config.json`
+  - `src/health_monitor_config.json.backup`
+  - `src/screenshots/`
