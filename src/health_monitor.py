@@ -37,6 +37,7 @@ from utils import set_app_instance, setup_signal_handlers, setup_exception_handl
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
+from app_state import AppState
 from image_utils import draw_scale_lines, resize_and_center_image, draw_health_indicator, draw_mana_indicator, get_region_text, get_mana_region_text, get_interface_ui_region_text
 from monitor_analyzer import (
     analyze_health,
@@ -563,7 +564,7 @@ class HealthMonitor:
 
         # 獲取語言映射
         self.config = {}
-        self._is_closing = False
+        self.state = AppState(self)
         self._silent_version_check_after_id = None
         self._usage_time_after_id = None
         self.language_display_map = self.language_manager.get_language_display_map()
@@ -578,9 +579,6 @@ class HealthMonitor:
 
         # GUI最上方設定變數
         self.always_on_top_var = tk.BooleanVar(value=False)  # 預設不在最上方，避免影響彈出視窗操作
-
-        # 監控間隔設定（預設100ms）
-        self.monitor_interval = 0.1
 
         # 框選相關變數
         self.selection_active = False
@@ -619,29 +617,15 @@ class HealthMonitor:
         # UI預覽相關變數
         self.ui_preview_image = None  # 用於Canvas顯示的PhotoImage
 
-        # F3清包中斷控制變數
-        self.inventory_clear_interrupt = False  # 中斷標誌
-
-        # GUI動態縮小相關變數
-        self.gui_minimized_for_clear = False  # GUI是否因清包而縮小
-        self.original_gui_geometry = None  # 原始GUI位置和大小
-        self.original_gui_state = None  # 原始GUI狀態
-        self.gui_was_foreground_before_minimize = True  # GUI縮小前是否在前台
+        # GUI動態縮小相關變數（設定在 AppState 中初始化）
 
         # F6一鍵取物功能變數
         self.pickup_coordinates = []  # 儲存5個取物座標 [x, y]
 
-        # 全域暫停功能變數
-        self.global_pause = False  # 全域暫停狀態
+        # 全域暫停狀態（設定在 AppState 中初始化）
         self.pause_status_label = None  # 暫停狀態顯示標籤
-        self.monitoring_was_active = False  # 記錄血魔監控在暫停前的狀態
-        self.combo_was_running = False  # 記錄技能連段在暫停前的狀態
 
-        # ========== 線程同步機制 ==========
-        # 使用 RLock 允許同一線程多次獲取鎖
-        self.monitoring_lock = threading.RLock()  # 監控狀態的鎖
-        self.combo_lock = threading.RLock()  # 連段狀態的鎖
-        self.global_pause_lock = threading.RLock()  # 全域暫停狀態的鎖
+        # 線程鎖（定義在 AppState 中）
 
         # 狀態更新控制變數
         self.last_status_update = 0
@@ -663,16 +647,6 @@ class HealthMonitor:
         self.interface_ui_ssim_threshold = 0.6  # SSIM閾值
         self.interface_ui_hist_threshold = 0.7  # 直方圖相似度閾值
         self.interface_ui_color_threshold = 35  # 顏色差異閾值
-
-        # 冷卻時間追蹤變數
-        self.last_trigger_times = {}  # key: health_percent, value: timestamp
-
-        # 技能連段相關變數
-        self.combo_sets = []  # 儲存3個連段套組的設定
-        self.combo_enabled = [False, False, False]  # 每個套組的啟用狀態
-        self.combo_thread = None  # 連段執行線程
-        self.combo_running = False  # 連段執行狀態
-        self.combo_hotkeys = {}  # 連段快捷鍵綁定
 
         # 連段UI元件引用
         self.combo_ui_refs = []  # 儲存UI元件引用用於設定載入
@@ -722,11 +696,7 @@ class HealthMonitor:
 
         # 如果有已儲存的設定，自動載入預覽
 
-        # 監控狀態
-        self.monitoring = False
-        self.monitor_thread = None
-
-        # ??GUI????
+        # GUI ??關閉協議
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # ????????
@@ -789,7 +759,7 @@ class HealthMonitor:
 
     def monitor_mouse_interrupt(self):
         """監聽滑鼠右鍵事件用於中斷F3清包"""
-        if self._is_closing:
+        if self.state._is_closing:
             return
         self.add_status_message(self.get_text("mouse_interrupt_started"), "info")
         print(self.get_text("mouse_interrupt_started"))
@@ -798,7 +768,7 @@ class HealthMonitor:
         interrupt_threshold = 2.0  # 2秒閾值
         last_right_button_state = False  # 記錄上一次的右鍵狀態
 
-        while not self._is_closing:
+        while not self.state._is_closing:
             try:
                 # 使用GetKeyState檢查右鍵狀態，適用於持續按下檢測
                 VK_RBUTTON = 0x02  # 右鍵虛擬鍵碼
@@ -814,14 +784,14 @@ class HealthMonitor:
                         duration = time.time() - right_click_start
                         if duration >= interrupt_threshold:
                             print(self.get_text("right_click_interrupt").format(duration=duration))
-                            self.inventory_clear_interrupt = True
+                            self.state.inventory_clear_interrupt = True
                         right_click_start = None
 
                 last_right_button_state = current_right_button_state
                 time.sleep(0.1)  # 每100ms檢查一次
 
             except Exception as e:
-                if self._is_closing:
+                if self.state._is_closing:
                     break
                 print(f"{self.get_text('mouse_interrupt_error')} {e}")
                 time.sleep(1)  # 錯誤時稍作延遲
@@ -1273,7 +1243,7 @@ class HealthMonitor:
         # 檢查頻率設定
         self.check_freq_label = ttk.Label(self.control_frame, text=self.get_text("check_frequency"))
         self.check_freq_label.grid(row=1, column=0, sticky=tk.W, pady=(15, 0))
-        self.monitor_interval_var = tk.StringVar(value=str(int(self.monitor_interval * 1000)))  # 根據初始化值設定
+        self.monitor_interval_var = tk.StringVar(value=str(int(self.state.monitor_interval * 1000)))  # 根據初始化值設定
         interval_combo = ttk.Combobox(self.control_frame, textvariable=self.monitor_interval_var,
                                      values=["25", "50", "100"], state="readonly", width=8)
         interval_combo.grid(row=1, column=1, sticky=tk.W, padx=(5, 0), pady=(15, 0))
@@ -1691,7 +1661,7 @@ class HealthMonitor:
         self.status_text_widget.tag_config("monitor", foreground="#00BCD4")
 
     def add_status_message(self, message, msg_type="info"):
-        if self._is_closing:
+        if self.state._is_closing:
             return
 
         """添加狀態訊息到顯示區域"""
@@ -1747,7 +1717,7 @@ class HealthMonitor:
                 return
 
     def schedule_ui_callback(self, callback, delay=0):
-        if self._is_closing:
+        if self.state._is_closing:
             return None
 
         try:
@@ -1757,7 +1727,7 @@ class HealthMonitor:
             return None
 
         def guarded_callback():
-            if self._is_closing:
+            if self.state._is_closing:
                 return
 
             try:
@@ -2138,7 +2108,7 @@ class HealthMonitor:
             return
 
         # 如果當前正在監控，自動停止監控
-        if self.monitoring:
+        if self.state.monitoring:
             self.stop_monitoring()
             CustomMessageBox.show_info(self.get_text("important_reminder"), self.get_text("monitoring_auto_stopped_for_selection"), self.root)
 
@@ -2375,7 +2345,7 @@ class HealthMonitor:
             return
 
         # 如果當前正在監控，自動停止監控
-        if self.monitoring:
+        if self.state.monitoring:
             self.stop_monitoring()
             CustomMessageBox.show_info(self.get_text("important_reminder"), self.get_text("monitoring_auto_stopped_for_selection"), self.root)
 
@@ -2803,13 +2773,13 @@ class HealthMonitor:
     # ========== 線程安全的監控狀態管理 ==========
     def is_monitoring(self):
         """線程安全地檢查監控狀態"""
-        with self.monitoring_lock:
-            return self.monitoring
+        with self.state.monitoring_lock:
+            return self.state.monitoring
 
     def set_monitoring(self, state):
         """線程安全地設置監控狀態"""
-        with self.monitoring_lock:
-            self.monitoring = state
+        with self.state.monitoring_lock:
+            self.state.monitoring = state
 
     def wait_monitoring_stopped(self, timeout=2.0):
         """等待監控線程停止"""
@@ -2818,19 +2788,19 @@ class HealthMonitor:
             time.sleep(0.05)
 
         # 等待線程完全結束
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
+        if self.state.monitor_thread and self.state.monitor_thread.is_alive():
+            self.state.monitor_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
 
     # ========== 線程安全的連段狀態管理 ==========
     def is_combo_running(self):
         """線程安全地檢查連段狀態"""
-        with self.combo_lock:
-            return self.combo_running
+        with self.state.combo_lock:
+            return self.state.combo_running
 
     def set_combo_running(self, state):
         """線程安全地設置連段狀態"""
-        with self.combo_lock:
-            self.combo_running = state
+        with self.state.combo_lock:
+            self.state.combo_running = state
 
     def wait_combo_stopped(self, timeout=2.0):
         """等待連段線程停止"""
@@ -2839,19 +2809,19 @@ class HealthMonitor:
             time.sleep(0.05)
 
         # 等待線程完全結束
-        if self.combo_thread and self.combo_thread.is_alive():
-            self.combo_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
+        if self.state.combo_thread and self.state.combo_thread.is_alive():
+            self.state.combo_thread.join(timeout=max(0.1, timeout - (time.time() - start_time)))
 
     # ========== 線程安全的全域暫停管理 ==========
     def is_global_pause(self):
         """線程安全地檢查全域暫停狀態"""
-        with self.global_pause_lock:
-            return self.global_pause
+        with self.state.global_pause_lock:
+            return self.state.global_pause
 
     def set_global_pause(self, state):
         """線程安全地設置全域暫停狀態"""
-        with self.global_pause_lock:
-            self.global_pause = state
+        with self.state.global_pause_lock:
+            self.state.global_pause = state
 
     def start_monitoring(self):
         # 檢查是否已在監控中
@@ -2902,9 +2872,9 @@ class HealthMonitor:
         self.root.attributes("-alpha", 0.8)  # 輕微透明
         self.manage_window_hierarchy(self.root, "MAIN")  # 設置主視窗層級
 
-        self.monitor_thread = threading.Thread(target=self.monitor_health)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
+        self.state.monitor_thread = threading.Thread(target=self.monitor_health)
+        self.state.monitor_thread.daemon = True
+        self.state.monitor_thread.start()
 
     def stop_monitoring(self):
         """Stop monitoring without blocking the Tk main thread."""
@@ -2927,9 +2897,9 @@ class HealthMonitor:
         if deadline is None:
             deadline = time.time() + 2.0
 
-        thread = self.monitor_thread
+        thread = self.state.monitor_thread
         if not thread or not thread.is_alive():
-            self.monitor_thread = None
+            self.state.monitor_thread = None
             print("[STOP] ")
             return
 
@@ -2979,9 +2949,9 @@ class HealthMonitor:
         self.root.attributes("-alpha", 0.8)
         self.manage_window_hierarchy(self.root, "MAIN")
 
-        self.monitor_thread = threading.Thread(target=self.monitor_health)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
+        self.state.monitor_thread = threading.Thread(target=self.monitor_health)
+        self.state.monitor_thread.daemon = True
+        self.state.monitor_thread.start()
 
     def monitor_health(self):
         with _mss_singleton:
@@ -3065,7 +3035,7 @@ class HealthMonitor:
                         main_color,
                         check_triggers(
                             health_percent, mana_value,
-                            self.config, self.last_trigger_times,
+                            self.config, self.state.last_trigger_times,
                             self.get_text, self.is_interface_ui_visible,
                             self.window_var.get(),
                             getattr(self, 'interface_ui_region', None),
@@ -3079,7 +3049,7 @@ class HealthMonitor:
                     # 觸發相應的動作
                     trigger_actions(
                         health_percent, mana_value,
-                        self.config, self.last_trigger_times,
+                        self.config, self.state.last_trigger_times,
                         self.multi_trigger_var.get(),
                         self.add_status_message, self.get_text,
                         self.is_interface_ui_visible, self.press_key_sequence,
@@ -3207,11 +3177,11 @@ class HealthMonitor:
             if isinstance(health_percent, str) and health_percent.startswith('mana_'):
                 # 對於魔力設定，使用原始百分比作為鍵
                 mana_percent = int(health_percent.split('_')[1])
-                self.last_trigger_times[f"mana_{mana_percent}"] = time.time()
+                self.state.last_trigger_times[f"mana_{mana_percent}"] = time.time()
                 print(f"記錄魔力觸發時間: mana_{mana_percent}")
             else:
                 # 對於血量設定，直接使用百分比
-                self.last_trigger_times[health_percent] = time.time()
+                self.state.last_trigger_times[health_percent] = time.time()
                 print(f"記錄血量觸發時間: {health_percent}")
 
 
@@ -4134,9 +4104,9 @@ class HealthMonitor:
     def toggle_global_pause(self):
         """F9: 全域暫停開關 - 暫停/恢復所有熱鍵功能（線程安全）"""
         # 使用鎖保護全域暫停狀態的修改
-        with self.global_pause_lock:
-            self.global_pause = not self.global_pause
-            is_pausing = self.global_pause
+        with self.state.global_pause_lock:
+            self.state.global_pause = not self.state.global_pause
+            is_pausing = self.state.global_pause
 
         if is_pausing:
             print("[STOP] 全域暫停已啟用 - 所有熱鍵功能已暫停")
@@ -4148,21 +4118,21 @@ class HealthMonitor:
 
             # 記錄並停止血魔監控（如果正在運行）
             if self.is_monitoring():
-                self.monitoring_was_active = True
+                self.state.monitoring_was_active = True
                 self.stop_monitoring()
                 print(" 血魔監控已自動停止")
                 self.add_status_message(self.get_text("health_monitor_auto_stopped"), "info")
             else:
-                self.monitoring_was_active = False
+                self.state.monitoring_was_active = False
 
             # 記錄並停止技能連段（如果正在運行）
             if self.is_combo_running():
-                self.combo_was_running = True
+                self.state.combo_was_running = True
                 self.stop_combo_system()
                 print(" 技能連段已自動停止")
                 self.add_status_message(self.get_text("combo_system_auto_stopped"), "info")
             else:
-                self.combo_was_running = False
+                self.state.combo_was_running = False
 
         else:
             print(" 全域暫停已解除 - 自動恢復之前的功能")
@@ -4171,7 +4141,7 @@ class HealthMonitor:
             self.add_status_message(self.get_text("global_pause_deactivated"), "success")
 
             # 自動恢復血魔監控（如果之前處於活躍狀態）
-            if self.monitoring_was_active:
+            if self.state.monitoring_was_active:
                 try:
                     # 靜默重新啟動血魔監控
                     self.restart_monitoring_silently()
@@ -4183,7 +4153,7 @@ class HealthMonitor:
                     self.add_status_message(self.get_text("health_monitor_restart_failed").format(error=str(e)), "error")
 
             # 自動恢復技能連段（如果之前處於運行狀態）
-            if self.combo_was_running:
+            if self.state.combo_was_running:
                 try:
                     # 靜默重新啟動技能連段系統
                     self.restart_combo_system_silently()
@@ -4241,7 +4211,7 @@ class HealthMonitor:
         self.add_status_message(self.get_text("f3_hotkey_pressed"), "hotkey")
 
         # 重置中斷標誌
-        self.inventory_clear_interrupt = False
+        self.state.inventory_clear_interrupt = False
 
         if not self.inventory_region or not self.empty_inventory_colors:
             self.add_status_message(self.get_text("f3_fail_inventory_incomplete"), "error")
@@ -4371,7 +4341,7 @@ class HealthMonitor:
                 self.add_status_message(self.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
                 print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
                 self.clear_inventory_item(game_window, img)
-                if self.inventory_clear_interrupt:
+                if self.state.inventory_clear_interrupt:
                     self.add_status_message(self.get_text("f3_cancel_user_interrupt"), "warning")
                     print("F3: 清包被中斷")
                 else:
@@ -4386,7 +4356,7 @@ class HealthMonitor:
             print(f"F3清包錯誤: {e}")
         finally:
             # 確保中斷標誌被重置
-            self.inventory_clear_interrupt = False
+            self.state.inventory_clear_interrupt = False
             # 恢復GUI狀態
             self.restore_gui_after_clear()
 
@@ -4485,12 +4455,12 @@ class HealthMonitor:
     def minimize_gui_for_clear(self, game_window=None):
         """縮小GUI以避免干擾清包操作"""
         try:
-            if self.gui_minimized_for_clear:
+            if self.state.gui_minimized_for_clear:
                 return  # 已經縮小了
 
             # 記錄GUI當前狀態
-            self.original_gui_geometry = self.root.geometry()
-            self.original_gui_state = self.root.state()
+            self.state.original_gui_geometry = self.root.geometry()
+            self.state.original_gui_state = self.root.state()
 
             # 臨時移除最小尺寸限制，允許GUI縮小
             self.original_min_size = self.root.minsize()
@@ -4504,15 +4474,15 @@ class HealthMonitor:
                 foreground_hwnd = win32gui.GetForegroundWindow()
                 current_process_hwnd = win32gui.FindWindow(None, self.root.title())
 
-                self.gui_was_foreground_before_minimize = (foreground_hwnd == current_process_hwnd)
-                print(f"GUI縮小前是否在前台: {self.gui_was_foreground_before_minimize}")
+                self.state.gui_was_foreground_before_minimize = (foreground_hwnd == current_process_hwnd)
+                print(f"GUI縮小前是否在前台: {self.state.gui_was_foreground_before_minimize}")
             except ImportError:
                 # 如果沒有win32gui，假設GUI在前台
-                self.gui_was_foreground_before_minimize = True
+                self.state.gui_was_foreground_before_minimize = True
                 print("無法檢查GUI前台狀態，假設在前台")
             except Exception as e:
                 print(f"檢查GUI前台狀態失敗: {e}")
-                self.gui_was_foreground_before_minimize = True
+                self.state.gui_was_foreground_before_minimize = True
 
             # 獲取螢幕尺寸
             screen_width = self.root.winfo_screenwidth()
@@ -4543,7 +4513,7 @@ class HealthMonitor:
             else:
                 print("縮小GUI時保持後台狀態")
 
-            self.gui_minimized_for_clear = True
+            self.state.gui_minimized_for_clear = True
             print(f"GUI已縮小到左上角以避免干擾清包操作: {new_geometry}")
             print("背包預覽的60格清晰可見，用戶可以觀察清包進度")
 
@@ -4678,31 +4648,31 @@ class HealthMonitor:
     def restore_gui_after_clear(self):
         """恢復GUI到原始狀態"""
         try:
-            if not self.gui_minimized_for_clear:
+            if not self.state.gui_minimized_for_clear:
                 return  # 沒有被縮小
 
-            if self.original_gui_geometry:
-                self.root.geometry(self.original_gui_geometry)
+            if self.state.original_gui_geometry:
+                self.root.geometry(self.state.original_gui_geometry)
 
-            if self.original_gui_state:
-                self.root.state(self.original_gui_state)
+            if self.state.original_gui_state:
+                self.root.state(self.state.original_gui_state)
 
             # 恢復原始的最小尺寸限制
             if hasattr(self, 'original_min_size') and self.original_min_size:
                 self.root.minsize(self.original_min_size[0], self.original_min_size[1])
 
             # 只有在用戶啟用了永遠在最上方且GUI縮小前就在前台的情況下，才重新激活GUI
-            if self.should_keep_topmost() and self.gui_was_foreground_before_minimize:
+            if self.should_keep_topmost() and self.state.gui_was_foreground_before_minimize:
                 self.root.lift()
                 self.root.focus_force()
                 print("GUI已恢復到原始狀態並重新激活")
             else:
                 print("GUI已恢復到原始狀態，保持後台狀態")
 
-            self.gui_minimized_for_clear = False
-            self.original_gui_geometry = None
-            self.original_gui_state = None
-            self.gui_was_foreground_before_minimize = True  # 重置為預設值
+            self.state.gui_minimized_for_clear = False
+            self.state.original_gui_geometry = None
+            self.state.original_gui_state = None
+            self.state.gui_was_foreground_before_minimize = True  # 重置為預設值
 
         except Exception as e:
             print(f"恢復GUI時發生錯誤: {e}")
@@ -6179,7 +6149,7 @@ class HealthMonitor:
 
             while total_processed < max_iterations:
                 # 檢查中斷標誌
-                if self.inventory_clear_interrupt:
+                if self.state.inventory_clear_interrupt:
                     print("F3清包被用戶中斷")
                     break
 
@@ -6359,7 +6329,7 @@ class HealthMonitor:
 
                         retry_processed = 0
                         for task in retry_tasks[:5]:  # 限制重試最多處理5個物品
-                            if self.inventory_clear_interrupt:
+                            if self.state.inventory_clear_interrupt:
                                 break
 
                             screen_x, screen_y, slot_index = task
@@ -6930,7 +6900,7 @@ class HealthMonitor:
     def return_to_hideout(self):
         """F5 返回藏身功能"""
         # 全域暫停檢查
-        if self.global_pause:
+        if self.state.global_pause:
             print("[STOP] 全域暫停中，跳過F5熱鍵")
             self.add_status_message("按下 F5 - 因全域暫停模式而跳過執行", "warning")
             return
@@ -6984,7 +6954,7 @@ class HealthMonitor:
         主線程做必要的檢查與安排 GUI 操作（使用 root.after），實際的滑鼠/視窗操作在背景執行緒中完成，
         避免阻塞 Tkinter 事件迴圈造成主 GUI 無法互動。"""
         # 全域暫停檢查（主線程）
-        if self.global_pause:
+        if self.state.global_pause:
             print("[STOP] 全域暫停中，跳過F6熱鍵")
             # 在主線程更新狀態訊息
             try:
@@ -7595,10 +7565,10 @@ class HealthMonitor:
 
     # Duplicate on_closing removed; actual on_closing is defined later.
     def close_app(self):
-        if self._is_closing:
+        if self.state._is_closing:
             return
 
-        self._is_closing = True
+        self.state._is_closing = True
 
         for after_attr in ("_silent_version_check_after_id", "_usage_time_after_id"):
             after_id = getattr(self, after_attr, None)
@@ -7642,7 +7612,7 @@ class HealthMonitor:
         except Exception:
             pass
 
-        self.monitoring = False
+        self.state.monitoring = False
         self.add_status_message(self.get_text("tool_closed_successfully"), "info")
 
         # 清理全局引用
@@ -7659,7 +7629,7 @@ class HealthMonitor:
 
     def restart_app(self):
         """重新啟動應用程式"""
-        self.monitoring = False
+        self.state.monitoring = False
         self.save_config()
 
         try:
@@ -7835,12 +7805,12 @@ class HealthMonitor:
             self.blood_magic_threshold = self.config.get('blood_magic_threshold', 50)
             self.blood_magic_window_title = self.config.get('blood_magic_window_title', '')
 
-            self.monitor_interval = self.config.get('monitor_interval', 0.1)
+            self.state.monitor_interval = self.config.get('monitor_interval', 0.1)
             self.auto_clear_enabled = self.config.get('auto_clear_enabled', False)
             self.clear_interval = self.config.get('clear_interval', 30)
 
             if hasattr(self, 'monitor_interval_var'):
-                interval_ms = int(self.monitor_interval * 1000)
+                interval_ms = int(self.state.monitor_interval * 1000)
                 self.monitor_interval_var.set(str(interval_ms))
 
             if hasattr(self, 'preview_enabled'):
@@ -7922,32 +7892,32 @@ class HealthMonitor:
                 self.update_pickup_status()
 
             if 'combo_sets' in self.config:
-                self.combo_sets = self.config['combo_sets']
-                for combo_set in self.combo_sets:
+                self.state.combo_sets = self.config['combo_sets']
+                for combo_set in self.state.combo_sets:
                     if 'trigger_delay' not in combo_set:
                         combo_set['trigger_delay'] = ''
                     if 'stationary_attacks' not in combo_set:
                         combo_set['stationary_attacks'] = [False, False, False, False, False]
 
-                while len(self.combo_sets) < 3:
-                    self.combo_sets.append({
-                        'trigger_key': 'Q' if len(self.combo_sets) == 0 else 'W' if len(self.combo_sets) == 1 else 'E',
+                while len(self.state.combo_sets) < 3:
+                    self.state.combo_sets.append({
+                        'trigger_key': 'Q' if len(self.state.combo_sets) == 0 else 'W' if len(self.state.combo_sets) == 1 else 'E',
                         'trigger_delay': '',
                         'combo_keys': ['', '', '', '', ''],
                         'delays': ['', '', '', '', ''],
                         'stationary_attacks': [False, False, False, False, False],
                     })
-                self.combo_sets = self.combo_sets[:3]
-                print(f": {len(self.combo_sets)} ")
+                self.state.combo_sets = self.state.combo_sets[:3]
+                print(f": {len(self.state.combo_sets)} ")
 
             if 'combo_enabled' in self.config:
-                self.combo_enabled = self.config['combo_enabled']
-                while len(self.combo_enabled) < 3:
-                    self.combo_enabled.append(False)
-                self.combo_enabled = self.combo_enabled[:3]
-                print(f": {self.combo_enabled}")
+                self.state.combo_enabled = self.config['combo_enabled']
+                while len(self.state.combo_enabled) < 3:
+                    self.state.combo_enabled.append(False)
+                self.state.combo_enabled = self.state.combo_enabled[:3]
+                print(f": {self.state.combo_enabled}")
             else:
-                self.combo_enabled = [False, False, False]
+                self.state.combo_enabled = [False, False, False]
 
             self.update_combo_ui_from_config()
             self.update_offset_labels()
@@ -8086,9 +8056,9 @@ class HealthMonitor:
 
             # 儲存連段設定
             if hasattr(self, 'combo_sets'):
-                self.config['combo_sets'] = self.combo_sets
+                self.config['combo_sets'] = self.state.combo_sets
             if hasattr(self, 'combo_enabled'):
-                self.config['combo_enabled'] = self.combo_enabled
+                self.config['combo_enabled'] = self.state.combo_enabled
 
             # 儲存血魔監控設定
             if hasattr(self, 'blood_magic_enabled'):
@@ -8118,7 +8088,7 @@ class HealthMonitor:
 
             # 儲存監控間隔
             if hasattr(self, 'monitor_interval'):
-                self.config['monitor_interval'] = self.monitor_interval
+                self.config['monitor_interval'] = self.state.monitor_interval
             # 儲存檢查頻率設定
             if hasattr(self, 'monitor_interval_var'):
                 try:
@@ -8578,7 +8548,7 @@ class HealthMonitor:
 
     def initialize_combo_sets(self):
         """初始化連段套組設定"""
-        if not self.combo_sets:
+        if not self.state.combo_sets:
             # 預設設定
             for i in range(3):
                 combo_set = {
@@ -8588,7 +8558,7 @@ class HealthMonitor:
                     'delays': ['', '', '', '', ''],  # 對應的延遲時間，預設為空
                     'stationary_attacks': [False, False, False, False, False],  # 原地攻擊設定
                 }
-                self.combo_sets.append(combo_set)
+                self.state.combo_sets.append(combo_set)
 
     def create_combo_set_frame_horizontal(self, parent, set_index):
         """創建單個連段套組的橫向框架"""
@@ -8600,7 +8570,7 @@ class HealthMonitor:
             self.combo_ui_refs.extend([{}] * (set_index + 1 - len(self.combo_ui_refs)))
 
         # 啟用勾選框
-        enabled_var = tk.BooleanVar(value=self.combo_enabled[set_index])
+        enabled_var = tk.BooleanVar(value=self.state.combo_enabled[set_index])
         enabled_check = ttk.Checkbutton(set_frame, text=self.get_text("enable_this_set"),
                                       variable=enabled_var,
                                       command=functools.partial(self.toggle_combo_set, set_index, enabled_var))
@@ -8610,7 +8580,7 @@ class HealthMonitor:
         trigger_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 15))
 
         ttk.Label(trigger_frame, text=self.get_text("trigger_skill"), font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky=tk.W)
-        trigger_var = tk.StringVar(value=self.combo_sets[set_index]['trigger_key'])
+        trigger_var = tk.StringVar(value=self.state.combo_sets[set_index]['trigger_key'])
         trigger_combo = ttk.Combobox(trigger_frame, textvariable=trigger_var,
                                    values=['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
                                           'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
@@ -8624,7 +8594,7 @@ class HealthMonitor:
 
         # 觸發延遲設定
         ttk.Label(trigger_frame, text=self.get_text("initial_delay_ms"), font=('Arial', 10, 'bold')).grid(row=0, column=2, sticky=tk.W, padx=(20, 0))
-        trigger_delay_var = tk.StringVar(value=self.combo_sets[set_index]['trigger_delay'])
+        trigger_delay_var = tk.StringVar(value=self.state.combo_sets[set_index]['trigger_delay'])
         trigger_delay_entry = ttk.Entry(trigger_frame, textvariable=trigger_delay_var, width=8, font=('Arial', 10))
         trigger_delay_entry.grid(row=0, column=3, sticky=tk.W, padx=(10, 0))
         trigger_delay_entry.bind("<KeyRelease>",
@@ -8642,7 +8612,7 @@ class HealthMonitor:
             ttk.Label(skills_frame, text=row_label, font=('Arial', 9, 'bold')).grid(row=i, column=0, sticky=tk.W, pady=3)
 
             # 技能按鍵
-            key_var = tk.StringVar(value=self.combo_sets[set_index]['combo_keys'][i] if self.combo_sets[set_index]['combo_keys'][i] else 'off')
+            key_var = tk.StringVar(value=self.state.combo_sets[set_index]['combo_keys'][i] if self.state.combo_sets[set_index]['combo_keys'][i] else 'off')
             key_combo = ttk.Combobox(skills_frame, textvariable=key_var,
                                    values=['off', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
                                           'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
@@ -8657,14 +8627,14 @@ class HealthMonitor:
             ttk.Label(skills_frame, text=self.get_text("delay_ms"), font=('Arial', 9)).grid(row=i, column=2, sticky=tk.W, padx=(15, 0), pady=3)
 
             # 延遲時間輸入框
-            delay_var = tk.StringVar(value=self.combo_sets[set_index]['delays'][i] if self.combo_sets[set_index]['delays'][i] else '')
+            delay_var = tk.StringVar(value=self.state.combo_sets[set_index]['delays'][i] if self.state.combo_sets[set_index]['delays'][i] else '')
             delay_entry = ttk.Entry(skills_frame, textvariable=delay_var, width=8, font=('Arial', 9))
             delay_entry.grid(row=i, column=3, sticky=tk.W, padx=(5, 0), pady=3)
             delay_entry.bind("<KeyRelease>",
                            functools.partial(self.update_combo_delay, set_index, i, delay_var))
 
             # 原地攻擊checkbox
-            stationary_var = tk.BooleanVar(value=self.combo_sets[set_index]['stationary_attacks'][i])
+            stationary_var = tk.BooleanVar(value=self.state.combo_sets[set_index]['stationary_attacks'][i])
             stationary_check = ttk.Checkbutton(skills_frame, text=self.get_text("stationary_attack"), variable=stationary_var,
                                              command=functools.partial(self.update_stationary_attack, set_index, i, stationary_var))
             stationary_check.grid(row=i, column=4, sticky=tk.W, padx=(15, 0), pady=3)
@@ -8716,12 +8686,12 @@ class HealthMonitor:
 
     def toggle_combo_set(self, set_index, enabled_var, event=None):
         """切換連段套組的啟用狀態"""
-        self.combo_enabled[set_index] = enabled_var.get()
+        self.state.combo_enabled[set_index] = enabled_var.get()
         print(f"連段套組 {set_index + 1} {'啟用' if enabled_var.get() else '停用'}")
 
     def update_trigger_key(self, set_index, trigger_var, event=None):
         """更新觸發鍵"""
-        self.combo_sets[set_index]['trigger_key'] = trigger_var.get()
+        self.state.combo_sets[set_index]['trigger_key'] = trigger_var.get()
         print(f"連段套組 {set_index + 1} 觸發鍵更新為: {trigger_var.get()}")
 
     def update_trigger_delay(self, set_index, trigger_delay_var, event=None):
@@ -8729,7 +8699,7 @@ class HealthMonitor:
         delay_text = trigger_delay_var.get().strip()
         if delay_text == '':
             # 允許空值
-            self.combo_sets[set_index]['trigger_delay'] = ''
+            self.state.combo_sets[set_index]['trigger_delay'] = ''
             return
 
         try:
@@ -8738,15 +8708,15 @@ class HealthMonitor:
                 delay = 0
             elif delay > 5000:
                 delay = 5000
-            self.combo_sets[set_index]['trigger_delay'] = delay
+            self.state.combo_sets[set_index]['trigger_delay'] = delay
             trigger_delay_var.set(str(delay))
         except ValueError:
             # 如果輸入無效，保持原值
-            trigger_delay_var.set(str(self.combo_sets[set_index]['trigger_delay']) if self.combo_sets[set_index]['trigger_delay'] else '')
+            trigger_delay_var.set(str(self.state.combo_sets[set_index]['trigger_delay']) if self.state.combo_sets[set_index]['trigger_delay'] else '')
 
     def update_combo_key(self, set_index, key_index, key_var, event=None):
         """更新連段技能按鍵"""
-        self.combo_sets[set_index]['combo_keys'][key_index] = key_var.get()
+        self.state.combo_sets[set_index]['combo_keys'][key_index] = key_var.get()
         print(f"連段套組 {set_index + 1} 技能{key_index + 1} 更新為: {key_var.get()}")
 
     def update_combo_delay(self, set_index, delay_index, delay_var, event=None):
@@ -8754,7 +8724,7 @@ class HealthMonitor:
         delay_text = delay_var.get().strip()
         if delay_text == '':
             # 允許空值
-            self.combo_sets[set_index]['delays'][delay_index] = ''
+            self.state.combo_sets[set_index]['delays'][delay_index] = ''
             return
 
         try:
@@ -8763,15 +8733,15 @@ class HealthMonitor:
                 delay = 0
             elif delay > 5000:
                 delay = 5000
-            self.combo_sets[set_index]['delays'][delay_index] = delay
+            self.state.combo_sets[set_index]['delays'][delay_index] = delay
             delay_var.set(str(delay))
         except ValueError:
             # 如果輸入無效，保持原值
-            delay_var.set(str(self.combo_sets[set_index]['delays'][delay_index]) if self.combo_sets[set_index]['delays'][delay_index] else '')
+            delay_var.set(str(self.state.combo_sets[set_index]['delays'][delay_index]) if self.state.combo_sets[set_index]['delays'][delay_index] else '')
 
     def update_stationary_attack(self, set_index, skill_index, stationary_var):
         """更新原地攻擊設定"""
-        self.combo_sets[set_index]['stationary_attacks'][skill_index] = stationary_var.get()
+        self.state.combo_sets[set_index]['stationary_attacks'][skill_index] = stationary_var.get()
         status = "啟用" if stationary_var.get() else "停用"
         print(f"連段套組 {set_index + 1} 技能{skill_index + 1} 原地攻擊: {status}")
 
@@ -8779,34 +8749,34 @@ class HealthMonitor:
         """從載入的設定更新組合UI元件"""
         try:
             # 確保combo_ui_refs長度正確
-            while len(self.combo_ui_refs) < len(self.combo_sets):
+            while len(self.combo_ui_refs) < len(self.state.combo_sets):
                 self.combo_ui_refs.append({})
 
-            for set_index in range(len(self.combo_sets)):
+            for set_index in range(len(self.state.combo_sets)):
                 if set_index < len(self.combo_ui_refs):
                     ui_refs = self.combo_ui_refs[set_index]
 
                     # 更新啟用狀態
-                    if 'enabled_var' in ui_refs and set_index < len(self.combo_enabled):
-                        ui_refs['enabled_var'].set(self.combo_enabled[set_index])
+                    if 'enabled_var' in ui_refs and set_index < len(self.state.combo_enabled):
+                        ui_refs['enabled_var'].set(self.state.combo_enabled[set_index])
 
                     # 更新觸發鍵
                     if 'trigger_var' in ui_refs:
-                        ui_refs['trigger_var'].set(self.combo_sets[set_index]['trigger_key'])
+                        ui_refs['trigger_var'].set(self.state.combo_sets[set_index]['trigger_key'])
 
                     # 更新觸發延遲
                     if 'trigger_delay_var' in ui_refs:
-                        ui_refs['trigger_delay_var'].set(str(self.combo_sets[set_index]['trigger_delay']) if self.combo_sets[set_index]['trigger_delay'] else '')
+                        ui_refs['trigger_delay_var'].set(str(self.state.combo_sets[set_index]['trigger_delay']) if self.state.combo_sets[set_index]['trigger_delay'] else '')
 
                     # 更新技能按鍵、延遲和原地攻擊設定
                     if 'key_vars' in ui_refs and 'delay_vars' in ui_refs and 'stationary_vars' in ui_refs:
-                        for i in range(len(self.combo_sets[set_index]['combo_keys'])):
+                        for i in range(len(self.state.combo_sets[set_index]['combo_keys'])):
                             if i < len(ui_refs['key_vars']):
-                                ui_refs['key_vars'][i].set(self.combo_sets[set_index]['combo_keys'][i] if self.combo_sets[set_index]['combo_keys'][i] else 'off')
+                                ui_refs['key_vars'][i].set(self.state.combo_sets[set_index]['combo_keys'][i] if self.state.combo_sets[set_index]['combo_keys'][i] else 'off')
                             if i < len(ui_refs['delay_vars']):
-                                ui_refs['delay_vars'][i].set(str(self.combo_sets[set_index]['delays'][i]) if self.combo_sets[set_index]['delays'][i] else '')
-                            if i < len(ui_refs['stationary_vars']) and i < len(self.combo_sets[set_index]['stationary_attacks']):
-                                ui_refs['stationary_vars'][i].set(self.combo_sets[set_index]['stationary_attacks'][i])
+                                ui_refs['delay_vars'][i].set(str(self.state.combo_sets[set_index]['delays'][i]) if self.state.combo_sets[set_index]['delays'][i] else '')
+                            if i < len(ui_refs['stationary_vars']) and i < len(self.state.combo_sets[set_index]['stationary_attacks']):
+                                ui_refs['stationary_vars'][i].set(self.state.combo_sets[set_index]['stationary_attacks'][i])
 
             print("組合UI元件已從設定更新")
         except Exception as e:
@@ -8819,14 +8789,14 @@ class HealthMonitor:
             return
 
         # 檢查是否有啟用的套組
-        enabled_sets = [i for i, enabled in enumerate(self.combo_enabled) if enabled]
+        enabled_sets = [i for i, enabled in enumerate(self.state.combo_enabled) if enabled]
         if not enabled_sets:
             messagebox.showwarning(self.get_text("warning"), self.get_text("enable_at_least_one_combo_set"))
             return
 
         # 檢查設定是否完整
         for i in enabled_sets:
-            combo_set = self.combo_sets[i]
+            combo_set = self.state.combo_sets[i]
             if not combo_set['trigger_key']:
                 messagebox.showerror("錯誤", f"連段套組 {i+1} 的觸發技能未設定")
                 return
@@ -8838,8 +8808,8 @@ class HealthMonitor:
 
         # 線程安全地設置連段狀態
         self.set_combo_running(True)
-        self.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
-        self.combo_thread.start()
+        self.state.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
+        self.state.combo_thread.start()
 
         # 更新UI
         self.combo_start_btn.config(state=tk.DISABLED)
@@ -8863,12 +8833,12 @@ class HealthMonitor:
         self.wait_combo_stopped(timeout=2.0)
 
         # 取消所有快捷鍵綁定
-        for hotkey in self.combo_hotkeys.values():
+        for hotkey in self.state.combo_hotkeys.values():
             try:
                 keyboard.remove_hotkey(hotkey)
             except Exception:
                 pass
-        self.combo_hotkeys.clear()
+        self.state.combo_hotkeys.clear()
 
         # 更新UI
         self.combo_start_btn.config(state=tk.NORMAL)
@@ -8884,13 +8854,13 @@ class HealthMonitor:
             return  # 已經在運行中
 
         # 檢查是否有啟用的套組
-        enabled_sets = [i for i, enabled in enumerate(self.combo_enabled) if enabled]
+        enabled_sets = [i for i, enabled in enumerate(self.state.combo_enabled) if enabled]
         if not enabled_sets:
             raise Exception("沒有啟用的連段套組")
 
         # 檢查設定是否完整（靜默檢查）
         for i in enabled_sets:
-            combo_set = self.combo_sets[i]
+            combo_set = self.state.combo_sets[i]
             if not combo_set['trigger_key']:
                 raise Exception(f"連段套組 {i+1} 的觸發技能未設定")
             # 檢查是否有至少一個連段技能
@@ -8900,8 +8870,8 @@ class HealthMonitor:
 
         # 線程安全地設置連段狀態
         self.set_combo_running(True)
-        self.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
-        self.combo_thread.start()
+        self.state.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
+        self.state.combo_thread.start()
 
         # 更新UI（如果元件存在）
         try:
@@ -8919,16 +8889,16 @@ class HealthMonitor:
         print("連段系統線程已啟動")
 
         # 註冊快捷鍵
-        for i, enabled in enumerate(self.combo_enabled):
+        for i, enabled in enumerate(self.state.combo_enabled):
             if enabled:
-                trigger_key = self.combo_sets[i]['trigger_key'].lower()
+                trigger_key = self.state.combo_sets[i]['trigger_key'].lower()
                 try:
                     # 使用partial來避免閉包問題
                     from functools import partial
                     hotkey_id = keyboard.add_hotkey(trigger_key,
                                                   partial(self.execute_combo, i),
                                                   suppress=False)  # 不阻止按鍵傳遞到遊戲
-                    self.combo_hotkeys[f"combo_{i}"] = hotkey_id
+                    self.state.combo_hotkeys[f"combo_{i}"] = hotkey_id
                     print(f"註冊快捷鍵: {trigger_key} -> 連段套組 {i+1}")
                 except Exception as e:
                     print(f"註冊快捷鍵失敗 {trigger_key}: {e}")
@@ -8950,7 +8920,7 @@ class HealthMonitor:
                 print(f"遊戲視窗 '{self.window_var.get()}' 不在前台，跳過連段執行")
                 return
 
-        combo_set = self.combo_sets[set_index]
+        combo_set = self.state.combo_sets[set_index]
         combo_keys = combo_set['combo_keys']
         delays = combo_set['delays']
         trigger_delay = combo_set.get('trigger_delay', '')
@@ -9088,8 +9058,8 @@ class HealthMonitor:
         """儲存連段設定"""
         try:
             config = {
-                'combo_sets': self.combo_sets,
-                'combo_enabled': self.combo_enabled
+                'combo_sets': self.state.combo_sets,
+                'combo_enabled': self.state.combo_enabled
             }
 
             # 載入現有設定
@@ -9129,33 +9099,33 @@ class HealthMonitor:
 
             # 載入連段設定
             if 'combo_sets' in config:
-                self.combo_sets = config['combo_sets']
+                self.state.combo_sets = config['combo_sets']
                 # 確保向後相容性，為舊配置添加缺失的字段
-                for combo_set in self.combo_sets:
+                for combo_set in self.state.combo_sets:
                     if 'trigger_delay' not in combo_set:
                         combo_set['trigger_delay'] = ''
                     if 'stationary_attacks' not in combo_set:
                         combo_set['stationary_attacks'] = [False, False, False, False, False]
 
                 # 確保combo_sets長度正確
-                while len(self.combo_sets) < 3:
-                    self.combo_sets.append({
-                        'trigger_key': 'Q' if len(self.combo_sets) == 0 else 'W' if len(self.combo_sets) == 1 else 'E',
+                while len(self.state.combo_sets) < 3:
+                    self.state.combo_sets.append({
+                        'trigger_key': 'Q' if len(self.state.combo_sets) == 0 else 'W' if len(self.state.combo_sets) == 1 else 'E',
                         'trigger_delay': '',
                         'combo_keys': ['', '', '', '', ''],
                         'delays': ['', '', '', '', ''],
                         'stationary_attacks': [False, False, False, False, False]
                     })
-                self.combo_sets = self.combo_sets[:3]  # 確保不超過3個
+                self.state.combo_sets = self.state.combo_sets[:3]  # 確保不超過3個
             if 'combo_enabled' in config:
-                self.combo_enabled = config['combo_enabled']
+                self.state.combo_enabled = config['combo_enabled']
                 # 確保combo_enabled長度正確
-                while len(self.combo_enabled) < 3:
-                    self.combo_enabled.append(False)
-                self.combo_enabled = self.combo_enabled[:3]  # 確保不超過3個
+                while len(self.state.combo_enabled) < 3:
+                    self.state.combo_enabled.append(False)
+                self.state.combo_enabled = self.state.combo_enabled[:3]  # 確保不超過3個
             else:
                 # 如果配置文件中沒有combo_enabled，重置為預設值
-                self.combo_enabled = [False, False, False]
+                self.state.combo_enabled = [False, False, False]
 
             # 更新UI以反映載入的設定
             self.update_combo_ui_from_config()
@@ -9332,7 +9302,7 @@ class HealthMonitor:
 
     def silent_version_check(self):
         self._silent_version_check_after_id = None
-        if self._is_closing:
+        if self.state._is_closing:
             return
 
         """靜默檢查版本，更新UI顯示並在有新版本時彈出提醒"""
@@ -9697,7 +9667,7 @@ class HealthMonitor:
             print(f"更新使用時間顯示時發生錯誤: {e}")
 
     def update_usage_time_periodically(self):
-        if self._is_closing:
+        if self.state._is_closing:
             self._usage_time_after_id = None
             return
 
