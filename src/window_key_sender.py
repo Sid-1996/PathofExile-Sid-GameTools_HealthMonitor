@@ -58,9 +58,9 @@ class WindowKeySender:
 
     def get_game_window_handle(self):
         try:
-            if not self._app.window_var.get():
+            if not self._app.monitor_tab.window_var.get():
                 return None
-            windows = gw.getWindowsWithTitle(self._app.window_var.get())
+            windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
             if windows:
                 return windows[0]._hWnd
             return None
@@ -97,7 +97,7 @@ class WindowKeySender:
             print(f" 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
             try:
                 import keyboard
-                windows = gw.getWindowsWithTitle(self._app.window_var.get())
+                windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
                 if windows:
                     windows[0].activate()
                     time.sleep(0.05)
@@ -175,12 +175,12 @@ class WindowKeySender:
 
     def activate_game_window(self):
         try:
-            if self._app.window_var.get():
-                windows = gw.getWindowsWithTitle(self._app.window_var.get())
+            if self._app.monitor_tab.window_var.get():
+                windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
                 if windows:
                     game_window = windows[0]
                     game_window.activate()
-                    print(f"已激活遊戲視窗: {self._app.window_var.get()}")
+                    print(f"已激活遊戲視窗: {self._app.monitor_tab.window_var.get()}")
                     time.sleep(0.5)
                 else:
                     print("找不到指定的遊戲視窗")
@@ -243,7 +243,7 @@ class WindowKeySender:
 
     def _is_game_window_active(self):
         try:
-            windows = gw.getWindowsWithTitle(self._app.window_var.get())
+            windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
             if not windows:
                 return False
             w = windows[0]
@@ -253,7 +253,7 @@ class WindowKeySender:
 
     def _is_game_window_visible(self):
         try:
-            windows = gw.getWindowsWithTitle(self._app.window_var.get())
+            windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
             if not windows:
                 return False
             w = windows[0]
