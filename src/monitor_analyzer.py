@@ -16,8 +16,11 @@ import cv2
 import numpy as np
 
 
+_last_printed_health = None
+
 def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_threshold):
     """Analyze health percentage from an image region using 18 equally-spaced detection positions."""
+    global _last_printed_health
     height = img.shape[0]
     detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
 
@@ -58,7 +61,8 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
             health_count = 18
 
     result = (health_count / 18) * 100
-    if health_count >= 6:
+    if health_count >= 6 and result != _last_printed_health:
+        _last_printed_health = result
         print(f"血量分析結果: {result:.1f}%")
         for info in debug_info:
             print(info)
@@ -114,8 +118,11 @@ def get_health_color_ratio(segment, red_saturation_min, red_value_min, red_h_ran
     return (red_pixels + green_pixels) / total_pixels
 
 
+_last_printed_mana = None
+
 def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
     """Analyze mana percentage from an image region using 18 equally-spaced detection positions."""
+    global _last_printed_mana
     height = img.shape[0]
     detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
 
@@ -157,7 +164,8 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
             mana_count = 18
 
     result = (mana_count / 18) * 100
-    if mana_count >= 6:
+    if mana_count >= 6 and result != _last_printed_mana:
+        _last_printed_mana = result
         print(f"魔力分析結果: {result:.1f}%")
         for info in debug_info:
             print(info)
