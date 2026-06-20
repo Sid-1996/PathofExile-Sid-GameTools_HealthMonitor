@@ -132,7 +132,7 @@ class InventoryTab:
     def setup_global_esc_listener_for_inventory(self):
         """設置背包UI選擇的全局ESC鍵監聽"""
         try:
-            if not hasattr(self, 'global_esc_active_inventory') or not self._app.global_esc_active_inventory:
+            if not hasattr(self._app, 'global_esc_active_inventory') or not self._app.global_esc_active_inventory:
                 keyboard.add_hotkey('esc', self.global_esc_handler_for_inventory)
                 self._app.global_esc_active_inventory = True
                 print("已設置背包UI選擇的全局ESC監聽")
@@ -142,7 +142,7 @@ class InventoryTab:
     def remove_global_esc_listener_for_inventory(self):
         """移除背包相關選擇的全局ESC鍵監聽"""
         try:
-            if hasattr(self, 'global_esc_active_inventory') and self._app.global_esc_active_inventory:
+            if hasattr(self._app, 'global_esc_active_inventory') and self._app.global_esc_active_inventory:
                 # 檢查是否還有其他背包相關的選擇在進行中
                 inventory_ui_active = getattr(self, 'inventory_ui_selection_active', False)
                 inventory_active = getattr(self, 'inventory_selection_active', False)
@@ -179,7 +179,7 @@ class InventoryTab:
     def setup_global_esc_listener_for_interface(self):
         """設置介面UI選擇的全局ESC鍵監聽"""
         try:
-            if not hasattr(self, 'global_esc_active_interface') or not self._app.global_esc_active_interface:
+            if not hasattr(self._app, 'global_esc_active_interface') or not self._app.global_esc_active_interface:
                 keyboard.add_hotkey('esc', self.global_esc_handler_for_interface)
                 self._app.global_esc_active_interface = True
                 print("已設置介面UI選擇的全局ESC監聽")
@@ -189,7 +189,7 @@ class InventoryTab:
     def remove_global_esc_listener_for_interface(self):
         """移除介面UI選擇的全局ESC鍵監聽"""
         try:
-            if hasattr(self, 'global_esc_active_interface') and self._app.global_esc_active_interface:
+            if hasattr(self._app, 'global_esc_active_interface') and self._app.global_esc_active_interface:
                 keyboard.remove_hotkey('esc')
                 self._app.global_esc_active_interface = False
                 print("已移除介面UI選擇的全局ESC監聽")
@@ -1515,7 +1515,7 @@ class InventoryTab:
                         self.inventory_ui_selection_window.destroy()
 
                     # 移除全局ESC監聽
-                    self._app.remove_global_esc_listener_for_inventory_ui()
+                    self.remove_global_esc_listener_for_inventory()
 
                     # 先恢復主視窗，避免警告對話框被隱藏
                     self._app.root.deiconify()
@@ -1591,7 +1591,7 @@ class InventoryTab:
                     self.inventory_ui_selection_window.destroy()
 
                 # 移除全局ESC監聽
-                self._app.remove_global_esc_listener_for_inventory_ui()
+                self.remove_global_esc_listener_for_inventory()
 
 
                 # 統一的GUI恢復和訊息顯示
@@ -1606,7 +1606,7 @@ class InventoryTab:
                 # 如果沒有找到遊戲視窗，銷毀選擇視窗
                 if hasattr(self, 'inventory_ui_selection_window'):
                     self.inventory_ui_selection_window.destroy()
-                self._app.remove_global_esc_listener_for_inventory_ui()
+                self.remove_global_esc_listener_for_inventory()
 
             # 重新激活主視窗並恢復正常狀態
             self._app.root.deiconify()
@@ -1626,7 +1626,7 @@ class InventoryTab:
         self.inventory_ui_selection_end = None
 
         # 移除全局ESC監聽
-        self._app.remove_global_esc_listener_for_inventory_ui()
+        self.remove_global_esc_listener_for_inventory()
 
         if hasattr(self, 'inventory_ui_selection_window'):
             self.inventory_ui_selection_window.destroy()
@@ -3262,6 +3262,10 @@ class InventoryTab:
         coords_frame.pack(fill='x', padx=20, pady=10)
 
         # 確保pickup_coordinates有5個位置
+        if self.pickup_coordinates is None:
+            self.pickup_coordinates = self._app.pickup_coordinates
+        if self.pickup_coordinates is None:
+            self.pickup_coordinates = [[0, 0] for _ in range(5)]
         while len(self.pickup_coordinates) < 5:
             self.pickup_coordinates.append([0, 0])
 

@@ -1855,7 +1855,9 @@ class HealthMonitor:
             print(f"F6: {len(self.pickup_coordinates)} ")
             while len(self.pickup_coordinates) < 5:
                 self.pickup_coordinates.append([0, 0])
-            if hasattr(self, 'pickup_coords_label'):
+            if hasattr(self, 'inventory_tab'):
+                self.inventory_tab.pickup_coordinates = self.pickup_coordinates
+            if hasattr(self.inventory_tab, 'pickup_coords_label'):
                 self.inventory_tab.update_pickup_status()
 
             if 'combo_sets' in self.config:
