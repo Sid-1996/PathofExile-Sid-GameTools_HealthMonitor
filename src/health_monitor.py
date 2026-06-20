@@ -433,9 +433,6 @@ class HealthMonitor:
         self.inventory_ui_selection_active = False
         self.inventory_ui_selection_start = None
         self.inventory_ui_selection_end = None
-        self.interface_ui_selection_active = False
-        self.interface_ui_selection_start = None
-        self.interface_ui_selection_end = None
         self.interface_ui_region = None  # 介面UI區域
         self.ui_preview_image = None  # 用於Canvas顯示的PhotoImage
         self.pickup_coordinates = []  # 儲存5個取物座標 [x, y]
@@ -1081,36 +1078,6 @@ class HealthMonitor:
                 return
         except Exception as e:
             print(f"背包相關選擇的全局ESC處理失敗: {e}")
-
-    def setup_global_esc_listener_for_interface(self):
-        """設置介面UI選擇的全局ESC鍵監聽"""
-        try:
-            if not hasattr(self, 'global_esc_active_interface') or not self.global_esc_active_interface:
-                keyboard.add_hotkey('esc', self.global_esc_handler_for_interface)
-                self.global_esc_active_interface = True
-                print("已設置介面UI選擇的全局ESC監聽")
-        except Exception as e:
-            print(f"設置介面UI選擇的全局ESC監聽失敗: {e}")
-
-    def remove_global_esc_listener_for_interface(self):
-        """移除介面UI選擇的全局ESC鍵監聽"""
-        try:
-            if hasattr(self, 'global_esc_active_interface') and self.global_esc_active_interface:
-                keyboard.remove_hotkey('esc')
-                self.global_esc_active_interface = False
-                print("已移除介面UI選擇的全局ESC監聽")
-        except Exception as e:
-            print(f"移除介面UI選擇的全局ESC監聽失敗: {e}")
-
-    def global_esc_handler_for_interface(self):
-        """介面UI選擇的全局ESC鍵處理函數"""
-        try:
-            if hasattr(self, 'interface_ui_selection_active') and self.interface_ui_selection_active:
-                # 使用tkinter的after方法來確保在主線程中執行
-                self.root.after(0, lambda: self.cancel_interface_ui_selection(None))
-                print("檢測到ESC鍵，取消介面UI選擇")
-        except Exception as e:
-            print(f"介面UI選擇的全局ESC處理失敗: {e}")
 
     def check_game_window_minimized(self, window_title):
         """檢查遊戲視窗是否最小化，如果最小化則顯示提醒視窗"""
