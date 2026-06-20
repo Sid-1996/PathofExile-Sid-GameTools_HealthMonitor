@@ -536,7 +536,7 @@ class HealthMonitor:
 
     def refresh_visual_previews_after_load(self):
         """Refresh heavier previews after startup so the main window appears sooner."""
-        if hasattr(self, 'ui_preview_canvas') and hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_ui_region:
+        if hasattr(self.inventory_tab, 'ui_preview_canvas') and hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_ui_region:
             self.inventory_tab.update_ui_preview()
 
         if hasattr(self.monitor_tab, 'interface_ui_preview_canvas') and self.interface_ui_region:
@@ -1736,16 +1736,16 @@ class HealthMonitor:
             if self.interface_ui_region:
                 self.inventory_tab.load_interface_ui_screenshot_from_file()
 
-            if hasattr(self, 'empty_color_label') and self.empty_inventory_colors:
+            if hasattr(self.inventory_tab, 'empty_color_label') and self.inventory_tab.empty_inventory_colors:
                 recorded_count = len([c for c in self.inventory_tab.empty_inventory_colors if c != (0, 0, 0)])
-                self.empty_color_label.config(
+                self.inventory_tab.empty_color_label.config(
                     text=self.get_text("recorded_colors_template").format(count=recorded_count),
                     background="lightgreen",
                 )
 
             if hasattr(self, 'inventory_tab') and hasattr(self.inventory_tab, 'inventory_ui_label') and self.inventory_tab.inventory_ui_region:
                 self.inventory_tab.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), background="lightgreen")
-                if hasattr(self, 'ui_preview_canvas'):
+                if hasattr(self.inventory_tab, 'ui_preview_canvas'):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
                     else:
@@ -1776,7 +1776,7 @@ class HealthMonitor:
             self.auto_clear_enabled = self.config.get('auto_clear_enabled', False)
             self.clear_interval = self.config.get('clear_interval', 30)
 
-            if hasattr(self, 'monitor_interval_var'):
+            if hasattr(self.monitor_tab, 'monitor_interval_var'):
                 interval_ms = int(self.state.monitor_interval * 1000)
                 self.monitor_tab.monitor_interval_var.set(str(interval_ms))
 
@@ -1909,11 +1909,11 @@ class HealthMonitor:
             if hasattr(self.monitor_tab, 'load_settings_to_tree'):
                 self.monitor_tab.load_settings_to_tree()
 
-            if hasattr(self, 'ui_preview_canvas'):
+            if hasattr(self.inventory_tab, 'ui_preview_canvas'):
                 self.inventory_tab.update_ui_preview()
 
-            if hasattr(self, 'update_pickup_coordinates_display'):
-                self.monitor_tab.update_pickup_coordinates_display()
+            if hasattr(self.inventory_tab, 'pickup_coords_label'):
+                self.inventory_tab.update_pickup_status()
 
             loaded_language = self.config.get('language', 'zh-tw')
             # print(f"[DEBUG] load_config : {loaded_language}")
@@ -2022,9 +2022,9 @@ class HealthMonitor:
                 print(f"儲存窗口位置失敗: {e}")
 
             # 儲存連段設定
-            if hasattr(self, 'combo_sets'):
+            if hasattr(self.state, 'combo_sets'):
                 self.config['combo_sets'] = self.state.combo_sets
-            if hasattr(self, 'combo_enabled'):
+            if hasattr(self.state, 'combo_enabled'):
                 self.config['combo_enabled'] = self.state.combo_enabled
 
             # 儲存血魔監控設定
@@ -2054,10 +2054,10 @@ class HealthMonitor:
                 self.config['inventory_window_title'] = self.inventory_tab.inventory_window_var.get()
 
             # 儲存監控間隔
-            if hasattr(self, 'monitor_interval'):
+            if hasattr(self.state, 'monitor_interval'):
                 self.config['monitor_interval'] = self.state.monitor_interval
             # 儲存檢查頻率設定
-            if hasattr(self, 'monitor_interval_var'):
+            if hasattr(self.monitor_tab, 'monitor_interval_var'):
                 try:
                     interval_ms = int(self.monitor_tab.monitor_interval_var.get())
                     self.config['monitor_interval'] = interval_ms / 1000.0  # 轉換為秒儲存
