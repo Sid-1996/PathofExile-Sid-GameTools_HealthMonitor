@@ -508,24 +508,24 @@ class HealthMonitor:
 
             self.monitor_tab.auto_load_preview()
         except Exception as e:
-            print(f": {e}")
+            print(f"finish_startup_tasks: auto_load_preview 失敗: {e}")
 
         if self._startup_visual_refresh_pending:
             self._startup_visual_refresh_pending = False
             try:
                 self.refresh_visual_previews_after_load()
             except Exception as e:
-                print(f": {e}")
+                print(f"finish_startup_tasks: refresh_visual_previews 失敗: {e}")
 
         try:
             self.setup_hotkeys()
         except Exception as e:
-            print(f": {e}")
+            print(f"finish_startup_tasks: setup_hotkeys 失敗: {e}")
 
         try:
             self.setup_mouse_interrupt()
         except Exception as e:
-            print(f": {e}")
+            print(f"finish_startup_tasks: setup_mouse_interrupt 失敗: {e}")
 
         self.window_key_sender = WindowKeySender(self)
         self.root.after(500, self.window_key_sender._start_window_focus_watcher)
@@ -1788,7 +1788,7 @@ class HealthMonitor:
                 self.preview_interval_var.set(str(preview_interval))
 
             if 'settings' in self.config:
-                print(f": {len(self.config['settings'])} ")
+                print(f"設定檔 settings 數量: {len(self.config['settings'])}")
                 migrated = False
                 for setting in self.config['settings']:
                     old_type = setting.get('type', 'HP')
@@ -1830,17 +1830,17 @@ class HealthMonitor:
                 try:
                     with open(self.config_file, 'w', encoding='utf-8') as f:
                         json.dump(self.config, f, indent=2, ensure_ascii=False)
-                    print("GUI")
+                    print("GUI 最上方設定已保存至設定檔")
                 except Exception as save_error:
-                    print(f": {save_error}")
+                    print(f"保存 GUI 最上方設定失敗: {save_error}")
 
             if 'window_geometry' in self.config:
                 try:
                     saved_geometry = self.config['window_geometry']
                     self.root.geometry(saved_geometry)
-                    print(f": {saved_geometry}")
+                    print(f"已還原視窗幾何: {saved_geometry}")
                 except Exception as e:
-                    print(f": {e}")
+                    print(f"還原視窗幾何失敗: {e}")
 
             self.pickup_coordinates = self.config.get('pickup_coordinates', [])
             print(f"F6: {len(self.pickup_coordinates)} ")
@@ -1868,14 +1868,14 @@ class HealthMonitor:
                         'stationary_attacks': [False, False, False, False, False],
                     })
                 self.state.combo_sets = self.state.combo_sets[:3]
-                print(f": {len(self.state.combo_sets)} ")
+                print(f"combo_sets 數量: {len(self.state.combo_sets)}")
 
             if 'combo_enabled' in self.config:
                 self.state.combo_enabled = self.config['combo_enabled']
                 while len(self.state.combo_enabled) < 3:
                     self.state.combo_enabled.append(False)
                 self.state.combo_enabled = self.state.combo_enabled[:3]
-                print(f": {self.state.combo_enabled}")
+                print(f"combo_enabled: {self.state.combo_enabled}")
             else:
                 self.state.combo_enabled = [False, False, False]
 
