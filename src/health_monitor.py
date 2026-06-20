@@ -493,7 +493,9 @@ class HealthMonitor:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # ????????
-        self.close_loading_window()
+        # 延遲關閉載入視窗，等所有排程的視窗尺寸調整完成後再顯示主視窗
+        # (create_widgets 排程了 after(100) adjust_window, after(200) restore_tab)
+        self.root.after(300, self.close_loading_window)
         self._startup_phase = False
         self.root.after(10, self.finish_startup_tasks)
 
