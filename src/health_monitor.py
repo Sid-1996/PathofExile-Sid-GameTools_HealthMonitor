@@ -321,6 +321,7 @@ class HealthMonitor:
         _app_instance = self  # 保存全局引用
 
         self.root = root
+        self.root.withdraw()  # 隱藏主視窗，避免啟動過程中的尺寸調整被使用者看到
         self._startup_phase = True
         self._startup_visual_refresh_pending = False
 
@@ -2194,6 +2195,7 @@ class HealthMonitor:
             if hasattr(self, 'loading_window') and self.loading_window:
                 self.loading_window.destroy()
                 self.loading_window = None
+                self.root.deiconify()  # 所有啟動排程完成後才顯示主視窗
         except Exception as e:
             print(f"關閉載入提示視窗失敗: {e}")
 
