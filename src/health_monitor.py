@@ -1820,15 +1820,6 @@ class HealthMonitor:
             self.interface_ui_hist_threshold = float(self.config.get('interface_ui_hist_threshold', 0.7))
             self.interface_ui_color_threshold = int(self.config.get('interface_ui_color_threshold', 35))
 
-            if hasattr(self, 'mse_threshold_var'):
-                self.inventory_tab.mse_threshold_var.set(str(self.interface_ui_mse_threshold))
-            if hasattr(self, 'ssim_threshold_var'):
-                self.inventory_tab.ssim_threshold_var.set(str(self.interface_ui_ssim_threshold))
-            if hasattr(self, 'hist_threshold_var'):
-                self.inventory_tab.hist_threshold_var.set(str(self.interface_ui_hist_threshold))
-            if hasattr(self, 'color_threshold_var'):
-                self.inventory_tab.color_threshold_var.set(str(self.interface_ui_color_threshold))
-
             self.monitor_tab.multi_trigger_var.set(self.config.get('multi_trigger', False))
 
             always_on_top = self.config.get('always_on_top', False)
