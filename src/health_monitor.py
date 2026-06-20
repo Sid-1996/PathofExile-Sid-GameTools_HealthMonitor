@@ -1358,7 +1358,7 @@ class HealthMonitor:
                             self.get_text, self.inventory_tab.is_interface_ui_visible,
                             self.monitor_tab.window_var.get(),
                             getattr(self, 'interface_ui_region', None),
-                            getattr(self, 'interface_ui_screenshot', None),
+                            getattr(self.inventory_tab, 'interface_ui_screenshot', None),
                         ),
                     )
 
@@ -1374,7 +1374,7 @@ class HealthMonitor:
                         self.inventory_tab.is_interface_ui_visible, self.press_key_sequence,
                         self.monitor_tab.window_var.get(),
                         getattr(self, 'interface_ui_region', None),
-                        getattr(self, 'interface_ui_screenshot', None),
+                        getattr(self.inventory_tab, 'interface_ui_screenshot', None),
                     )
 
                     # 使用選擇的檢查頻率
