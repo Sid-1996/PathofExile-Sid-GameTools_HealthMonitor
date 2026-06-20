@@ -198,89 +198,79 @@ class HealthMonitor:
             self.notebook.tab(6, text=self.get_text("tab_about"))
 
             # 更新控制面板的UI元素
-            if hasattr(self, 'control_frame'):
-                self.control_frame.config(text=self.get_text("control_panel"))
-                if hasattr(self, 'start_btn'):
+            if hasattr(self.monitor_tab, 'control_frame'):
+                self.monitor_tab.control_frame.config(text=self.get_text("control_panel"))
+                if self.monitor_tab.start_btn:
                     self.monitor_tab.start_btn.config(text=self.get_text("start_monitoring"))
-                if hasattr(self, 'stop_btn'):
+                if self.monitor_tab.stop_btn:
                     self.monitor_tab.stop_btn.config(text=self.get_text("stop_monitoring"))
-                if hasattr(self, 'save_btn'):
+                if self.monitor_tab.save_btn:
                     self.monitor_tab.save_btn.config(text=self.get_text("save_settings"))
-                if hasattr(self, 'test_preview_btn'):
+                if self.monitor_tab.test_preview_btn:
                     self.monitor_tab.test_preview_btn.config(text=self.get_text("test_preview"))
-                if hasattr(self, 'check_freq_label'):
+                if self.monitor_tab.check_freq_label:
                     self.monitor_tab.check_freq_label.config(text=self.get_text("check_frequency"))
-                if hasattr(self, 'ms_label'):
+                if self.monitor_tab.ms_label:
                     self.monitor_tab.ms_label.config(text=self.get_text("ms"))
-                if hasattr(self, 'reminder_frame'):
+                if self.monitor_tab.reminder_frame:
                     self.monitor_tab.reminder_frame.config(text=self.get_text("important_reminder"))
-                if hasattr(self, 'reminder_label'):
+                if self.monitor_tab.reminder_label:
                     self.monitor_tab.reminder_label.config(text=self.get_text("reminder_text"))
-                if hasattr(self, 'language_label'):
+                if self.monitor_tab.language_label:
                     self.monitor_tab.language_label.config(text=self.get_text("language"))
-                if hasattr(self, 'gui_settings_label'):
+                if self.monitor_tab.gui_settings_label:
                     self.monitor_tab.gui_settings_label.config(text=self.get_text("gui_settings"))
-                if hasattr(self, 'always_on_top_check'):
+                if self.monitor_tab.always_on_top_check:
                     self.monitor_tab.always_on_top_check.config(text=self.get_text("always_on_top"))
-                if hasattr(self, 'preview_settings_label'):
+                if self.monitor_tab.preview_settings_label:
                     self.monitor_tab.preview_settings_label.config(text=self.get_text("preview_settings"))
-                if hasattr(self, 'enable_preview_check'):
+                if self.monitor_tab.enable_preview_check:
                     self.monitor_tab.enable_preview_check.config(text=self.get_text("enable_preview"))
-                if hasattr(self, 'preview_interval_label'):
+                if self.monitor_tab.preview_interval_label:
                     self.monitor_tab.preview_interval_label.config(text=self.get_text("preview_interval"))
-                if hasattr(self, 'preview_ms_label'):
+                if self.monitor_tab.preview_ms_label:
                     self.monitor_tab.preview_ms_label.config(text=self.get_text("ms"))
 
             # 更新遊戲視窗設定區域
-            if hasattr(self, 'window_frame'):
-                self.window_frame.config(text=self.get_text("game_window_settings"))
-                if hasattr(self, 'region_label'):
-                    self.monitor_tab.region_label.config(text=get_region_text(self.config))
-                if hasattr(self, 'mana_region_label'):
+            if hasattr(self.monitor_tab, 'region_label'):
+                self.monitor_tab.region_label.config(text=get_region_text(self.config))
+                if self.monitor_tab.mana_region_label:
                     self.monitor_tab.mana_region_label.config(text=get_mana_region_text(self.config))
-                if hasattr(self.monitor_tab, 'interface_ui_label'):
+                if self.monitor_tab.interface_ui_label:
                     self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region))
-                if hasattr(self, 'select_health_btn'):
-                    self.select_health_btn.config(text=self.get_text("select_health_region"))
-                if hasattr(self, 'select_mana_btn'):
-                    self.select_mana_btn.config(text=self.get_text("select_mana_region"))
-                if hasattr(self, 'select_interface_ui_btn'):
-                    self.select_interface_ui_btn.config(text=self.get_text("select_interface_ui"))
 
-            # 更新觸發設定區域
-            if hasattr(self, 'settings_frame'):
-                self.settings_frame.config(text=self.get_text("trigger_settings"))
-                if hasattr(self, 'remove_selected_btn'):
-                    self.remove_selected_btn.config(text=self.get_text("remove_selected"))
-                if hasattr(self, 'adjust_colors_btn'):
-                    self.adjust_colors_btn.config(text=self.get_text("adjust_colors"))
-                if hasattr(self, 'adjust_interface_ui_btn'):
-                    self.adjust_interface_ui_btn.config(text=self.get_text("adjust_interface_ui"))
-                if hasattr(self, 'multi_trigger_check'):
-                    self.multi_trigger_check.config(text=self.get_text("multiple_triggers"))
+            # 更新觸發設定區域（保留 hasattr 避免舊配置無對應 UI 元素時報錯）
+            if hasattr(self, 'remove_selected_btn'):
+                self.remove_selected_btn.config(text=self.get_text("remove_selected"))
+            if hasattr(self, 'adjust_colors_btn'):
+                self.adjust_colors_btn.config(text=self.get_text("adjust_colors"))
+            if hasattr(self, 'adjust_interface_ui_btn'):
+                self.adjust_interface_ui_btn.config(text=self.get_text("adjust_interface_ui"))
+            if hasattr(self, 'multi_trigger_check'):
+                self.multi_trigger_check.config(text=self.get_text("multiple_triggers"))
 
             # 更新即時狀態區域
-            if hasattr(self, 'real_time_status_frame'):
+            if hasattr(self.monitor_tab, 'real_time_status_frame'):
                 self.monitor_tab.real_time_status_frame.config(text=self.get_text("real_time_status"))
-                if hasattr(self, 'current_health_label'):
+                if self.monitor_tab.current_health_label:
                     self.monitor_tab.current_health_label.config(text=self.get_text("current_health"))
-                if hasattr(self, 'current_mana_label'):
+                if self.monitor_tab.current_mana_label:
                     self.monitor_tab.current_mana_label.config(text=self.get_text("current_mana"))
-                if hasattr(self, 'main_color_label'):
+                if self.monitor_tab.main_color_label:
                     self.monitor_tab.main_color_label.config(text=self.get_text("main_color"))
-                if hasattr(self, 'trigger_status_label'):
+                if self.monitor_tab.trigger_status_label:
                     self.monitor_tab.trigger_status_label.config(text=self.get_text("trigger_status"))
 
             # 更新預覽區域
-            if hasattr(self, 'preview_frame'):
+            if hasattr(self.monitor_tab, 'preview_frame'):
                 self.monitor_tab.preview_frame.config(text=self.get_text("region_preview"))
-                if hasattr(self, 'health_preview_frame'):
+                if self.monitor_tab.health_preview_frame:
                     self.monitor_tab.health_preview_frame.config(text=self.get_text("health_preview"))
-                if hasattr(self, 'preview_label'):
+                if self.monitor_tab.preview_label:
                     self.monitor_tab.preview_label.config(text=self.get_text("select_health_region_first"))
-                if hasattr(self, 'mana_preview_frame'):
+                if self.monitor_tab.mana_preview_frame:
                     self.monitor_tab.mana_preview_frame.config(text=self.get_text("mana_preview"))
-                if hasattr(self, 'mana_preview_label'):
+                if self.monitor_tab.mana_preview_label:
                     self.monitor_tab.mana_preview_label.config(text=self.get_text("select_mana_region_first"))
 
             # print(f"[DEBUG] update_ui_text() 完成")
@@ -1191,8 +1181,8 @@ class HealthMonitor:
 
         # 線程安全地設置監控狀態
         self.set_monitoring(True)
-        self.start_btn.config(state=tk.DISABLED)
-        self.stop_btn.config(state=tk.NORMAL)
+        self.monitor_tab.start_btn.config(state=tk.DISABLED)
+        self.monitor_tab.stop_btn.config(state=tk.NORMAL)
 
         # 添加狀態訊息
         self.status_tab.add_status_message(self.get_text("health_monitor_started"), "success")
@@ -1213,8 +1203,8 @@ class HealthMonitor:
         print("[STOP] ...")
         self.set_monitoring(False)
 
-        self.start_btn.config(state=tk.NORMAL)
-        self.stop_btn.config(state=tk.DISABLED)
+        self.monitor_tab.start_btn.config(state=tk.NORMAL)
+        self.monitor_tab.stop_btn.config(state=tk.DISABLED)
         self.status_tab.add_status_message(self.get_text("health_monitor_stopped"), "info")
 
         self.root.attributes("-alpha", 1.0)
@@ -1267,10 +1257,10 @@ class HealthMonitor:
 
         # 更新UI（如果元件存在）
         try:
-            if hasattr(self, 'start_btn') and self.start_btn:
-                self.start_btn.config(state=tk.DISABLED)
-            if hasattr(self, 'stop_btn') and self.stop_btn:
-                self.stop_btn.config(state=tk.NORMAL)
+            if hasattr(self.monitor_tab, 'start_btn') and self.monitor_tab.start_btn:
+                self.monitor_tab.start_btn.config(state=tk.DISABLED)
+            if hasattr(self.monitor_tab, 'stop_btn') and self.monitor_tab.stop_btn:
+                self.monitor_tab.stop_btn.config(state=tk.NORMAL)
         except Exception:
             pass  # UI 更新失敗不影響功能
 
