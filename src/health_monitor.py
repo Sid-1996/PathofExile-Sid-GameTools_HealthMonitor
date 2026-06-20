@@ -497,7 +497,6 @@ class HealthMonitor:
         # 延遲關閉載入視窗，等所有排程的視窗尺寸調整完成後再顯示主視窗
         # (create_widgets 排程了 after(100) adjust_window, after(200) restore_tab)
         self.root.after(300, self.close_loading_window)
-        self._startup_phase = False
         self.root.after(10, self.finish_startup_tasks)
 
     def finish_startup_tasks(self):
@@ -749,6 +748,18 @@ class HealthMonitor:
 
     def adjust_window_for_tab(self, tab_name):
         """根據分頁名稱調整視窗大小 - 支持智能縮放"""
+        # 啟動階段且有已儲存的視窗幾何，只做最小尺寸保底，不覆蓋使用者設定
+        if self._startup_phase and 'window_geometry' in self.config:
+            if tab_name in self.tab_min_sizes:
+                min_w, min_h = self.tab_min_sizes[tab_name]
+                try:
+                    geo = self.root.geometry().split('+')[0].split('x')
+                    cur_w, cur_h = int(geo[0]), int(geo[1])
+                    if cur_w < min_w or cur_h < min_h:
+                        self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
+                except Exception:
+                    pass
+            return
         if tab_name in self.tab_min_sizes:
             target_width, target_height = self.tab_min_sizes[tab_name]
 
@@ -2196,6 +2207,7 @@ class HealthMonitor:
                 self.loading_window.destroy()
                 self.loading_window = None
                 self.root.deiconify()  # 所有啟動排程完成後才顯示主視窗
+                self._startup_phase = False
         except Exception as e:
             print(f"關閉載入提示視窗失敗: {e}")
 
