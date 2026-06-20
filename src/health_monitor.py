@@ -549,7 +549,7 @@ class HealthMonitor:
         if hasattr(self, 'ui_preview_canvas') and hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_ui_region:
             self.inventory_tab.update_ui_preview()
 
-        if hasattr(self, 'interface_ui_preview_canvas') and self.interface_ui_region:
+        if hasattr(self.monitor_tab, 'interface_ui_preview_canvas') and self.interface_ui_region:
             self.inventory_tab.update_interface_ui_preview()
 
         if hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_region:

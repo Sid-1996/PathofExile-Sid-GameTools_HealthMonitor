@@ -231,7 +231,7 @@ class InventoryTab:
             return
 
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_set"), "error")
             messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。")
@@ -950,7 +950,7 @@ class InventoryTab:
                 return
 
             # 使用血魔監控的遊戲視窗
-            window_title = self._app.window_var.get()
+            window_title = self._app.monitor_tab.window_var.get()
             if not window_title:
                 return
 
@@ -1013,7 +1013,7 @@ class InventoryTab:
     def select_inventory_region(self):
         """框選背包區域"""
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
@@ -1120,7 +1120,7 @@ class InventoryTab:
             self.inventory_selection_active = False
 
             # 獲取遊戲視窗資訊
-            window_title = self._app.window_var.get()
+            window_title = self._app.monitor_tab.window_var.get()
             windows = gw.getWindowsWithTitle(window_title)
             if windows:
                 game_window = windows[0]
@@ -1223,7 +1223,7 @@ class InventoryTab:
             return
 
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
@@ -1314,7 +1314,7 @@ class InventoryTab:
     def select_inventory_ui_region(self):
         """框選背包UI區域"""
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
@@ -1358,7 +1358,7 @@ class InventoryTab:
     def select_interface_ui_region(self):
         """框選介面UI區域"""
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
@@ -1495,7 +1495,7 @@ class InventoryTab:
             self.inventory_ui_selection_active = False
 
             # 獲取遊戲視窗資訊
-            window_title = self._app.window_var.get()
+            window_title = self._app.monitor_tab.window_var.get()
             windows = gw.getWindowsWithTitle(window_title)
             if windows:
                 game_window = windows[0]
@@ -1666,7 +1666,7 @@ class InventoryTab:
             self.interface_ui_selection_active = False
 
             # 獲取遊戲視窗資訊
-            window_title = self._app.window_var.get()
+            window_title = self._app.monitor_tab.window_var.get()
             windows = gw.getWindowsWithTitle(window_title)
             if windows:
                 game_window = windows[0]
@@ -1853,11 +1853,11 @@ class InventoryTab:
                 print(f"介面UI截圖已從檔案載入: {interface_screenshot_path}")
 
                 # 更新UI標籤狀態
-                if hasattr(self, 'interface_ui_label'):
+                if hasattr(self._app.monitor_tab, 'interface_ui_label'):
                     self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgreen")
 
                 # 更新介面UI預覽
-                if hasattr(self, 'interface_ui_preview_canvas'):
+                if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                     if self._app._startup_phase:
                         self._app._startup_visual_refresh_pending = True
                     else:
@@ -2069,7 +2069,7 @@ class InventoryTab:
         try:
             if self.interface_ui_screenshot is None:
                 # 如果沒有截圖，顯示預設文字
-                if hasattr(self, 'interface_ui_preview_canvas'):
+                if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                     self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
                     self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text="尚未截取介面UI",
                                                                fill="gray", font=("Arial", 8))
@@ -2098,7 +2098,7 @@ class InventoryTab:
             self.interface_ui_preview_image = ImageTk.PhotoImage(pil_image)
 
             # 在Canvas上顯示圖片
-            if hasattr(self, 'interface_ui_preview_canvas'):
+            if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                 self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
                 # 計算居中位置
                 x = (canvas_width - new_width) // 2
@@ -2107,7 +2107,7 @@ class InventoryTab:
 
         except Exception as e:
             print(f"更新介面UI預覽失敗: {e}")
-            if hasattr(self, 'interface_ui_preview_canvas'):
+            if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                 self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
                 self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text="預覽載入失敗",
                                                            fill="red", font=("Arial", 8))
@@ -2712,7 +2712,7 @@ class InventoryTab:
             return
 
         # 使用血魔監控的遊戲視窗
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
@@ -2880,7 +2880,7 @@ class InventoryTab:
             self._app.config['grid_offset_y'] = self.grid_offset_y
             self._app.config['excluded_inventory_slots'] = sorted(self.excluded_inventory_slots)
             # 儲存血魔監控的遊戲視窗標題
-            self._app.config['inventory_window_title'] = self._app.window_var.get()
+            self._app.config['inventory_window_title'] = self._app.monitor_tab.window_var.get()
 
             # 儲存背包UI設定
             self._app.config['inventory_ui_region'] = self.inventory_ui_region
@@ -2915,7 +2915,7 @@ class InventoryTab:
 
         try:
             # 檢查是否有設定遊戲視窗
-            window_title = self._app.window_var.get()
+            window_title = self._app.monitor_tab.window_var.get()
             if not window_title:
                 print("F5: 未設定遊戲視窗，無法使用返回藏身功能")
                 self._app.status_tab.add_status_message("F5 執行失敗 - 未設定遊戲視窗", "error")
@@ -2978,7 +2978,7 @@ class InventoryTab:
         print("=== F6取物功能被調用（非阻塞版） ===")
 
         # 在主線程進行輕量檢查與狀態擷取
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
             try:
@@ -3304,7 +3304,7 @@ class InventoryTab:
     def start_continuous_setup(self, parent_window):
         """開始連續設定5個取物座標"""
         # 檢查遊戲視窗是否最小化
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if window_title and self._app.check_game_window_minimized(window_title):
             return
 
@@ -3375,7 +3375,7 @@ class InventoryTab:
                         abs_x, abs_y = pyautogui.position()
 
                         # 獲取遊戲視窗位置
-                        window_title = self._app.window_var.get()
+                        window_title = self._app.monitor_tab.window_var.get()
                         if window_title:
                             windows = gw.getWindowsWithTitle(window_title)
                             if windows:
@@ -3493,7 +3493,7 @@ class InventoryTab:
             return
 
         # 檢查遊戲視窗設定
-        window_title = self._app.window_var.get()
+        window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showerror("錯誤", "請先選擇遊戲視窗")
             return
