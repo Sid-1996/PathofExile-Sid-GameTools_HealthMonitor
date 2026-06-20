@@ -942,7 +942,7 @@ class InventoryTab:
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
-            if not self._app.window_key_sender._is_game_window_visible():
+            if not hasattr(self._app, 'window_key_sender') or not self._app.window_key_sender._is_game_window_visible():
                 if hasattr(self, 'inventory_preview_label'):
                     self.inventory_preview_label.delete("all")
                     self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("waiting_for_game_window"), anchor='nw', fill='gray')

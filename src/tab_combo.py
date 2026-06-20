@@ -415,9 +415,9 @@ class ComboTab:
         if not self._state.is_combo_running():
             return
 
-        if self._app.window_var.get():
-            if not self._app.window_key_sender.is_game_window_foreground(self._app.window_var.get()):
-                print(f"遊戲視窗 '{self._app.window_var.get()}' 不在前台，跳過連段執行")
+        if self._app.monitor_tab.window_var.get():
+            if not self._app.window_key_sender.is_game_window_foreground(self._app.monitor_tab.window_var.get()):
+                print(f"遊戲視窗 '{self._app.monitor_tab.window_var.get()}' 不在前台，跳過連段執行")
                 return
 
         combo_set = self._state.combo_sets[set_index]

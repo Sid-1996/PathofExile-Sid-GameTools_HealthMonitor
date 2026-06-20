@@ -880,10 +880,11 @@ class HealthMonitor:
                         self.adjust_window_for_tab(last_tab)
                         print(self.get_text("restored_last_tab").format(last_tab=last_tab))
                         # 同步更新 focus watcher 間隔
-                        if i == 1:  # 一鍵清包分頁
-                            self.window_key_sender._focus_watcher_interval = 200
-                        else:
-                            self.window_key_sender._focus_watcher_interval = 1000
+                        if hasattr(self, 'window_key_sender'):
+                            if i == 1:
+                                self.window_key_sender._focus_watcher_interval = 200
+                            else:
+                                self.window_key_sender._focus_watcher_interval = 1000
                         break
         except Exception as e:
             print(f"{self.get_text('restore_tab_error')} {e}")
@@ -1773,7 +1774,7 @@ class HealthMonitor:
             elif 'window_title' in self.config:
                 self.inventory_tab.inventory_window_var.set(self.config['window_title'])
 
-            if hasattr(self, 'window_var') and 'window_title' in self.config:
+            if hasattr(self.monitor_tab, 'window_var') and 'window_title' in self.config:
                 self.monitor_tab.window_var.set(self.config['window_title'])
 
             self.blood_magic_enabled = self.config.get('blood_magic_enabled', False)
@@ -1794,7 +1795,7 @@ class HealthMonitor:
                 self.preview_enabled.set(preview_enabled)
             if hasattr(self, 'preview_interval_var'):
                 preview_interval = self.config.get('preview_interval', 250)
-                self.monitor_tab.preview_interval_var.set(str(preview_interval))
+                self.preview_interval_var.set(str(preview_interval))
 
             if 'settings' in self.config:
                 print(f": {len(self.config['settings'])} ")
@@ -1991,8 +1992,8 @@ class HealthMonitor:
             # 儲存預覽設定
             if hasattr(self, 'preview_enabled'):
                 self.config['preview_enabled'] = self.preview_enabled.get()
-            if hasattr(self.monitor_tab, 'preview_interval_var'):
-                self.config['preview_interval'] = int(self.monitor_tab.preview_interval_var.get())
+            if hasattr(self, 'preview_interval_var'):
+                self.config['preview_interval'] = int(self.preview_interval_var.get())
 
             # 儲存顏色檢測參數
             self.config['health_threshold'] = self.health_threshold
@@ -2175,6 +2176,9 @@ class HealthMonitor:
                 self.loading_window.update()
         except Exception as e:
             print(f"更新載入狀態失敗: {e}")
+
+    def add_status_message(self, message, msg_type="info"):
+        self.status_tab.add_status_message(message, msg_type)
 
 if __name__ == "__main__":
     def emergency_exit_handler(signum=None, frame=None):
