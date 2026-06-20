@@ -1719,13 +1719,13 @@ class HealthMonitor:
             self.monitor_tab.selected_mana_region = self.config.get('mana_region')
             self.inventory_tab.inventory_region = self.config.get('inventory_region')
             self.inventory_tab.empty_inventory_colors = self.config.get('empty_inventory_colors', [])
-            self.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]
+            self.inventory_tab.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]
             self.inventory_tab.grid_offset_x = self.config.get('grid_offset_x', 0)
             self.inventory_tab.grid_offset_y = self.config.get('grid_offset_y', 0)
             self.inventory_tab.excluded_inventory_slots = set(self.config.get('excluded_inventory_slots', []))
 
             click_mode = self.config.get('inventory_clear_click_mode', 'left')
-            if hasattr(self, 'inventory_clear_click_mode'):
+            if hasattr(self.inventory_tab, 'inventory_clear_click_mode'):
                 self.inventory_tab.inventory_clear_click_mode.set(click_mode)
 
             self.inventory_tab.inventory_ui_region = self.config.get('inventory_ui_region')
@@ -1958,8 +1958,8 @@ class HealthMonitor:
                 self.config['interface_ui_region'] = self.interface_ui_region
             if hasattr(self, 'inventory_tab') and self.inventory_tab.empty_inventory_colors:
                 self.config['empty_inventory_colors'] = self.inventory_tab.empty_inventory_colors
-            if self.inventory_grid_positions:
-                self.config['inventory_grid_positions'] = self.inventory_grid_positions
+            if hasattr(self.inventory_tab, 'inventory_grid_positions') and self.inventory_tab.inventory_grid_positions:
+                self.config['inventory_grid_positions'] = [list(pos) for pos in self.inventory_tab.inventory_grid_positions]
             if hasattr(self, 'inventory_tab'):
                 self.config['grid_offset_x'] = self.inventory_tab.grid_offset_x
                 self.config['grid_offset_y'] = self.inventory_tab.grid_offset_y
@@ -2042,15 +2042,15 @@ class HealthMonitor:
                 self.config['auto_clear_enabled'] = self.auto_clear_enabled
             if hasattr(self, 'clear_interval'):
                 self.config['clear_interval'] = self.clear_interval
-            if hasattr(self, 'inventory_clear_click_mode'):
+            if hasattr(self.inventory_tab, 'inventory_clear_click_mode'):
                 self.config['inventory_clear_click_mode'] = self.inventory_tab.inventory_clear_click_mode.get()
 
             # 儲存取物座標設定
-            if hasattr(self, 'pickup_coordinates') and self.pickup_coordinates:
-                self.config['pickup_coordinates'] = self.pickup_coordinates
+            if hasattr(self.inventory_tab, 'pickup_coordinates') and self.inventory_tab.pickup_coordinates:
+                self.config['pickup_coordinates'] = self.inventory_tab.pickup_coordinates
 
             # 儲存背包視窗標題（區分於血魔監控視窗）
-            if hasattr(self, 'inventory_window_var'):
+            if hasattr(self.inventory_tab, 'inventory_window_var'):
                 self.config['inventory_window_title'] = self.inventory_tab.inventory_window_var.get()
 
             # 儲存監控間隔
