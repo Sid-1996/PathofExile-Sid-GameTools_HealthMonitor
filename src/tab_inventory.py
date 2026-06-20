@@ -874,9 +874,10 @@ class InventoryTab:
         self.reset_offset_btn.grid(row=1, column=8, padx=(10, 0))
 
         self.inventory_preview_label = tk.Canvas(preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
-        self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0))
+        self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0), sticky=(tk.N, tk.S, tk.W, tk.E))
         self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("select_inventory_region_first"), anchor='nw', fill='gray')
         self.inventory_preview_label.bind('<Button-1>', self._on_preview_click)
+        self.inventory_preview_label.bind('<Configure>', self._on_preview_resize)
         self._preview_has_image = False
 
         self.inventory_exclude_hint = ttk.Label(preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground="gray")
@@ -2409,11 +2410,13 @@ class InventoryTab:
         meta = self._preview_meta
         cell_w, cell_h = meta['cell_w'], meta['cell_h']
         off_x, off_y = meta['offset_x'], meta['offset_y']
+        cx = meta.get('canvas_x', 0)
+        cy = meta.get('canvas_y', 0)
         for idx in self.excluded_inventory_slots:
             row = idx // 12
             col = idx % 12
-            x1 = col * cell_w + off_x
-            y1 = row * cell_h + off_y
+            x1 = col * cell_w + cx + off_x
+            y1 = row * cell_h + cy + off_y
             x2 = x1 + cell_w
             y2 = y1 + cell_h
             canvas.create_rectangle(x1, y1, x2, y2, outline='blue', width=2, tags='exclusion')
@@ -2426,8 +2429,8 @@ class InventoryTab:
             self._app.status_tab.add_status_message("無法切換排除：請先完成背包設定（框選區域＋記錄空格顏色）", "warning")
             return
         meta = self._preview_meta
-        click_x = event.x - meta['offset_x']
-        click_y = event.y - meta['offset_y']
+        click_x = event.x - meta.get('canvas_x', 0) - meta['offset_x']
+        click_y = event.y - meta.get('canvas_y', 0) - meta['offset_y']
         if click_x < 0 or click_y >= meta['img_h'] or click_y < 0 or click_x >= meta['img_w']:
             return
         col = click_x // meta['cell_w']
@@ -2442,6 +2445,12 @@ class InventoryTab:
         self._draw_exclusion_overlay()
         self._app.status_tab.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
         self._app.save_config(show_message=False)
+
+    def _on_preview_resize(self, event=None):
+        """Canvas 尺寸變更時重新縮放預覽"""
+        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_last_preview_img'):
+            return
+        self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
 
     def _on_click_mode_changed(self):
         self._app.save_config(show_message=False)
@@ -2514,55 +2523,46 @@ class InventoryTab:
             # cv2.putText(display_img, f"Occupied: {occupied_count}/60", (10, 20),
             #            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
 
-            # 調整圖片大小 - 根據當前GUI尺寸動態調整
-            # 獲取當前GUI尺寸來計算合適的最大尺寸
-            try:
-                current_gui_width = self._app.root.winfo_width()
-                current_gui_height = self._app.root.winfo_height()
+            # 調整圖片大小以適應 Canvas 可用空間，保持長寬比
+            canvas = self.inventory_preview_label
+            avail_w = canvas.winfo_width()
+            avail_h = canvas.winfo_height()
+            if avail_w < 50 or avail_h < 50:
+                avail_w, avail_h = 300, 200
 
-                # 根據GUI尺寸計算背包預覽的最大可用空間
-                # 考慮到padding、統計資訊區域等UI元素，預留空間
-                if current_gui_width < 600:  # GUI被縮小
-                    max_width = max(300, current_gui_width - 100)  # 為側邊欄預留空間
-                    max_height = max(200, current_gui_height - 200)  # 為統計和控制區域預留空間
-                else:  # 正常GUI尺寸
-                    max_width = 700
-                    max_height = 500
-            except Exception:
-                # 如果獲取GUI尺寸失敗，使用預設值
-                max_width = 700
-                max_height = 500
-
-            # 計算縮放比例，保持長寬比
-            scale = min(max_width / width, max_height / height, 1.0)
+            scale = min(avail_w / width, avail_h / height, 1.0)
 
             if scale < 1.0:
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 display_img = cv2.resize(display_img, (new_width, new_height))
+            else:
+                new_width, new_height = width, height
 
             # 轉換為PIL圖片
             display_img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(display_img_rgb)
             tk_img = ImageTk.PhotoImage(pil_img)
 
+            # 計算置中偏移
+            cx = (avail_w - new_width) // 2
+            cy = (avail_h - new_height) // 2
+
             # 儲存預覽元數據供點擊排除使用
-            disp_w = new_width if scale < 1.0 else width
-            disp_h = new_height if scale < 1.0 else height
             self._preview_meta = {
-                'img_w': disp_w, 'img_h': disp_h,
-                'cell_w': disp_w // 12, 'cell_h': disp_h // 5,
+                'img_w': new_width, 'img_h': new_height,
+                'cell_w': new_width // 12, 'cell_h': new_height // 5,
                 'offset_x': int(offset_x * scale) if scale < 1.0 else offset_x,
                 'offset_y': int(offset_y * scale) if scale < 1.0 else offset_y,
+                'canvas_x': cx, 'canvas_y': cy,
             }
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
-            # 更新預覽（Canvas，鎖定尺寸 = 圖片尺寸）+ 排除疊加層
+            # 更新預覽（Canvas 由 layout 管理尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
-            self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
-            self.inventory_preview_label.config(width=disp_w, height=disp_h)
             self._preview_has_image = True
             self._draw_exclusion_overlay()
 
@@ -2627,52 +2627,45 @@ class InventoryTab:
                         cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (0, 0, 255), 1)
 
             # 排除標記改由 Canvas 疊加層處理（_draw_exclusion_overlay）
-            # 調整圖片大小 - 根據當前GUI尺寸動態調整（與update_inventory_preview保持一致）
-            try:
-                current_gui_width = self._app.root.winfo_width()
-                current_gui_height = self._app.root.winfo_height()
+            # 調整圖片大小以適應 Canvas 可用空間，保持長寬比
+            canvas = self.inventory_preview_label
+            avail_w = canvas.winfo_width()
+            avail_h = canvas.winfo_height()
+            if avail_w < 50 or avail_h < 50:
+                avail_w, avail_h = 300, 200
 
-                # 根據GUI尺寸計算背包預覽的最大可用空間
-                if current_gui_width < 600:  # GUI被縮小
-                    max_width = max(300, current_gui_width - 100)  # 為側邊欄預留空間
-                    max_height = max(200, current_gui_height - 200)  # 為統計和控制區域預留空間
-                else:  # 正常GUI尺寸
-                    max_width = 700
-                    max_height = 500
-            except Exception:
-                # 如果獲取GUI尺寸失敗，使用預設值
-                max_width = 700
-                max_height = 500
-
-            # 計算縮放比例，保持長寬比
-            scale = min(max_width / width, max_height / height, 1.0)
+            scale = min(avail_w / width, avail_h / height, 1.0)
 
             if scale < 1.0:
                 new_width = int(width * scale)
                 new_height = int(height * scale)
                 display_img = cv2.resize(display_img, (new_width, new_height))
+            else:
+                new_width, new_height = width, height
 
             # 轉換為PIL圖片
             display_img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(display_img_rgb)
             tk_img = ImageTk.PhotoImage(pil_img)
 
+            # 計算置中偏移
+            cx = (avail_w - new_width) // 2
+            cy = (avail_h - new_height) // 2
+
             # 儲存預覽元數據供點擊排除使用
-            disp_w = new_width if scale < 1.0 else width
-            disp_h = new_height if scale < 1.0 else height
             self._preview_meta = {
-                'img_w': disp_w, 'img_h': disp_h,
-                'cell_w': disp_w // 12, 'cell_h': disp_h // 5,
+                'img_w': new_width, 'img_h': new_height,
+                'cell_w': new_width // 12, 'cell_h': new_height // 5,
                 'offset_x': 0, 'offset_y': 0,
+                'canvas_x': cx, 'canvas_y': cy,
             }
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
-            # 更新預覽（Canvas，鎖定尺寸 = 圖片尺寸）+ 排除疊加層
+            # 更新預覽（Canvas 由 layout 管理尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
-            self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor='nw')
             self.inventory_preview_label.image = tk_img
-            self.inventory_preview_label.config(width=disp_w, height=disp_h)
             self._preview_has_image = True
             self._draw_exclusion_overlay()
 
@@ -2690,7 +2683,6 @@ class InventoryTab:
                     self.inventory_preview_label.delete("all")
                     self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
                     self.inventory_preview_label.image = tk_img
-                    self.inventory_preview_label.config(width=disp_w, height=disp_h)
                     self._preview_has_image = True
                     self._draw_exclusion_overlay()
             except Exception as e2:
