@@ -1355,7 +1355,7 @@ class HealthMonitor:
                         check_triggers(
                             health_percent, mana_value,
                             self.config, self.state.last_trigger_times,
-                            self.get_text, self.is_interface_ui_visible,
+                            self.get_text, self.inventory_tab.is_interface_ui_visible,
                             self.monitor_tab.window_var.get(),
                             getattr(self, 'interface_ui_region', None),
                             getattr(self, 'interface_ui_screenshot', None),
@@ -1371,7 +1371,7 @@ class HealthMonitor:
                         self.config, self.state.last_trigger_times,
                         self.monitor_tab.multi_trigger_var.get(),
                         self.add_status_message, self.get_text,
-                        self.is_interface_ui_visible, self.press_key_sequence,
+                        self.inventory_tab.is_interface_ui_visible, self.press_key_sequence,
                         self.monitor_tab.window_var.get(),
                         getattr(self, 'interface_ui_region', None),
                         getattr(self, 'interface_ui_screenshot', None),
