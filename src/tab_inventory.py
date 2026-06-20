@@ -207,164 +207,240 @@ class InventoryTab:
             print(f"介面UI選擇的全局ESC處理失敗: {e}")
 
     def quick_clear_inventory(self):
-        """F3快速清包功能（線程安全）"""
+        """F3快速清包功能（非阻塞版）- 比照F6的視窗管理策略"""
         # 全域暫停檢查
-        if self._app.is_global_pause():
+        if self._state.global_pause:
             print("[STOP] 全域暫停中，跳過F3熱鍵")
-            self._app.status_tab.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning")
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning"))
+            except Exception:
+                pass
             return
-
-        self._app.status_tab.add_status_message(self._app.get_text("f3_hotkey_pressed"), "hotkey")
 
         # 重置中斷標誌
         self._state.inventory_clear_interrupt = False
 
+        try:
+            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_hotkey_pressed"), "hotkey"))
+        except Exception:
+            pass
+
         if not self.inventory_region or not self.empty_inventory_colors:
-            self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_incomplete"), "error")
-            messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_setup_incomplete"))
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_incomplete"), "error"))
+                self._app.root.after(0, lambda: messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_setup_incomplete")))
+            except Exception:
+                pass
             return
 
-        # 檢查背包UI是否已設定
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
-            self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_ui_not_set"), "error")
-            messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_ui_screenshot_not_set"))
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_ui_not_set"), "error"))
+                self._app.root.after(0, lambda: messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_ui_screenshot_not_set")))
+            except Exception:
+                pass
             return
 
-        # 使用血魔監控的遊戲視窗
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
-            self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_set"), "error")
-            messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。")
-            return
-
-        # 檢查遊戲視窗是否處於前台
-        if not self._app.window_key_sender.is_game_window_foreground(window_title):
-            self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_game_not_foreground"), "warning")
-            print(f"F3: 遊戲視窗 '{window_title}' 不在前台，跳過清包操作")
-            return
-
-        try:
-            # 獲取遊戲視窗
-            windows = gw.getWindowsWithTitle(window_title)
-            if not windows:
-                self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_found"), "error")
-                print("找不到遊戲視窗")
-                return
-
-            game_window = windows[0]
-            self._app.status_tab.add_status_message(self._app.get_text("f3_processing_game_window_found"), "info")
-
-            # 首先檢查GUI是否會遮擋背包UI檢測區域或背包區域，如果會則縮小GUI
-            gui_minimized_for_ui_check = False
-            needs_gui_minimize = False
-
-            # 只有在啟用"永遠保持在最上方"時才需要檢查GUI遮擋問題
-            if self._app.always_on_top_var.get():
-                # 檢查是否需要縮小GUI（同時檢查背包UI檢測區域和背包區域）
-                if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
-                    if self.check_gui_overlap_with_inventory_ui(game_window):
-                        needs_gui_minimize = True
-                        print("F3: 檢測到GUI可能遮擋背包UI檢測區域")
-
-                if self.check_gui_overlap_with_inventory(game_window):
-                    needs_gui_minimize = True
-                    print("F3: 檢測到GUI可能遮擋背包區域")
-            else:
-                print("F3: GUI未設定為永遠保持在最上方，跳過遮擋檢查")
-
-            # 如果需要縮小GUI，一次性處理
-            if needs_gui_minimize:
-                self._app.status_tab.add_status_message(self._app.get_text("f3_processing_gui_minimized"), "info")
-                print("F3: 正在縮小GUI以避免遮擋...")
-                original_state_for_ui_check = self._app.root.state()
-                original_geometry_for_ui_check = self._app.root.geometry()
-                self._app.root.iconify()
-                time.sleep(0.2)
-                gui_minimized_for_ui_check = True
-                print("F3: GUI已縮小")
-
-            # 確保遊戲視窗在前台（無論是否啟用永遠保持在最上方，都需要激活遊戲視窗）
             try:
-                game_window.activate()
-                time.sleep(0.2)
-                self._app.status_tab.add_status_message(self._app.get_text("f3_processing_game_window_activated"), "info")
-                print("F3: 遊戲視窗已激活")
-            except Exception as e:
-                print(f"F3: 激活遊戲視窗失敗: {e}")
-                # 如果激活失敗，嘗試點擊視窗
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_set"), "error"))
+                self._app.root.after(0, lambda: messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。"))
+            except Exception:
+                pass
+            return
+
+        # 前台檢查改為警告而非強制取消（與F6一致）
+        if not self._app.window_key_sender.is_game_window_foreground(window_title):
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_game_not_foreground"), "warning"))
+            except Exception:
+                pass
+            print(f"F3: 遊戲視窗 '{window_title}' 不在前台，將嘗試激活")
+
+        # 捕獲GUI狀態
+        gui_was_visible = (self._app.root.state() == 'normal')
+        gui_was_foreground = False
+        gui_was_topmost = self._app.should_keep_topmost()
+        if gui_was_visible:
+            try:
+                foreground_hwnd = win32gui.GetForegroundWindow()
+                gui_hwnd = self._app.root.winfo_id()
+                gui_was_foreground = (foreground_hwnd == gui_hwnd)
+            except Exception:
+                gui_was_foreground = False
+
+        print(f"F3: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
+
+        # 如果GUI在前台或保持在最上方，移到後台
+        if gui_was_foreground or gui_was_topmost:
+            def _prepare_gui():
                 try:
-                    pyautogui.click(game_window.left + game_window.width // 2,
-                                  game_window.top + game_window.height // 2)
-                    time.sleep(0.2)
-                    self._app.status_tab.add_status_message(self._app.get_text("f3_processing_trying_activate"), "info")
-                    print("F3: 已嘗試點擊遊戲視窗")
-                except Exception as e2:
-                    self._app.status_tab.add_status_message(self._app.get_text("f3_warning_cannot_activate_game_window"), "warning")
-                    print(f"F3: 點擊遊戲視窗也失敗: {e2}")
+                    if gui_was_topmost:
+                        self._app.root.attributes("-topmost", False)
+                        print("F3: 已取消 GUI 置頂設定")
+                    getattr(self._app.root, 'lower', lambda: None)()
+                    print("F3: 已將 GUI 移到後台")
+                except Exception as e:
+                    print(f"F3: 準備 GUI 失敗: {e}")
+            try:
+                self._app.root.after(0, _prepare_gui)
+            except Exception as e:
+                print(f"F3: 安排準備 GUI 失敗: {e}")
 
-            # 檢查背包UI是否可見（GUI已縮小或遊戲視窗已激活，不會被遮擋）
-            if not self.is_inventory_ui_visible(game_window):
-                print("F3: 背包UI未開啟，跳過清包操作")
-                self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_inventory_not_open"), "warning")
-                # 如果之前縮小了GUI，需要恢復
-                if gui_minimized_for_ui_check:
-                    self._app.root.deiconify()
-                    if original_state_for_ui_check == 'zoomed':
-                        self._app.root.state('zoomed')
+        # 隱藏設定視窗
+        def _hide_setting_windows():
+            try:
+                for w in self._app.root.winfo_children():
+                    try:
+                        if w.winfo_exists() and hasattr(w, 'title'):
+                            t = str(w.title())
+                            if ('F3' in t or '清包' in t or '設定' in t or 'setup' in t.lower()) and w.winfo_ismapped():
+                                try:
+                                    try:
+                                        if hasattr(w, 'grab_release'):
+                                            w.grab_release()
+                                            print(f"F3: 已釋放設定視窗的 grab: {t}")
+                                    except Exception:
+                                        pass
+                                    try:
+                                        if hasattr(self._app.root, 'grab_release'):
+                                            self._app.root.grab_release()
+                                            print("F3: 已釋放 root 的 grab（備援）")
+                                    except Exception:
+                                        pass
+                                    w.withdraw()
+                                    print(f"F3: 隱藏設定視窗: {t}")
+                                except Exception as e:
+                                    print(f"F3: 隱藏設定視窗失敗 {t}: {e}")
+                    except Exception:
+                        pass
+            except Exception as e:
+                print(f"F3: 隱藏設定視窗時發生錯誤: {e}")
+        try:
+            self._app.root.after(0, _hide_setting_windows)
+        except Exception:
+            pass
+
+        # 啟動背景執行緒執行清包
+        def _worker(window_title_local, gui_was_foreground_local, gui_was_topmost_local):
+            try:
+                windows = gw.getWindowsWithTitle(window_title_local)
+                if not windows:
+                    print("F3(worker): 找不到遊戲視窗")
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_found"), "error"))
+                    except Exception:
+                        pass
+                    return
+
+                game_window = windows[0]
+                print(f"F3(worker): 找到遊戲視窗: {game_window.title}")
+
+                # 激活遊戲視窗
+                try:
+                    game_window.activate()
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"F3(worker): 激活遊戲視窗失敗: {e}")
+
+                if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
+                    print("F3(worker): 警告 - 遊戲視窗可能未在前台")
+                    try:
+                        pyautogui.click(game_window.left + game_window.width // 2,
+                                      game_window.top + game_window.height // 2)
+                        time.sleep(0.2)
+                    except Exception:
+                        pass
+
+                # 檢查背包UI是否可見
+                if not self.is_inventory_ui_visible(game_window):
+                    print("F3(worker): 背包UI未開啟，跳過清包操作")
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_inventory_not_open"), "warning"))
+                    except Exception:
+                        pass
+                    return
+
+                try:
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_game_window_found"), "info"))
+                except Exception:
+                    pass
+
+                # GUI遮擋檢查（保留既有的overlap邏輯）
+                if self.check_gui_overlap_with_inventory(game_window):
+                    print("F3(worker): 檢測到GUI可能遮擋背包區域，正在縮小GUI...")
+                    self.minimize_gui_for_clear(game_window)
+
+                # 擷取背包區域
+                monitor = {
+                    "top": game_window.top + self.inventory_region['y'],
+                    "left": game_window.left + self.inventory_region['x'],
+                    "width": self.inventory_region['width'],
+                    "height": self.inventory_region['height']
+                }
+                img = capture_region_to_cv2(monitor)
+
+                # 檢查是否需要清空
+                needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
+                if needs_clearing:
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info"))
+                    except Exception:
+                        pass
+                    print(f"F3(worker): 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
+                    self.clear_inventory_item(game_window, img)
+                    if self._state.inventory_clear_interrupt:
+                        try:
+                            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_user_interrupt"), "warning"))
+                        except Exception:
+                            pass
+                        print("F3(worker): 清包被中斷")
                     else:
-                        self._app.root.geometry(original_geometry_for_ui_check)
-                    time.sleep(0.2)
-                    print("F3: GUI已恢復")
-                return
-
-            # 如果之前為UI檢測而縮小了GUI，現在恢復它（因為接下來要縮小GUI進行清包）
-            if gui_minimized_for_ui_check:
-                self._app.root.deiconify()
-                if original_state_for_ui_check == 'zoomed':
-                    self._app.root.state('zoomed')
+                        try:
+                            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success"))
+                        except Exception:
+                            pass
+                        print("F3(worker): 已清空背包物品")
                 else:
-                    self._app.root.geometry(original_geometry_for_ui_check)
-                time.sleep(0.2)
-                gui_minimized_for_ui_check = False
-                print("F3: GUI已恢復以進行背包區域擷取")
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success"))
+                    except Exception:
+                        pass
+                    print("F3(worker): 背包已淨空，無需操作")
 
-            # 檢查GUI是否會遮擋背包區域，如果會則縮小GUI
-            if self.check_gui_overlap_with_inventory(game_window):
-                print("檢測到GUI可能遮擋背包區域，正在縮小GUI...")
-                self.minimize_gui_for_clear(game_window)
+            except Exception as e:
+                _err_msg = str(e)
+                print(f"F3(worker): 發生例外: {e}")
+                try:
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(f"F3 執行失敗 - {_err_msg}", "error"))
+                except Exception:
+                    pass
+            finally:
+                self._state.inventory_clear_interrupt = False
+                self.restore_gui_after_clear()
+                def _restore_gui():
+                    try:
+                        if gui_was_foreground_local or gui_was_topmost_local:
+                            try:
+                                self._app.root.lift()
+                                self._app.root.focus_force()
+                                if gui_was_topmost_local:
+                                    self._app.root.attributes("-topmost", True)
+                                    print("F3(worker): 已恢復 GUI 到前台並重新置頂")
+                                else:
+                                    print("F3(worker): 已恢復 GUI 到前台")
+                            except Exception as e:
+                                print(f"F3(worker): 恢復 GUI 失敗: {e}")
+                    except Exception as e:
+                        print(f"F3(worker): Restore callback 例外: {e}")
+                try:
+                    self._app.root.after(0, _restore_gui)
+                except Exception:
+                    pass
 
-            monitor = {
-                "top": game_window.top + self.inventory_region['y'],
-                "left": game_window.left + self.inventory_region['x'],
-                "width": self.inventory_region['width'],
-                "height": self.inventory_region['height']
-            }
-            img = capture_region_to_cv2(monitor)
-
-            # 檢查是否需要清空
-            needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
-            if needs_clearing:
-                self._app.status_tab.add_status_message(self._app.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
-                print(f"F3: 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
-                self.clear_inventory_item(game_window, img)
-                if self._state.inventory_clear_interrupt:
-                    self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_user_interrupt"), "warning")
-                    print("F3: 清包被中斷")
-                else:
-                    self._app.status_tab.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success")
-                    print("F3: 已清空背包物品")
-            else:
-                self._app.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success")
-                print("F3: 背包已淨空，無需操作")
-
-        except Exception as e:
-            self._app.status_tab.add_status_message(self._app.get_text("f3_fail_error_occurred").format(error=str(e)), "error")
-            print(f"F3清包錯誤: {e}")
-        finally:
-            # 確保中斷標誌被重置
-            self._state.inventory_clear_interrupt = False
-            # 恢復GUI狀態
-            self.restore_gui_after_clear()
+        t = threading.Thread(target=_worker, args=(window_title, gui_was_foreground, gui_was_topmost), daemon=True)
+        t.start()
 
     def check_gui_overlap_with_inventory(self, game_window):
         """檢查GUI是否會遮擋背包區域"""
