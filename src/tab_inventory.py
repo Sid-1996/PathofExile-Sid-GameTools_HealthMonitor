@@ -2711,6 +2711,11 @@ class InventoryTab:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("select_inventory_ui_region_first"))
             return
 
+        # 檢查格子位置是否已計算
+        if not hasattr(self, 'inventory_grid_positions') or not self.inventory_grid_positions:
+            messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("please_adjust_inventory_region_first"))
+            return
+
         # 使用血魔監控的遊戲視窗
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
