@@ -367,11 +367,6 @@ class InventoryTab:
                 except Exception:
                     pass
 
-                # GUI遮擋檢查（保留既有的overlap邏輯）
-                if self.check_gui_overlap_with_inventory(game_window):
-                    print("F3(worker): 檢測到GUI可能遮擋背包區域，正在縮小GUI...")
-                    self.minimize_gui_for_clear(game_window)
-
                 # 擷取背包區域
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
@@ -418,7 +413,6 @@ class InventoryTab:
                     pass
             finally:
                 self._state.inventory_clear_interrupt = False
-                self.restore_gui_after_clear()
                 def _restore_gui():
                     try:
                         if gui_was_foreground_local or gui_was_topmost_local:
