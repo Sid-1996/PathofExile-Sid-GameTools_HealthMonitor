@@ -2076,21 +2076,65 @@ class HealthMonitor:
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
-        result = messagebox.askyesno(
-            "確認關閉",
-            self.get_text("confirm_close_app"),
-            default=messagebox.YES
-        )
-
-        if not result:
+        if not self.config.get('confirm_close', True):
+            self._do_close()
             return
 
+        dialog = tk.Toplevel(self.root)
+        dialog.title(self.get_text("confirm"))
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        frame = ttk.Frame(dialog, padding=(20, 15))
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text=self.get_text("confirm_close_app"),
+                  font=("", 12)).pack(pady=(0, 12))
+
+        dont_ask_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(frame, text=self.get_text("dont_ask_again"),
+                        variable=dont_ask_var).pack(pady=(0, 15))
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill=tk.X)
+
+        def on_confirm():
+            self.config['confirm_close'] = not dont_ask_var.get()
+            try:
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+            dialog.destroy()
+            self._do_close()
+
+        def on_cancel():
+            dialog.destroy()
+
+        ttk.Button(btn_frame, text=self.get_text("cancel"),
+                   command=on_cancel, width=12).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(btn_frame, text=self.get_text("confirm"),
+                   command=on_confirm, width=12).pack(side=tk.RIGHT, padx=(8, 0))
+
+        dialog.bind('<Return>', lambda e: on_confirm())
+        dialog.bind('<Escape>', lambda e: on_cancel())
+        dialog.protocol('WM_DELETE_WINDOW', on_cancel)
+
+        dialog.update_idletasks()
+        dw, dh = dialog.winfo_reqwidth() + 20, dialog.winfo_reqheight() + 10
+        px = self.root.winfo_rootx() + max(0, (self.root.winfo_width() - dw) // 2)
+        py = self.root.winfo_rooty() + max(0, (self.root.winfo_height() - dh) // 2)
+        dialog.geometry(f'{dw}x{dh}+{px}+{py}')
+        dialog.focus_set()
+
+    def _do_close(self):
+        """執行關閉流程（跳過確認對話框）"""
         try:
             self.usage_tracker.track_usage_time()
         except Exception as e:
             print(f"保存使用時間時發生錯誤: {e}")
 
-        # 停止技能計時器
         if hasattr(self, 'skill_timer'):
             self.skill_timer.stop_all()
 
