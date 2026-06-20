@@ -1998,7 +1998,7 @@ class InventoryTab:
 
                     # 1. 均方誤差 (MSE) - 使用可調節閾值
                     mse = np.mean((current_img - self.interface_ui_screenshot) ** 2)
-                    mse_threshold = self.interface_ui_mse_threshold
+                    mse_threshold = self._app.interface_ui_mse_threshold
 
                     # 2. 結構相似性比較 (SSIM) - 如果可用
                     ssim_score = 0.5  # 預設值
@@ -2012,7 +2012,7 @@ class InventoryTab:
                         print("血魔檢查: SSIM不可用，使用MSE比較")
                         ssim_score = 0.8  # 如果沒有SSIM，給予較高分數
 
-                    ssim_threshold = self.interface_ui_ssim_threshold
+                    ssim_threshold = self._app.interface_ui_ssim_threshold
 
                     # 3. 顏色直方圖比較
                     hist_current = cv2.calcHist([current_img], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
@@ -2024,13 +2024,13 @@ class InventoryTab:
 
                     # 計算直方圖相似度
                     hist_similarity = cv2.compareHist(hist_current, hist_recorded, cv2.HISTCMP_CORREL)
-                    hist_threshold = self.interface_ui_hist_threshold
+                    hist_threshold = self._app.interface_ui_hist_threshold
 
                     # 4. 主要顏色比較（使用可調節閾值）
                     current_main_color = np.mean(current_img, axis=(0, 1))
                     recorded_main_color = np.mean(self.interface_ui_screenshot, axis=(0, 1))
                     color_diff = np.mean(np.abs(current_main_color - recorded_main_color))
-                    color_threshold = self.interface_ui_color_threshold
+                    color_threshold = self._app.interface_ui_color_threshold
 
                     # === 綜合判定邏輯 ===
                     # 使用多重條件，只要滿足大部分條件就認為相似
