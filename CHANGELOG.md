@@ -8,22 +8,33 @@
 ## [1.2.0] - 2026-06-21
 
 ### Refactor
-- 將 health_monitor.py 從 ~9,800 行拆分為 11 個獨立模組（↓80%）
-  - src/app_state.py — 應用狀態容器
-  - src/auto_click_manager.py — 自動點擊管理
-  - src/usage_tracker.py — 使用統計
-  - src/window_key_sender.py — 視窗按鍵發送
-  - src/tab_help.py / tab_about.py / tab_status.py / tab_version.py / tab_combo.py / tab_inventory.py / tab_monitor.py — 各分頁模組
+- 將 `health_monitor.py` 從 ~9,800 行拆分為 11 個獨立模組（↓80%）
+- `tab_monitor` / `tab_inventory` / `tab_combo` / `tab_status` / `tab_help` / `tab_version` / `tab_about` — 各分頁獨立模組
+- `app_state` / `auto_click_manager` / `usage_tracker` / `window_key_sender` — 共用邏輯模組
+- F3 清包改為非阻塞背景執行緒，移植 F6 視窗管理邏輯
+- 技能連段分頁 UI 重新設計為左右雙欄 + Tab 切換套組
 
 ### Fix
 - 修復重構後大量跨模組屬性引用路徑錯誤（monitor_tab、inventory_tab）
 - 修復 config 存取路徑錯誤（combo、monitor-interval、pickup-coordinates）
 - 修復 capture_utils threading 問題（mss 跨執行緒 GDI handle）
 - 修復啟動時視窗幾何跳動（withdraw/deiconify + 尊重已儲存尺寸）
-- F3 清包改為非阻塞背景執行緒，移植 F6 視窗管理邏輯
+- 修復 F3 清包在「保持最上方」模式下無法移除置頂的問題
+- 修復測試清包結果無視覺回饋問題，現在顯示結果對話框
+- 修復動態語言切換殘留：17 個 Tooltip、Canvas placeholder、Status tab widget 全部覆蓋
 
 ### Feat
 - 關閉確認對話框新增「不再詢問」選項
+- F10 切換監控時顯示 toast 通知
+- F9 全域暫停時在遊戲視窗顯示持續 overlay
+- 語言切換改為即時動態切換，無需重啟工具
+- 版本更新通知新增「不再提醒此版本」選項
+- 新增 `Run.bat` 統一啟動器，支援開發版與 EXE 版
+
+### Chore
+- 移除廢棄腳本（run_monitor.bat、launch_built_exe.bat、Light.bat）
+- 更新 `tools/build.py` 打包範本，啟動工具.bat 支援 restart flag
+- ruff C901 / F841 全面清零
 
 ## [1.1.0] - 2026-06-08
 
