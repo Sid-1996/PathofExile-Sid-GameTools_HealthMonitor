@@ -86,7 +86,7 @@ docs/                         # User-facing documentation
 
 | Module | Role | Lines | Dependencies |
 |---|---|---|---|
-| `health_monitor.py` | Main entry, UI orchestration, event loop | ~9,800 | All other modules |
+| `health_monitor.py` | Main entry, UI orchestration, event loop | ~2,042 | All other modules |
 | `monitor_analyzer.py` | Health/mana HSV analysis, trigger logic | 349 | cv2, numpy |
 | `capture_utils.py` | Screenshot capture, mss singleton | 72 | mss, PIL, numpy |
 | `image_utils.py` | Image drawing, resizing, preview utilities | 203 | PIL |
@@ -96,6 +96,8 @@ docs/                         # User-facing documentation
 | `language_system.py` | Bilingual string lookup | 144 | JSON |
 | `skill_timer.py` | Skill cooldown timer module | 432 | tkinter |
 | `utils.py` | Emergency cleanup, F12 handler, Tooltip | 166 | keyboard, psutil |
+| `tab_inventory.py` | Inventory clear + pickup UI + logic | 3,628 | cv2, numpy, PIL, mss, pyautogui |
+| `tab_monitor.py` | Health/mana monitor tab UI + logic | 1,647 | cv2, numpy, PIL, mss, keyboard |
 
 Runtime-generated files — do not treat as source:
 - `src/health_monitor_config.json` (user config state)
@@ -141,7 +143,7 @@ Runtime-generated files — do not treat as source:
 
 ## Notes for Future Refactor
 
-- `health_monitor.py` at ~9,800 lines is the main refactor target. Remaining 11 `C901` warnings are pre-existing complex functions.
+- `health_monitor.py` at ~2,042 lines (down from ~9,842) is the main refactor target. Remaining 11 `C901` warnings are pre-existing complex functions.
 - Inventory exclusion feature: `excluded_inventory_slots` (set of ints), saved in config JSON, rendered as blue overlay on preview, respected in all F3 clear paths.
 - `_on_preview_click()` handles Canvas click → toggle exclusion → re-render.
 - `_preview_meta` stores rendered image dimensions for click coordinate mapping.

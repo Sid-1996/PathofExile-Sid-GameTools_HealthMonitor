@@ -18,14 +18,14 @@ except ImportError:
 
 
 class _MssSingleton:
-    _instance = None
+    _local = threading.local()
     _lock = threading.Lock()
     def __enter__(self):
-        if self._instance is None:
+        if not hasattr(self._local, 'instance'):
             with self._lock:
-                if self._instance is None:
-                    self._instance = mss.mss()
-        return self._instance
+                if not hasattr(self._local, 'instance'):
+                    self._local.instance = mss.mss()
+        return self._local.instance
     def __exit__(self, *args):
         pass
 
