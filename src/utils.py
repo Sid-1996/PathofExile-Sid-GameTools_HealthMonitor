@@ -171,3 +171,29 @@ def format_usage_time(total_seconds):
         return f"{minutes}分鐘{seconds}秒"
     else:
         return f"{seconds}秒"
+
+
+def show_toast(parent, text, duration=1000):
+    """黑底白字半透明提示視窗，自動在 duration 毫秒後消失"""
+    import tkinter as tk
+    from tkinter import ttk
+    toast = tk.Toplevel(parent)
+    toast.wm_overrideredirect(True)
+    toast.attributes("-topmost", True)
+    toast.attributes("-alpha", 0.85)
+
+    parent.update_idletasks()
+    px, py = parent.winfo_rootx(), parent.winfo_rooty()
+    pw, ph = parent.winfo_width(), parent.winfo_height()
+    tw, th = 320, 56
+    x = px + (pw - tw) // 2
+    y = py + (ph - th) // 2
+    toast.geometry(f"{tw}x{th}+{x}+{y}")
+
+    frame = tk.Frame(toast, bg="black", highlightthickness=0)
+    frame.pack(fill="both", expand=True)
+    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"),
+                     bg="black", fg="white", anchor="center", justify="center")
+    label.pack(fill="both", expand=True, padx=16, pady=8)
+
+    toast.after(duration, toast.destroy)

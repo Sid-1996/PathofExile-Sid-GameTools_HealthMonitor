@@ -31,7 +31,7 @@ import functools
 # Import new modularized components
 from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
-from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler, Tooltip
+from utils import set_app_instance, setup_signal_handlers, setup_exception_handler, format_usage_time, get_app_dir, global_f12_handler, Tooltip, show_toast
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
@@ -1580,9 +1580,11 @@ class HealthMonitor:
 
         if self.is_monitoring():
             self.status_tab.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
+            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_stopped"), 1000))
             self.stop_monitoring()
         else:
             self.status_tab.add_status_message("按下 F10 - 啟動血魔監控", "hotkey")
+            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_started"), 1000))
             self.start_monitoring()
 
     def minimize_all_guis(self):
