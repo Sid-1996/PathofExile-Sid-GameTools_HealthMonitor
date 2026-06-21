@@ -114,10 +114,8 @@ class GameToolBuilder:
                 "--hidden-import", "PIL.ImageDraw",
                 "--hidden-import", "PIL._imaging",
                 "--copy-metadata", "Pillow",
-                "--collect-data", "PIL",
                 # OpenCV
                 "--hidden-import", "cv2",
-                "--collect-data", "cv2",
                 # NumPy
                 "--hidden-import", "numpy",
                 # Automation libs
@@ -145,12 +143,10 @@ class GameToolBuilder:
                 "--hidden-import", "tkinter.ttk",
                 "--hidden-import", "tkinter.messagebox",
                 "--hidden-import", "_tkinter",
-                "--collect-data", "tkinter",
                 # Misc
                 "--hidden-import", "webbrowser",
                 "--hidden-import", "win32gui",
                 "--hidden-import", "traceback",
-                "--collect-data", "pywin32",
                 # Data files
                 "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
                 "--paths", self.src_dir,
