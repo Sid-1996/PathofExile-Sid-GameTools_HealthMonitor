@@ -20,19 +20,19 @@ class StatusTab:
     def create_status_tab(self):
         main_frame = self.parent_frame
 
-        title_label = ttk.Label(main_frame, text=self._app.get_text("tool_execution_status"), font=("Microsoft YaHei", 20, "bold"))
-        title_label.pack(pady=(15, 35))
+        self.title_label = ttk.Label(main_frame, text=self._app.get_text("tool_execution_status"), font=("Microsoft YaHei", 20, "bold"))
+        self.title_label.pack(pady=(15, 35))
 
         control_frame = ttk.Frame(main_frame)
         control_frame.pack(fill="x", pady=(0, 15))
 
-        clear_btn = ttk.Button(control_frame, text=self._app.get_text("clear_records"), command=self.clear_status_log)
-        clear_btn.pack(side="left", padx=(0, 10))
-        Tooltip(clear_btn, self._app.get_text("clear_records_tip"))
+        self.clear_btn = ttk.Button(control_frame, text=self._app.get_text("clear_records"), command=self.clear_status_log)
+        self.clear_btn.pack(side="left", padx=(0, 10))
+        Tooltip(self.clear_btn, self._app.get_text("clear_records_tip"))
 
         self.auto_scroll_var = tk.BooleanVar(value=True)
-        auto_scroll_cb = ttk.Checkbutton(control_frame, text=self._app.get_text("auto_scroll_to_latest"), variable=self.auto_scroll_var)
-        auto_scroll_cb.pack(side="left", padx=(0, 10))
+        self.auto_scroll_cb = ttk.Checkbutton(control_frame, text=self._app.get_text("auto_scroll_to_latest"), variable=self.auto_scroll_var)
+        self.auto_scroll_cb.pack(side="left", padx=(0, 10))
 
         self.status_count_label = ttk.Label(control_frame, text=self._app.get_text("total_records"))
         self.status_count_label.pack(side="right")
@@ -188,10 +188,13 @@ class StatusTab:
                 count = len(getattr(self, 'status_log', []))
                 self.status_count_label.config(text=self._app.get_text("total_records").format(count=count))
 
-            if hasattr(self, 'auto_scroll_var'):
-                pass
+            if hasattr(self, 'title_label'):
+                self.title_label.config(text=self._app.get_text("tool_execution_status"))
 
-            if hasattr(self, 'status_text_widget'):
-                pass
+            if hasattr(self, 'clear_btn'):
+                self.clear_btn.config(text=self._app.get_text("clear_records"))
+
+            if hasattr(self, 'auto_scroll_cb'):
+                self.auto_scroll_cb.config(text=self._app.get_text("auto_scroll_to_latest"))
         except Exception as e:
             print(f"更新狀態分頁語言時發生錯誤: {e}")

@@ -126,6 +126,10 @@ class InventoryTab:
             if hasattr(self, 'pickup_items_btn'):
                 self.pickup_items_btn.config(text=self._app.get_text("pickup_items"))
 
+            # 重繪 Canvas placeholder 文字
+            self.update_ui_preview()
+            self.update_interface_ui_preview()
+
         except Exception as e:
             print(f"更新一鍵清包分頁語言時發生錯誤: {e}")
 
@@ -1941,7 +1945,7 @@ class InventoryTab:
                 # 如果沒有截圖，顯示預設文字
                 if hasattr(self, 'ui_preview_canvas'):
                     self.ui_preview_canvas.delete("all")
-                    self.ui_preview_canvas.create_text(100, 75, text="尚未截取UI",
+                    self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_empty"),
                                                      fill="gray", font=("Arial", 10))
                 return
 
@@ -1979,7 +1983,7 @@ class InventoryTab:
             print(f"更新UI預覽失敗: {e}")
             if hasattr(self, 'ui_preview_canvas'):
                 self.ui_preview_canvas.delete("all")
-                self.ui_preview_canvas.create_text(100, 75, text="預覽載入失敗",
+                self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_failed"),
                                                  fill="red", font=("Arial", 10))
 
     def is_inventory_ui_visible(self, game_window):
@@ -2131,7 +2135,7 @@ class InventoryTab:
                 # 如果沒有截圖，顯示預設文字
                 if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                     self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
-                    self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text="尚未截取介面UI",
+                    self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_empty"),
                                                                fill="gray", font=("Arial", 8))
                 return
 
@@ -2169,8 +2173,8 @@ class InventoryTab:
             print(f"更新介面UI預覽失敗: {e}")
             if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
                 self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
-                self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text="預覽載入失敗",
-                                                           fill="red", font=("Arial", 8))
+                self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_failed"),
+                                                                               fill="red", font=("Arial", 8))
 
     def _perform_final_retry(self, game_window, monitor, total_processed, max_iterations):
         print("階段3：最終確認和重試邏輯")

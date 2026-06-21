@@ -73,12 +73,12 @@ class ComboTab:
         # === 左欄：連段套組（Notebook 分頁）+ 控制區 ===
         self.initialize_combo_sets()
 
-        notebook = ttk.Notebook(left_frame)
-        notebook.pack(fill=tk.BOTH, expand=True)
+        self.combo_notebook = ttk.Notebook(left_frame)
+        self.combo_notebook.pack(fill=tk.BOTH, expand=True)
 
         for i in range(3):
-            tab_frame = ttk.Frame(notebook, padding="10")
-            notebook.add(tab_frame, text=f"套組 {i + 1}")
+            tab_frame = ttk.Frame(self.combo_notebook, padding="10")
+            self.combo_notebook.add(tab_frame, text=self._app.get_text("combo_set_template").format(number=i+1))
             self.create_combo_set_frame_horizontal(tab_frame, i)
 
         # 控制區
