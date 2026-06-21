@@ -147,6 +147,18 @@ class GameToolBuilder:
                 "--hidden-import", "webbrowser",
                 "--hidden-import", "win32gui",
                 "--hidden-import", "traceback",
+                # 排除與本專案無關的大型套件（來自其他專案的環境污染）
+                "--exclude-module", "torch",
+                "--exclude-module", "torchvision",
+                "--exclude-module", "torchaudio",
+                "--exclude-module", "torch_lightning",
+                "--exclude-module", "onnxruntime",
+                "--exclude-module", "onnx",
+                "--exclude-module", "pandas",
+                "--exclude-module", "scipy",
+                "--exclude-module", "matplotlib",
+                "--exclude-module", "sklearn",
+                "--exclude-module", "transformers",
                 # Data files
                 "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
                 "--paths", self.src_dir,
