@@ -173,9 +173,11 @@ def format_usage_time(total_seconds):
         return f"{seconds}秒"
 
 
-def show_toast(parent, text, duration=1000, target_rect=None):
-    """黑底白字半透明提示視窗，自動在 duration 毫秒後消失
-    target_rect: (x, y, w, h) 定位目標，None 時退回落 parent"""
+def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):
+    """黑底白字半透明提示視窗。
+    persistent=True: 不自動銷毀，回傳 Toplevel 供外部管理。
+    persistent=False: duration 毫秒後自動消失。
+    target_rect: (x, y, w, h) 定位目標，None 時退回落 parent。"""
     import tkinter as tk
     from tkinter import ttk
     toast = tk.Toplevel(parent)
@@ -183,7 +185,8 @@ def show_toast(parent, text, duration=1000, target_rect=None):
     toast.attributes("-topmost", True)
     toast.attributes("-alpha", 0.85)
 
-    tw, th = 320, 56
+    is_multiline = '\n' in text
+    tw, th = (320, 80) if is_multiline else (320, 56)
     if target_rect:
         tx, ty, tw_win, th_win = target_rect
         x = tx + (tw_win - tw) // 2
@@ -202,4 +205,6 @@ def show_toast(parent, text, duration=1000, target_rect=None):
                      bg="black", fg="white", anchor="center", justify="center")
     label.pack(fill="both", expand=True, padx=16, pady=8)
 
-    toast.after(duration, toast.destroy)
+    if not persistent:
+        toast.after(duration, toast.destroy)
+    return toast

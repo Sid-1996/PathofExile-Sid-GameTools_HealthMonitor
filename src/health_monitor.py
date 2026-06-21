@@ -428,6 +428,7 @@ class HealthMonitor:
         self.ui_preview_image = None  # 用於Canvas顯示的PhotoImage
         self.pickup_coordinates = []  # 儲存5個取物座標 [x, y]
         self.pause_status_label = None  # 暫停狀態顯示標籤
+        self._pause_overlay = None  # F9 全域暫停持久覆蓋層
 
         # 線程鎖（定義在 AppState 中）
 
@@ -1486,6 +1487,20 @@ class HealthMonitor:
         # 設定 CTRL+左鍵自動點擊監聽器
         self.auto_click_manager.setup_auto_click_listener()
 
+    def _show_global_pause_overlay(self):
+        target = self._get_game_window_rect()
+        self._pause_overlay = show_toast(self.root, self.get_text("global_pause_overlay_text"), target_rect=target, persistent=True)
+
+    def _hide_global_pause_overlay(self):
+        if self._pause_overlay:
+            try:
+                self._pause_overlay.destroy()
+            except Exception:
+                pass
+            self._pause_overlay = None
+        target = self._get_game_window_rect()
+        show_toast(self.root, self.get_text("global_pause_deactivated_toast"), 1000, target)
+
     def toggle_global_pause(self):
         """F9: 全域暫停開關 - 暫停/恢復所有熱鍵功能（線程安全）"""
         # 使用鎖保護全域暫停狀態的修改
@@ -1494,6 +1509,8 @@ class HealthMonitor:
             is_pausing = self.state.global_pause
 
         if is_pausing:
+            self.root.after(0, self._show_global_pause_overlay)
+
             print("[STOP] 全域暫停已啟用 - 所有熱鍵功能已暫停")
             print(" 現在可以安全聊天，不會誤觸任何熱鍵")
             print(" 再次按F9可恢復所有功能")
@@ -1520,6 +1537,8 @@ class HealthMonitor:
                 self.state.combo_was_running = False
 
         else:
+            self.root.after(0, self._hide_global_pause_overlay)
+
             print(" 全域暫停已解除 - 自動恢復之前的功能")
 
             # 添加狀態訊息
