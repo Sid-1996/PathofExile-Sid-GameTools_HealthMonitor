@@ -2701,6 +2701,49 @@ class InventoryTab:
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 
+    def _disable_topmost_for_test(self):
+        if self._app.always_on_top_var.get():
+            self._app.root.attributes("-topmost", False)
+            self._app.root.lower()
+            print("已暫時移除 GUI 置頂設定並將 GUI 移到後台")
+            return True
+        return False
+
+    def _restore_gui_after_test(self, gui_minimized_for_test, original_state, original_geometry, gui_was_topmost, should_clear, occupied_slots, img):
+        if gui_minimized_for_test:
+            self._app.root.deiconify()
+            if original_state == 'zoomed':
+                self._app.root.state('zoomed')
+            else:
+                self._app.root.geometry(original_geometry)
+            time.sleep(0.2)
+            print("GUI已恢復")
+        self.update_inventory_preview_with_items(img, occupied_slots)
+        if not gui_minimized_for_test:
+            try:
+                self._app.root.lift()
+                self._app.root.focus_force()
+                print("已重新激活GUI視窗，用戶可以查看背包預覽")
+            except Exception as e:
+                print(f"重新激活GUI視窗失敗: {e}")
+        if gui_was_topmost:
+            self._app.root.attributes("-topmost", True)
+            print("已恢復 GUI 置頂設定")
+        status = "需要清空" if should_clear else "背包淨空"
+        result_msg = f"背包狀態: {status}\n"
+        result_msg += f"占用格子: {len(occupied_slots)}/60\n"
+        if occupied_slots:
+            result_msg += "\n占用格子位置:\n"
+            for i, index in enumerate(occupied_slots[:10]):
+                if index < len(self.inventory_grid_positions):
+                    x, y = self.inventory_grid_positions[index]
+                    result_msg += f"  {i+1}. 格子{index} ({x}, {y})\n"
+                else:
+                    result_msg += f"  {i+1}. 格子{index} (無效位置)\n"
+            if len(occupied_slots) > 10:
+                result_msg += f"  ...還有{len(occupied_slots)-10}個\n"
+        messagebox.showinfo("測試清包結果", result_msg)
+
     def _minimize_gui_for_test_if_needed(self, game_window):
         gui_minimized_for_test = False
         needs_gui_minimize = False
@@ -2774,6 +2817,7 @@ class InventoryTab:
                 return
             game_window = windows[0]
             print(f"找到遊戲視窗: {game_window.title}")
+            gui_was_topmost = self._disable_topmost_for_test()
             gui_minimized_for_test, original_state, original_geometry = self._minimize_gui_for_test_if_needed(game_window)
             try:
                 game_window.activate()
@@ -2800,36 +2844,7 @@ class InventoryTab:
                 img = np.array(screenshot)
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
                 should_clear, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
-            if gui_minimized_for_test:
-                self._app.root.deiconify()
-                if original_state == 'zoomed':
-                    self._app.root.state('zoomed')
-                else:
-                    self._app.root.geometry(original_geometry)
-                time.sleep(0.2)
-                print("GUI已恢復")
-            self.update_inventory_preview_with_items(img, occupied_slots)
-            if not self._app.always_on_top_var.get() and not gui_minimized_for_test:
-                try:
-                    self._app.root.lift()
-                    self._app.root.focus_force()
-                    print("已重新激活GUI視窗，用戶可以查看背包預覽")
-                except Exception as e:
-                    print(f"重新激活GUI視窗失敗: {e}")
-            status = "需要清空" if should_clear else "背包淨空"
-            result_msg = f"背包狀態: {status}\n"
-            result_msg += f"占用格子: {len(occupied_slots)}/60\n"
-            if occupied_slots:
-                result_msg += "\n占用格子位置:\n"
-                for i, index in enumerate(occupied_slots[:10]):
-                    if index < len(self.inventory_grid_positions):
-                        x, y = self.inventory_grid_positions[index]
-                        result_msg += f"  {i+1}. 格子{index} ({x}, {y})\n"
-                    else:
-                        result_msg += f"  {i+1}. 格子{index} (無效位置)\n"
-                if len(occupied_slots) > 10:
-                    result_msg += f"  ...還有{len(occupied_slots)-10}個\n"
-            print(f"測試清包結果:\n{result_msg}")
+            self._restore_gui_after_test(gui_minimized_for_test, original_state, original_geometry, gui_was_topmost, should_clear, occupied_slots, img)
         except Exception as e:
             messagebox.showerror("錯誤", f"測試失敗: {str(e)}")
             try:
