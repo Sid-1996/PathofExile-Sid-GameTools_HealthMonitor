@@ -180,7 +180,7 @@ class HealthMonitor:
             self.language_var.set(display_name)
             print("使用者取消語言切換，保持原語言設定")
 
-    def update_ui_text(self):
+    def update_ui_text(self):  # noqa: C901 — linear per-widget hasattr guards, not worth splitting
         """全面更新所有UI元件的文字"""
         try:
             # print(f"[DEBUG] update_ui_text() 開始執行，語言: {self.language_manager.current_language}")
@@ -1717,7 +1717,7 @@ class HealthMonitor:
         self.root.destroy()
         sys.exit(0)
 
-    def load_config(self):
+    def load_config(self):  # noqa: C901 — linear per-key config reads, not worth splitting
         """????"""
         print("[DEBUG] load_config ")
         try:
@@ -1942,7 +1942,7 @@ class HealthMonitor:
             self.status_tab.add_status_message(f"??????- {str(e)}", "error")
             self.config = {}
 
-    def save_config(self, show_message=True):
+    def save_config(self, show_message=True):  # noqa: C901 — linear per-key config writes, not worth splitting
         """儲存血魔監控設定"""
         try:
             # 儲存遊戲視窗設定

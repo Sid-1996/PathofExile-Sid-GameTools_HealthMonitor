@@ -23,6 +23,25 @@ from custom_dialogs import CustomMessageBox
 from monitor_analyzer import get_main_color
 
 
+def _validate_float_input(P):
+    if P == "" or P == "-" or P == ".":
+        return True
+    if P.replace(".", "").replace("-", "").isdigit():
+        if P.count(".") <= 1:
+            if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
+                return True
+    return False
+
+
+def _validate_int_input(P):
+    if P == "" or P == "-":
+        return True
+    if P.replace("-", "").isdigit():
+        if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
+            return True
+    return False
+
+
 class MonitorTab:
     def __init__(self, app, state, monitor_frame, notebook):
         self._app = app
@@ -372,6 +391,24 @@ class MonitorTab:
         self.last_mana_percent = -1
         self.last_mana_preview_update = 0
         self._preview_placeholder_shown = False
+
+    @staticmethod
+    def _create_scrollable_container(parent):
+        canvas = tk.Canvas(parent, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.bind('<Enter>', lambda e: canvas.bind_all("<MouseWheel>",
+            lambda ev: canvas.yview_scroll(int(-1*(ev.delta/120)), "units")))
+        canvas.bind('<Leave>', lambda e: canvas.unbind_all("<MouseWheel>"))
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        return canvas, scrollable_frame
 
     def on_type_changed(self, event=None):
         if self.type_var.get() == "HP":
@@ -1119,32 +1156,7 @@ class MonitorTab:
         container = ttk.Frame(adjust_window)
         container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 20))
 
-        canvas = tk.Canvas(container, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
-
-        canvas.bind('<Enter>', _bind_to_mousewheel)
-        canvas.bind('<Leave>', _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        canvas, scrollable_frame = self._create_scrollable_container(container)
 
         button_frame = ttk.Frame(adjust_window)
         button_frame.pack(pady=(10, 20))
@@ -1249,25 +1261,8 @@ class MonitorTab:
         ttk.Label(hsv_frame, text=self._app.get_text("green_hsv_explanation"), font=("", 9),
                  foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=4, column=2, columnspan=2, sticky=tk.W, pady=(5, 0))
 
-        def validate_float_input(P):
-            if P == "" or P == "-" or P == ".":
-                return True
-            if P.replace(".", "").replace("-", "").isdigit():
-                if P.count(".") <= 1:
-                    if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
-                        return True
-            return False
-
-        def validate_int_input(P):
-            if P == "" or P == "-":
-                return True
-            if P.replace("-", "").isdigit():
-                if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
-                    return True
-            return False
-
-        vcmd_float = (adjust_window.register(validate_float_input), '%P')
-        vcmd_int = (adjust_window.register(validate_int_input), '%P')
+        vcmd_float = (adjust_window.register(_validate_float_input), '%P')
+        vcmd_int = (adjust_window.register(_validate_int_input), '%P')
 
         health_entry.config(validate='key', validatecommand=vcmd_float)
         red_entry.config(validate='key', validatecommand=vcmd_int)
@@ -1385,32 +1380,7 @@ class MonitorTab:
         container = ttk.Frame(adjust_window)
         container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 20))
 
-        canvas = tk.Canvas(container, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
-
-        canvas.bind('<Enter>', _bind_to_mousewheel)
-        canvas.bind('<Leave>', _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        canvas, scrollable_frame = self._create_scrollable_container(container)
 
         button_frame = ttk.Frame(adjust_window)
         button_frame.pack(pady=(10, 20))
@@ -1581,25 +1551,8 @@ class MonitorTab:
             adjust_window.focus_force()
             adjust_window.attributes("-topmost", True)
 
-        def validate_float_input(P):
-            if P == "" or P == "-" or P == ".":
-                return True
-            if P.replace(".", "").replace("-", "").isdigit():
-                if P.count(".") <= 1:
-                    if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
-                        return True
-            return False
-
-        def validate_int_input(P):
-            if P == "" or P == "-":
-                return True
-            if P.replace("-", "").isdigit():
-                if P.count("-") <= 1 and (P.find("-") == 0 or P.find("-") == -1):
-                    return True
-            return False
-
-        vcmd_float = (adjust_window.register(validate_float_input), '%P')
-        vcmd_int = (adjust_window.register(validate_int_input), '%P')
+        vcmd_float = (adjust_window.register(_validate_float_input), '%P')
+        vcmd_int = (adjust_window.register(_validate_int_input), '%P')
 
         mse_entry.config(validate='key', validatecommand=vcmd_int)
         ssim_entry.config(validate='key', validatecommand=vcmd_float)
@@ -1642,6 +1595,5 @@ class MonitorTab:
         self.preview_label.config(text=self._app.get_text("select_health_region_first"))
         self.mana_preview_label.config(text=self._app.get_text("select_mana_region_first"))
 
-        display_values = list(self.language_display_map.keys())
         current_display = self.language_reverse_map.get(self._app.current_language, "\u7e41\u9ad4\u4e2d\u6587")
         self._app.language_var.set(current_display)

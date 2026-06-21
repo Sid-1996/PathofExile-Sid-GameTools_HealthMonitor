@@ -49,7 +49,7 @@ class InventoryTab:
         self.interface_ui_screenshot = None
         self.create_inventory_tab()
 
-    def update_inventory_tab_language(self):
+    def update_inventory_tab_language(self):  # noqa: C901 — linear per-widget hasattr guards, not worth splitting
         """更新一鍵清包分頁的語言"""
         try:
             # 更新LabelFrame標題
@@ -206,41 +206,33 @@ class InventoryTab:
         except Exception as e:
             print(f"介面UI選擇的全局ESC處理失敗: {e}")
 
-    def quick_clear_inventory(self):
-        """F3快速清包功能（非阻塞版）- 比照F6的視窗管理策略"""
-        # 全域暫停檢查
+    def _validate_f3(self):
         if self._state.global_pause:
             print("[STOP] 全域暫停中，跳過F3熱鍵")
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning"))
             except Exception:
                 pass
-            return
-
-        # 重置中斷標誌
+            return None
         self._state.inventory_clear_interrupt = False
-
         try:
             self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_hotkey_pressed"), "hotkey"))
         except Exception:
             pass
-
         if not self.inventory_region or not self.empty_inventory_colors:
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_incomplete"), "error"))
                 self._app.root.after(0, lambda: messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_setup_incomplete")))
             except Exception:
                 pass
-            return
-
+            return None
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_inventory_ui_not_set"), "error"))
                 self._app.root.after(0, lambda: messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_ui_screenshot_not_set")))
             except Exception:
                 pass
-            return
-
+            return None
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             try:
@@ -248,17 +240,16 @@ class InventoryTab:
                 self._app.root.after(0, lambda: messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。"))
             except Exception:
                 pass
-            return
+            return None
+        return window_title
 
-        # 前台檢查改為警告而非強制取消（與F6一致）
+    def _capture_and_prepare_f3_gui(self, window_title):
         if not self._app.window_key_sender.is_game_window_foreground(window_title):
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_game_not_foreground"), "warning"))
             except Exception:
                 pass
             print(f"F3: 遊戲視窗 '{window_title}' 不在前台，將嘗試激活")
-
-        # 捕獲GUI狀態
         gui_was_visible = (self._app.root.state() == 'normal')
         gui_was_foreground = False
         gui_was_topmost = self._app.should_keep_topmost()
@@ -269,10 +260,7 @@ class InventoryTab:
                 gui_was_foreground = (foreground_hwnd == gui_hwnd)
             except Exception:
                 gui_was_foreground = False
-
         print(f"F3: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
-
-        # 如果GUI在前台或保持在最上方，移到後台
         if gui_was_foreground or gui_was_topmost:
             def _prepare_gui():
                 try:
@@ -287,9 +275,11 @@ class InventoryTab:
                 self._app.root.after(0, _prepare_gui)
             except Exception as e:
                 print(f"F3: 安排準備 GUI 失敗: {e}")
+        self._hide_f3_setting_windows()
+        return gui_was_foreground, gui_was_topmost
 
-        # 隱藏設定視窗
-        def _hide_setting_windows():
+    def _hide_f3_setting_windows(self):
+        def _hide():
             try:
                 for w in self._app.root.winfo_children():
                     try:
@@ -318,11 +308,76 @@ class InventoryTab:
             except Exception as e:
                 print(f"F3: 隱藏設定視窗時發生錯誤: {e}")
         try:
-            self._app.root.after(0, _hide_setting_windows)
+            self._app.root.after(0, _hide)
         except Exception:
             pass
 
-        # 啟動背景執行緒執行清包
+    def _execute_f3_clear(self, game_window, window_title_local):
+        try:
+            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_game_window_found"), "info"))
+        except Exception:
+            pass
+        monitor = {
+            "top": game_window.top + self.inventory_region['y'],
+            "left": game_window.left + self.inventory_region['x'],
+            "width": self.inventory_region['width'],
+            "height": self.inventory_region['height']
+        }
+        img = capture_region_to_cv2(monitor)
+        needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
+        if needs_clearing:
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info"))
+            except Exception:
+                pass
+            print(f"F3(worker): 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
+            self.clear_inventory_item(game_window, img)
+            if self._state.inventory_clear_interrupt:
+                try:
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_user_interrupt"), "warning"))
+                except Exception:
+                    pass
+                print("F3(worker): 清包被中斷")
+            else:
+                try:
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success"))
+                except Exception:
+                    pass
+                print("F3(worker): 已清空背包物品")
+        else:
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success"))
+            except Exception:
+                pass
+            print("F3(worker): 背包已淨空，無需操作")
+
+    def _restore_f3_gui(self, gui_was_foreground_local, gui_was_topmost_local):
+        def _restore_gui():
+            try:
+                if gui_was_foreground_local or gui_was_topmost_local:
+                    try:
+                        self._app.root.lift()
+                        self._app.root.focus_force()
+                        if gui_was_topmost_local:
+                            self._app.root.attributes("-topmost", True)
+                            print("F3(worker): 已恢復 GUI 到前台並重新置頂")
+                        else:
+                            print("F3(worker): 已恢復 GUI 到前台")
+                    except Exception as e:
+                        print(f"F3(worker): 恢復 GUI 失敗: {e}")
+            except Exception as e:
+                print(f"F3(worker): Restore callback 例外: {e}")
+        try:
+            self._app.root.after(0, _restore_gui)
+        except Exception:
+            pass
+
+    def quick_clear_inventory(self):
+        window_title = self._validate_f3()
+        if window_title is None:
+            return
+        gui_was_foreground, gui_was_topmost = self._capture_and_prepare_f3_gui(window_title)
+
         def _worker(window_title_local, gui_was_foreground_local, gui_was_topmost_local):
             try:
                 windows = gw.getWindowsWithTitle(window_title_local)
@@ -333,17 +388,13 @@ class InventoryTab:
                     except Exception:
                         pass
                     return
-
                 game_window = windows[0]
                 print(f"F3(worker): 找到遊戲視窗: {game_window.title}")
-
-                # 激活遊戲視窗
                 try:
                     game_window.activate()
                     time.sleep(0.5)
                 except Exception as e:
                     print(f"F3(worker): 激活遊戲視窗失敗: {e}")
-
                 if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
                     print("F3(worker): 警告 - 遊戲視窗可能未在前台")
                     try:
@@ -352,8 +403,6 @@ class InventoryTab:
                         time.sleep(0.2)
                     except Exception:
                         pass
-
-                # 檢查背包UI是否可見
                 if not self.is_inventory_ui_visible(game_window):
                     print("F3(worker): 背包UI未開啟，跳過清包操作")
                     try:
@@ -361,49 +410,7 @@ class InventoryTab:
                     except Exception:
                         pass
                     return
-
-                try:
-                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_game_window_found"), "info"))
-                except Exception:
-                    pass
-
-                # 擷取背包區域
-                monitor = {
-                    "top": game_window.top + self.inventory_region['y'],
-                    "left": game_window.left + self.inventory_region['x'],
-                    "width": self.inventory_region['width'],
-                    "height": self.inventory_region['height']
-                }
-                img = capture_region_to_cv2(monitor)
-
-                # 檢查是否需要清空
-                needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
-                if needs_clearing:
-                    try:
-                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info"))
-                    except Exception:
-                        pass
-                    print(f"F3(worker): 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
-                    self.clear_inventory_item(game_window, img)
-                    if self._state.inventory_clear_interrupt:
-                        try:
-                            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_cancel_user_interrupt"), "warning"))
-                        except Exception:
-                            pass
-                        print("F3(worker): 清包被中斷")
-                    else:
-                        try:
-                            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success"))
-                        except Exception:
-                            pass
-                        print("F3(worker): 已清空背包物品")
-                else:
-                    try:
-                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success"))
-                    except Exception:
-                        pass
-                    print("F3(worker): 背包已淨空，無需操作")
-
+                self._execute_f3_clear(game_window, window_title_local)
             except Exception as e:
                 _err_msg = str(e)
                 print(f"F3(worker): 發生例外: {e}")
@@ -413,25 +420,7 @@ class InventoryTab:
                     pass
             finally:
                 self._state.inventory_clear_interrupt = False
-                def _restore_gui():
-                    try:
-                        if gui_was_foreground_local or gui_was_topmost_local:
-                            try:
-                                self._app.root.lift()
-                                self._app.root.focus_force()
-                                if gui_was_topmost_local:
-                                    self._app.root.attributes("-topmost", True)
-                                    print("F3(worker): 已恢復 GUI 到前台並重新置頂")
-                                else:
-                                    print("F3(worker): 已恢復 GUI 到前台")
-                            except Exception as e:
-                                print(f"F3(worker): 恢復 GUI 失敗: {e}")
-                    except Exception as e:
-                        print(f"F3(worker): Restore callback 例外: {e}")
-                try:
-                    self._app.root.after(0, _restore_gui)
-                except Exception:
-                    pass
+                self._restore_f3_gui(gui_was_foreground_local, gui_was_topmost_local)
 
         t = threading.Thread(target=_worker, args=(window_title, gui_was_foreground, gui_was_topmost), daemon=True)
         t.start()
@@ -2183,6 +2172,76 @@ class InventoryTab:
                 self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text="預覽載入失敗",
                                                            fill="red", font=("Arial", 8))
 
+    def _perform_final_retry(self, game_window, monitor, total_processed, max_iterations):
+        print("階段3：最終確認和重試邏輯")
+        try:
+            center_x = game_window.left + game_window.width // 2
+            center_y = game_window.top + game_window.height // 2
+            pyautogui.moveTo(center_x, center_y, duration=0.015)
+            time.sleep(0.025)
+            with _mss_singleton as sct:
+                final_screenshot = sct.grab(monitor)
+                final_img = np.frombuffer(final_screenshot.rgb, dtype=np.uint8).reshape(final_screenshot.height, final_screenshot.width, 3)
+                final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
+            final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
+            final_progress_text = f"清包完成: {total_processed} 個道具"
+            self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(final_img, final_occupied, final_progress_text))
+            self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
+            print(f"最終確認：清包完成 {total_processed} 個道具，剩餘: {len(final_occupied)} 個")
+            if final_should_clear and total_processed < max_iterations:
+                print("檢測到還有剩餘物品，執行最終重試")
+                self._app.status_tab.add_status_message(self._app.get_text("f3_retry_final"), "info")
+                retry_item_positions = find_inventory_items(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
+                if retry_item_positions:
+                    print(f"重試：找到 {len(retry_item_positions)} 個剩餘物品")
+                    retry_tasks = []
+                    for pos in retry_item_positions:
+                        screen_x = game_window.left + pos[0]
+                        screen_y = game_window.top + pos[1]
+                        slot_index = None
+                        for idx, grid_pos in enumerate(self.inventory_grid_positions):
+                            if grid_pos == pos:
+                                slot_index = idx
+                                break
+                        if slot_index is not None:
+                            retry_tasks.append((screen_x, screen_y, slot_index))
+                    print(f"重試：已創建重試任務列表，包含 {len(retry_tasks)} 個任務")
+                    pyautogui.keyDown('ctrl')
+                    time.sleep(0.025)
+                    retry_processed = 0
+                    for task in retry_tasks[:5]:
+                        if self._state.inventory_clear_interrupt:
+                            break
+                        screen_x, screen_y, slot_index = task
+                        print(f"重試處理第 {retry_processed + 1} 個剩餘物品，位置: ({screen_x}, {screen_y})")
+                        pyautogui.moveTo(screen_x, screen_y, duration=0.015)
+                        time.sleep(0.025)
+                        pyautogui.rightClick(screen_x, screen_y)
+                        time.sleep(0.025)
+                        print(f"已執行右鍵點擊重試第 {retry_processed + 1} 個道具 (包含正確的延遲)")
+                        retry_processed += 1
+                        total_processed += 1
+                    pyautogui.keyUp('ctrl')
+                    time.sleep(0.025)
+                    print(f"重試完成，已額外處理 {retry_processed} 個剩餘物品")
+                    center_x = game_window.left + game_window.width // 2
+                    center_y = game_window.top + game_window.height // 2
+                    pyautogui.moveTo(center_x, center_y, duration=0.015)
+                    time.sleep(0.025)
+                    with _mss_singleton as sct:
+                        retry_final_screenshot = sct.grab(monitor)
+                        retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
+                        retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
+                    _, retry_final_occupied = should_clear_inventory(retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
+                    final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
+                    self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
+                    self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(retry_final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
+                    print(f"重試最終確認：總共處理 {total_processed} 個道具，剩餘: {len(retry_final_occupied)} 個")
+        except Exception as e:
+            print(f"最終確認過程發生錯誤: {e}")
+        print(f"F3: 優化清包完成，已清空 {total_processed} 個背包物品")
+        return total_processed
+
     def clear_inventory_item(self, game_window, img):
         """清空背包物品 - 動態辨識版：每次點擊後重新辨識，適應大物品清空多格的情況
 
@@ -2343,123 +2402,7 @@ class InventoryTab:
             pyautogui.keyUp('ctrl')
             time.sleep(0.025)  # CTRL釋放後等待25ms
 
-            # === 階段3：最終確認和重試邏輯 ===
-            print("階段3：最終確認和重試邏輯")
-
-            # 清包完成後最終更新預覽，顯示完成狀態
-            try:
-                # 最終確認前先將滑鼠移動到遊戲視窗正中央，避免影響辨識
-                center_x = game_window.left + game_window.width // 2
-                center_y = game_window.top + game_window.height // 2
-                pyautogui.moveTo(center_x, center_y, duration=0.015)
-                time.sleep(0.025)  # 等待滑鼠移動完成
-
-                # 重新擷取最終的背包狀態
-                with _mss_singleton as sct:
-                    final_screenshot = sct.grab(monitor)
-                    final_img = np.frombuffer(final_screenshot.rgb, dtype=np.uint8).reshape(final_screenshot.height, final_screenshot.width, 3)
-                    final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
-
-                # 分析最終背包狀態
-                final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
-
-                # 在主線程中最終更新預覽
-                final_progress_text = f"清包完成: {total_processed} 個道具"
-                self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(final_img, final_occupied, final_progress_text))
-
-                # 更新統計標籤為完成狀態
-                self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
-
-                print(f"最終確認：清包完成 {total_processed} 個道具，剩餘: {len(final_occupied)} 個")
-
-                # 如果還有物品且未達到重試次數限制，執行一次重試
-                if final_should_clear and total_processed < max_iterations:
-                    print("檢測到還有剩餘物品，執行最終重試")
-                    self._app.status_tab.add_status_message(self._app.get_text("f3_retry_final"), "info")
-
-                    # 重新擷取當前狀態作為重試的基礎
-                    retry_item_positions = find_inventory_items(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
-
-                    if retry_item_positions:
-                        print(f"重試：找到 {len(retry_item_positions)} 個剩餘物品")
-
-                        # 創建重試任務列表
-                        retry_tasks = []
-                        for pos in retry_item_positions:
-                            screen_x = game_window.left + pos[0]
-                            screen_y = game_window.top + pos[1]
-
-                            slot_index = None
-                            for idx, grid_pos in enumerate(self.inventory_grid_positions):
-                                if grid_pos == pos:  # 直接比較tuple
-                                    slot_index = idx
-                                    break
-
-                            if slot_index is not None:
-                                retry_tasks.append((screen_x, screen_y, slot_index))
-
-                        print(f"重試：已創建重試任務列表，包含 {len(retry_tasks)} 個任務")
-
-                        # 執行重試：持續按住Ctrl進行重試點擊
-                        pyautogui.keyDown('ctrl')
-                        time.sleep(0.025)
-
-                        retry_processed = 0
-                        for task in retry_tasks[:5]:  # 限制重試最多處理5個物品
-                            if self._state.inventory_clear_interrupt:
-                                break
-
-                            screen_x, screen_y, slot_index = task
-
-                            print(f"重試處理第 {retry_processed + 1} 個剩餘物品，位置: ({screen_x}, {screen_y})")
-
-                            # 正確的滑鼠操作時序：
-                            # 1. 滑鼠移動到道具上
-                            print(f"重試滑鼠移動到: ({screen_x}, {screen_y})")
-                            pyautogui.moveTo(screen_x, screen_y, duration=0.015)  # 恢復到0.015秒
-                            # 2. 移動後等待25ms (恢復到25ms)
-                            time.sleep(0.025)
-
-                            # 3. 執行右鍵點擊
-                            print(f"重試執行右鍵點擊: ({screen_x}, {screen_y})")
-                            pyautogui.rightClick(screen_x, screen_y)
-                            # 4. 點擊後等待25ms (恢復到25ms)
-                            time.sleep(0.025)
-
-                            print(f"已執行右鍵點擊重試第 {retry_processed + 1} 個道具 (包含正確的延遲)")
-                            retry_processed += 1
-                            total_processed += 1
-
-                        pyautogui.keyUp('ctrl')
-                        time.sleep(0.025)  # CTRL釋放後等待25ms，保持一致的時序
-
-                        print(f"重試完成，已額外處理 {retry_processed} 個剩餘物品")
-
-                        # 重試後最終更新前先將滑鼠移動到遊戲視窗正中央
-                        center_x = game_window.left + game_window.width // 2
-                        center_y = game_window.top + game_window.height // 2
-                        pyautogui.moveTo(center_x, center_y, duration=0.015)
-                        time.sleep(0.025)  # 等待滑鼠移動完成
-
-                        # 重試後最終更新
-                        with _mss_singleton as sct:
-                            retry_final_screenshot = sct.grab(monitor)
-                            retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
-                            retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
-
-                        _, retry_final_occupied = should_clear_inventory(retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
-
-                        final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
-                        self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
-
-                        self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(retry_final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
-
-                        print(f"重試最終確認：總共處理 {total_processed} 個道具，剩餘: {len(retry_final_occupied)} 個")
-
-            except Exception as e:
-                print(f"最終確認過程發生錯誤: {e}")
-
-            print(f"F3: 優化清包完成，已清空 {total_processed} 個背包物品")
+            total_processed = self._perform_final_retry(game_window, monitor, total_processed, max_iterations)
 
         except Exception as e:
             print(f"清空物品失敗: {e}")
@@ -2758,82 +2701,86 @@ class InventoryTab:
             except Exception as e2:
                 print(f"顯示原始圖片也失敗: {e2}")
 
+    def _minimize_gui_for_test_if_needed(self, game_window):
+        gui_minimized_for_test = False
+        needs_gui_minimize = False
+        if self._app.always_on_top_var.get():
+            if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
+                if self.check_gui_overlap_with_inventory_ui(game_window):
+                    needs_gui_minimize = True
+                    print("檢測到GUI可能遮擋背包UI檢測區域")
+            if self.check_gui_overlap_with_inventory(game_window):
+                needs_gui_minimize = True
+                print("檢測到GUI可能遮擋背包區域")
+        else:
+            print("GUI未設定為永遠保持在最上方，跳過遮擋檢查")
+        if needs_gui_minimize:
+            print("正在縮小GUI以避免遮擋...")
+            original_state = self._app.root.state()
+            original_geometry = self._app.root.geometry()
+            self._app.root.iconify()
+            time.sleep(0.2)
+            gui_minimized_for_test = True
+            print("GUI已縮小")
+            return gui_minimized_for_test, original_state, original_geometry
+        return gui_minimized_for_test, None, None
+
+    def _open_inventory_if_needed(self, game_window):
+        inventory_ui_exists = self.check_inventory_ui_exists(game_window)
+        print(f"背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
+        if not inventory_ui_exists:
+            print("背包未開啟，正在自動開啟...")
+            try:
+                game_window.activate()
+                time.sleep(0.2)
+            except Exception:
+                pyautogui.click(game_window.left + game_window.width // 2,
+                              game_window.top + game_window.height // 2)
+                time.sleep(0.2)
+            pyautogui.press('i')
+            time.sleep(0.8)
+            print("已發送 I 鍵開啟背包")
+            if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
+                inventory_ui_exists = self.check_inventory_ui_exists(game_window)
+                print(f"開啟後背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
+                if not inventory_ui_exists:
+                    print("警告: 背包可能未正確開啟，但繼續執行")
+        return inventory_ui_exists
+
     def test_inventory_clearing(self):
         """測試背包清空功能 - 增強版本，自動檢測並開啟背包"""
         if not self.inventory_region:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("select_inventory_region_first"))
             return
-
         if not self.empty_inventory_colors:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("record_empty_color_first"))
             return
-
-        # 檢查背包UI區域是否已設定
         if not hasattr(self, 'inventory_ui_region') or not self.inventory_ui_region:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("select_inventory_ui_region_first"))
             return
-
-        # 檢查格子位置是否已計算
         if not hasattr(self, 'inventory_grid_positions') or not self.inventory_grid_positions:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("please_adjust_inventory_region_first"))
             return
-
-        # 使用血魔監控的遊戲視窗
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
             return
-
-        # 檢查遊戲視窗是否最小化
         if self._app.check_game_window_minimized(window_title):
             return
-
         try:
-            # 1. 檢測遊戲視窗是否存在
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("game_window_not_found"))
                 return
-
             game_window = windows[0]
             print(f"找到遊戲視窗: {game_window.title}")
-
-            # 2. 檢查GUI是否會遮擋背包UI檢測區域或背包區域，如果會則縮小GUI
-            gui_minimized_for_test = False
-            needs_gui_minimize = False
-
-            # 只有在啟用"永遠保持在最上方"時才需要檢查GUI遮擋問題
-            if self._app.always_on_top_var.get():
-                # 檢查是否需要縮小GUI（同時檢查背包UI檢測區域和背包區域）
-                if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
-                    if self.check_gui_overlap_with_inventory_ui(game_window):
-                        needs_gui_minimize = True
-                        print("檢測到GUI可能遮擋背包UI檢測區域")
-
-                if self.check_gui_overlap_with_inventory(game_window):
-                    needs_gui_minimize = True
-                    print("檢測到GUI可能遮擋背包區域")
-            else:
-                print("GUI未設定為永遠保持在最上方，跳過遮擋檢查")
-
-            # 如果需要縮小GUI，一次性處理
-            if needs_gui_minimize:
-                print("正在縮小GUI以避免遮擋...")
-                original_state = self._app.root.state()
-                original_geometry = self._app.root.geometry()
-                self._app.root.iconify()
-                time.sleep(0.2)
-                gui_minimized_for_test = True
-                print("GUI已縮小")
-
-            # 3. 確保遊戲視窗在前台（無論是否啟用永遠保持在最上方，都需要激活遊戲視窗）
+            gui_minimized_for_test, original_state, original_geometry = self._minimize_gui_for_test_if_needed(game_window)
             try:
                 game_window.activate()
                 time.sleep(0.2)
                 print("遊戲視窗已激活")
             except Exception as e:
                 print(f"激活遊戲視窗失敗: {e}")
-                # 如果激活失敗，嘗試點擊視窗
                 try:
                     pyautogui.click(game_window.left + game_window.width // 2,
                                   game_window.top + game_window.height // 2)
@@ -2841,37 +2788,7 @@ class InventoryTab:
                     print("已嘗試點擊遊戲視窗")
                 except Exception as e2:
                     print(f"點擊遊戲視窗也失敗: {e2}")
-
-            # 4. 檢測背包UI是否存在（GUI已縮小或遊戲視窗已激活，不會被遮擋）
-            inventory_ui_exists = self.check_inventory_ui_exists(game_window)
-            print(f"背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
-
-            # 5. 如果背包UI不存在，自動開啟背包
-            if not inventory_ui_exists:
-                print("背包未開啟，正在自動開啟...")
-                # 確保遊戲視窗在前台
-                try:
-                    game_window.activate()
-                    time.sleep(0.2)
-                except Exception:
-                    # 如果 activate 失敗，嘗試點擊視窗
-                    pyautogui.click(game_window.left + game_window.width // 2,
-                                  game_window.top + game_window.height // 2)
-                    time.sleep(0.2)
-
-                # 發送 I 鍵開啟背包
-                pyautogui.press('i')
-                time.sleep(0.8)  # 增加等待時間確保背包完全開啟
-                print("已發送 I 鍵開啟背包")
-
-                # 再次檢測背包是否已開啟（如果有設定UI檢測）
-                if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
-                    inventory_ui_exists = self.check_inventory_ui_exists(game_window)
-                    print(f"開啟後背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
-                    if not inventory_ui_exists:
-                        print("警告: 背包可能未正確開啟，但繼續執行")
-
-            # 4. 擷取並分析背包區域（GUI已經在需要時縮小了）
+            self._open_inventory_if_needed(game_window)
             with _mss_singleton as sct:
                 monitor = {
                     "top": game_window.top + self.inventory_region['y'],
@@ -2879,15 +2796,10 @@ class InventoryTab:
                     "width": self.inventory_region['width'],
                     "height": self.inventory_region['height']
                 }
-
                 screenshot = sct.grab(monitor)
                 img = np.array(screenshot)
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-
-                # 分析背包狀態
                 should_clear, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
-
-            # 5. 恢復GUI面板（如果之前縮小了）
             if gui_minimized_for_test:
                 self._app.root.deiconify()
                 if original_state == 'zoomed':
@@ -2896,28 +2808,20 @@ class InventoryTab:
                     self._app.root.geometry(original_geometry)
                 time.sleep(0.2)
                 print("GUI已恢復")
-
-            # 7. 更新背包預覽（包含物品標記）
             self.update_inventory_preview_with_items(img, occupied_slots)
-
-            # 8. 如果沒有啟用"永遠保持在最上方"且沒有縮小GUI，重新激活GUI讓用戶能看到背包預覽
             if not self._app.always_on_top_var.get() and not gui_minimized_for_test:
                 try:
-                    # 重新激活GUI視窗，讓用戶能看到背包預覽
                     self._app.root.lift()
                     self._app.root.focus_force()
                     print("已重新激活GUI視窗，用戶可以查看背包預覽")
                 except Exception as e:
                     print(f"重新激活GUI視窗失敗: {e}")
-
-            # 9. 顯示測試結果（已移除對話框，改為控制台輸出）
             status = "需要清空" if should_clear else "背包淨空"
             result_msg = f"背包狀態: {status}\n"
             result_msg += f"占用格子: {len(occupied_slots)}/60\n"
-
             if occupied_slots:
                 result_msg += "\n占用格子位置:\n"
-                for i, index in enumerate(occupied_slots[:10]):  # 只顯示前10個
+                for i, index in enumerate(occupied_slots[:10]):
                     if index < len(self.inventory_grid_positions):
                         x, y = self.inventory_grid_positions[index]
                         result_msg += f"  {i+1}. 格子{index} ({x}, {y})\n"
@@ -2925,13 +2829,9 @@ class InventoryTab:
                         result_msg += f"  {i+1}. 格子{index} (無效位置)\n"
                 if len(occupied_slots) > 10:
                     result_msg += f"  ...還有{len(occupied_slots)-10}個\n"
-
             print(f"測試清包結果:\n{result_msg}")
-            # messagebox.showinfo("測試結果", result_msg)  # 已移除對話框
-
         except Exception as e:
             messagebox.showerror("錯誤", f"測試失敗: {str(e)}")
-            # 確保GUI恢復正常
             try:
                 self._app.root.deiconify()
             except Exception:
@@ -3022,29 +2922,19 @@ class InventoryTab:
             print(f"F5: 返回藏身失敗: {str(e)}")
             self._app.status_tab.add_status_message(f"F5 執行失敗 - {str(e)}", "error")
 
-    def f6_pickup_items(self):
-        """F6 一鍵取物（非阻塞版）
-        主線程做必要的檢查與安排 GUI 操作（使用 root.after），實際的滑鼠/視窗操作在背景執行緒中完成，
-        避免阻塞 Tkinter 事件迴圈造成主 GUI 無法互動。"""
-        # 全域暫停檢查（主線程）
+    def _validate_f6(self):
         if self._state.global_pause:
             print("[STOP] 全域暫停中，跳過F6熱鍵")
-            # 在主線程更新狀態訊息
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_skip_global_pause"), "warning"))
             except Exception:
                 pass
-            return
-
-        # 簡短回饋（主線程）
+            return None
         try:
             self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_hotkey_pressed"), "hotkey"))
         except Exception:
             pass
-
         print("=== F6取物功能被調用（非阻塞版） ===")
-
-        # 在主線程進行輕量檢查與狀態擷取
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
@@ -3052,14 +2942,14 @@ class InventoryTab:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error"))
             except Exception:
                 pass
-            return
-
+            return None
         print(f"F6: 遊戲視窗已設定為: {window_title}")
+        return window_title
 
-        # 檢查 GUI 狀態（在主線程）
+    def _capture_and_prepare_f6_gui(self):
         gui_was_visible = (self._app.root.state() == 'normal')
         gui_was_foreground = False
-        gui_was_topmost = self._app.should_keep_topmost()  # 檢查是否原本保持在最上方
+        gui_was_topmost = self._app.should_keep_topmost()
         if gui_was_visible:
             try:
                 foreground_hwnd = win32gui.GetForegroundWindow()
@@ -3067,18 +2957,13 @@ class InventoryTab:
                 gui_was_foreground = (foreground_hwnd == gui_hwnd)
             except Exception:
                 gui_was_foreground = False
-
         print(f"F6: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
-
-        # 如果 GUI 在前台或保持在最上方，安排把 GUI 移到後台（主線程）以免遮擋遊戲
         if gui_was_foreground or gui_was_topmost:
             def _prepare_gui_for_execution():
                 try:
-                    # 如果原本保持在最上方，先取消置頂
                     if gui_was_topmost:
                         self._app.root.attributes("-topmost", False)
                         print("F6: 已取消 GUI 置頂設定")
-                    # 然後移到後台
                     getattr(self._app.root, 'lower', lambda: None)()
                     print("F6: 已安排將 GUI 移到後台")
                 except Exception as e:
@@ -3087,8 +2972,6 @@ class InventoryTab:
                 self._app.root.after(0, _prepare_gui_for_execution)
             except Exception as e:
                 print(f"F6: 安排準備 GUI 失敗: {e}")
-
-        # 隱藏可能的設定視窗（主線程）
         def _hide_setting_windows():
             try:
                 for w in self._app.root.winfo_children():
@@ -3097,22 +2980,18 @@ class InventoryTab:
                             t = str(w.title())
                             if ('F6' in t or '設定' in t or 'setup' in t.lower()) and w.winfo_ismapped():
                                 try:
-                                    # 先嘗試釋放該視窗的 modal grab（如果有的話），避免 withdraw 後仍保留 grab
                                     try:
                                         if hasattr(w, 'grab_release'):
                                             w.grab_release()
                                             print(f"F6: 已釋放設定視窗的 grab: {t}")
                                     except Exception:
                                         pass
-
-                                    # 如仍有全域 grab，嘗試釋放 root 的 grab
                                     try:
                                         if hasattr(self._app.root, 'grab_release'):
                                             self._app.root.grab_release()
                                             print("F6: 已釋放 root 的 grab（備援）")
                                     except Exception:
                                         pass
-
                                     w.withdraw()
                                     print(f"F6: 隱藏設定視窗: {t}")
                                 except Exception as e:
@@ -3121,137 +3000,82 @@ class InventoryTab:
                         pass
             except Exception as e:
                 print(f"F6: 隱藏設定視窗時發生錯誤: {e}")
-
         try:
             self._app.root.after(0, _hide_setting_windows)
         except Exception:
             pass
+        return gui_was_foreground, gui_was_topmost
 
-        # 現在啟動背景執行緒處理實際的取物工作
-        def _worker(window_title_local, valid_coords_local, gui_was_foreground_local, gui_was_topmost_local):
-            """背景執行緒：執行視窗激活、背包檢查與 pyautogui 點擊序列"""
+    def _execute_f6_pickup(self, game_window, valid_coords_local, gui_was_foreground_local, gui_was_topmost_local):
+        try:
+            self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_processing_inventory_ui_check_passed"), "info"))
+        except Exception:
+            pass
+        print(f"F6(worker): 開始執行取物，共 {len(valid_coords_local)} 個座標")
+        try:
+            original_pos = pyautogui.position()
+        except Exception:
+            original_pos = None
+        try:
+            pyautogui.keyDown('ctrl')
+            time.sleep(0.05)
+        except Exception as e:
+            print(f"F6(worker): 按鍵Down失敗: {e}")
+        try:
+            for i, (rel_x, rel_y) in enumerate(valid_coords_local):
+                abs_x = game_window.left + rel_x
+                abs_y = game_window.top + rel_y
+                print(f"F6(worker): 處理座標 {i+1}/{len(valid_coords_local)} -> ({abs_x},{abs_y})")
+                pyautogui.moveTo(abs_x, abs_y, duration=0.05)
+                time.sleep(0.05)
+                pyautogui.click()
+                time.sleep(0.05)
+            print("F6(worker): 取物完成")
             try:
-                # 嘗試取得遊戲視窗
-                windows = gw.getWindowsWithTitle(window_title_local)
-                if not windows:
-                    print("F6(worker): 找不到遊戲視窗")
-                    try:
-                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error"))
-                    except Exception:
-                        pass
-                    return
-
-                game_window = windows[0]
-                print(f"F6(worker): 找到遊戲視窗: {game_window.title}")
-
-                # 激活遊戲視窗（在OS層面），不是 Tkinter
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success"))
+            except Exception:
+                pass
+            if original_pos:
                 try:
-                    game_window.activate()
-                    time.sleep(0.5)
-                except Exception as e:
-                    print(f"F6(worker): 激活遊戲視窗失敗: {e}")
-
-                # 再次確認遊戲視窗在前台
-                if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
-                    print("F6(worker): 警告 - 遊戲視窗可能未在前台")
-
-                # 檢查背包UI是否可見
-                if not self.is_inventory_ui_visible(game_window):
-                    print("F6(worker): 背包UI未打開，無法執行取物功能")
-                    try:
-                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_cancel_inventory_ui_not_open"), "warning"))
-                    except Exception:
-                        pass
-                    return
-
-                try:
-                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_processing_inventory_ui_check_passed"), "info"))
+                    pyautogui.moveTo(original_pos.x, original_pos.y, duration=0.05)
                 except Exception:
                     pass
+        finally:
+            try:
+                pyautogui.keyUp('ctrl')
+            except Exception:
+                pass
+        self._restore_f6_gui(gui_was_foreground_local, gui_was_topmost_local)
 
-                print(f"F6(worker): 開始執行取物，共 {len(valid_coords_local)} 個座標")
-
-                # 記錄原始滑鼠位置
-                try:
-                    original_pos = pyautogui.position()
-                except Exception:
-                    original_pos = None
-
-                # 按住 Ctrl
-                try:
-                    pyautogui.keyDown('ctrl')
-                    time.sleep(0.05)
-                except Exception as e:
-                    print(f"F6(worker): 按鍵Down失敗: {e}")
-
-                try:
-                    for i, (rel_x, rel_y) in enumerate(valid_coords_local):
-                        abs_x = game_window.left + rel_x
-                        abs_y = game_window.top + rel_y
-                        print(f"F6(worker): 處理座標 {i+1}/{len(valid_coords_local)} -> ({abs_x},{abs_y})")
-                        pyautogui.moveTo(abs_x, abs_y, duration=0.05)
-                        time.sleep(0.05)
-                        pyautogui.click()
-                        time.sleep(0.05)
-
-                    print("F6(worker): 取物完成")
+    def _restore_f6_gui(self, gui_was_foreground_local, gui_was_topmost_local):
+        def _restore_gui():
+            try:
+                if gui_was_foreground_local or gui_was_topmost_local:
                     try:
-                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success"))
-                    except Exception:
-                        pass
-
-                    if original_pos:
-                        try:
-                            pyautogui.moveTo(original_pos.x, original_pos.y, duration=0.05)
-                        except Exception:
-                            pass
-
-                finally:
-                    try:
-                        pyautogui.keyUp('ctrl')
-                    except Exception:
-                        pass
-
-                # 執行完畢後：如果 GUI 原本在前台或保持在最上方，安排主線程恢復 GUI
-                def _restore_gui():
-                    try:
-                        if gui_was_foreground_local or gui_was_topmost_local:
-                            try:
-                                # 先恢復到前台
-                                self._app.root.lift()
-                                self._app.root.focus_force()
-                                # 如果原本保持在最上方，恢復置頂
-                                if gui_was_topmost_local:
-                                    self._app.root.attributes("-topmost", True)
-                                    print("F6(worker): 已在主線程恢復 GUI 到前台並重新置頂")
-                                else:
-                                    print("F6(worker): 已在主線程恢復 GUI 到前台")
-                            except Exception as e:
-                                print(f"F6(worker): 恢復 GUI 失敗: {e}")
+                        self._app.root.lift()
+                        self._app.root.focus_force()
+                        if gui_was_topmost_local:
+                            self._app.root.attributes("-topmost", True)
+                            print("F6(worker): 已在主線程恢復 GUI 到前台並重新置頂")
                         else:
-                            print("F6(worker): GUI 保持在後台（原本在後台且不置頂）")
+                            print("F6(worker): 已在主線程恢復 GUI 到前台")
                     except Exception as e:
-                        print(f"F6(worker): Restore callback 例外: {e}")
-
-                try:
-                    self._app.root.after(0, _restore_gui)
-                except Exception:
-                    pass
-
+                        print(f"F6(worker): 恢復 GUI 失敗: {e}")
+                else:
+                    print("F6(worker): GUI 保持在後台（原本在後台且不置頂）")
             except Exception as e:
-                print(f"F6(worker): 發生例外: {e}")
-                _err_msg = str(e)
-                try:
-                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
-                except Exception:
-                    pass
-                # 確保 ctrl 被釋放
-                try:
-                    pyautogui.keyUp('ctrl')
-                except Exception:
-                    pass
+                print(f"F6(worker): Restore callback 例外: {e}")
+        try:
+            self._app.root.after(0, _restore_gui)
+        except Exception:
+            pass
 
-        # 組裝有效座標（主線程）
+    def f6_pickup_items(self):
+        window_title = self._validate_f6()
+        if not window_title:
+            return
+        gui_was_foreground, gui_was_topmost = self._capture_and_prepare_f6_gui()
+
         valid_coords = []
         seen = set()
         if hasattr(self, 'pickup_coordinates') and self.pickup_coordinates:
@@ -3261,13 +3085,54 @@ class InventoryTab:
                     if t not in seen:
                         valid_coords.append((x, y))
                         seen.add(t)
-
+        print(f"F6: 有效取物座標 {len(valid_coords)} 個")
         if not valid_coords:
-            print("F6: 沒有有效的取物座標")
+            print("F6: 無有效座標，跳過背景執行")
+            try:
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_no_valid_coordinates"), "warning"))
+            except Exception:
+                pass
             return
 
-        # 背景執行緒啟動
-        print(f"F6: 啟動背景執行緒執行取物，共 {len(valid_coords)} 個座標")
+        def _worker(window_title_local, valid_coords_local, gui_was_foreground_local, gui_was_topmost_local):
+            try:
+                windows = gw.getWindowsWithTitle(window_title_local)
+                if not windows:
+                    print("F6(worker): 找不到遊戲視窗")
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error"))
+                    except Exception:
+                        pass
+                    return
+                game_window = windows[0]
+                print(f"F6(worker): 找到遊戲視窗: {game_window.title}")
+                try:
+                    game_window.activate()
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"F6(worker): 激活遊戲視窗失敗: {e}")
+                if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
+                    print("F6(worker): 警告 - 遊戲視窗可能未在前台")
+                if not self.is_inventory_ui_visible(game_window):
+                    print("F6(worker): 背包UI未打開，無法執行取物功能")
+                    try:
+                        self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_cancel_inventory_ui_not_open"), "warning"))
+                    except Exception:
+                        pass
+                    return
+                self._execute_f6_pickup(game_window, valid_coords_local, gui_was_foreground_local, gui_was_topmost_local)
+            except Exception as e:
+                print(f"F6(worker): 發生例外: {e}")
+                _err_msg = str(e)
+                try:
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
+                except Exception:
+                    pass
+                try:
+                    pyautogui.keyUp('ctrl')
+                except Exception:
+                    pass
+
         t = threading.Thread(target=_worker, args=(window_title, valid_coords, gui_was_foreground, gui_was_topmost), daemon=True)
         t.start()
 
