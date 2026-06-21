@@ -156,14 +156,21 @@ class HealthMonitor:
             except Exception as e:
                 print(f"保存語言設定失敗: {e}")
 
-            # 寫入重啟標記並關閉（由 Run.bat 偵測後自動重啟）
-            try:
-                flag_path = os.path.join(get_app_dir(), "restart.flag")
-                with open(flag_path, "w") as f:
-                    f.write("restart")
-                print("重啟標記已寫入，準備關閉")
-            except Exception as e:
-                print(f"寫入重啟標記失敗: {e}")
+            # 依執行模式選擇重啟方式
+            if getattr(sys, 'frozen', False):
+                # EXE 版：直接重啟自己，不依賴 Run.bat
+                try:
+                    subprocess.Popen([sys.executable])
+                except Exception as e:
+                    print(f"重啟失敗: {e}")
+            else:
+                # 開發版：寫 flag 給 Run.bat
+                try:
+                    flag_path = os.path.join(get_app_dir(), "restart.flag")
+                    with open(flag_path, "w") as f:
+                        f.write("restart")
+                except Exception as e:
+                    print(f"寫入重啟標記失敗: {e}")
             self.close_app()
         else:
             # 使用者選擇取消，恢復語言選擇器到當前語言
