@@ -48,7 +48,7 @@ class UsageTracker:
     def update_usage_time_display(self):
         try:
             if hasattr(self._app, 'usage_time_label'):
-                usage_time_text = format_usage_time(self._app.total_usage_time)
+                usage_time_text = format_usage_time(self._app.total_usage_time, lang=self._app.current_language)
                 self._app.usage_time_label.config(
                     text=self._app.get_text("total_usage_time").format(time=usage_time_text)
                 )

@@ -159,18 +159,24 @@ class Tooltip:
             self._tip = None
 
 
-def format_usage_time(total_seconds):
-    """格式化使用時間顯示"""
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-
-    if hours > 0:
-        return f"{hours}小時{minutes}分鐘"
-    elif minutes > 0:
-        return f"{minutes}分鐘{seconds}秒"
+def format_usage_time(seconds, lang="zh"):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    if lang == "en":
+        if hours > 0:
+            return f"{hours}h {minutes}m {secs}s"
+        elif minutes > 0:
+            return f"{minutes}m {secs}s"
+        else:
+            return f"{secs}s"
     else:
-        return f"{seconds}秒"
+        if hours > 0:
+            return f"{hours}小時{minutes}分鐘{secs}秒"
+        elif minutes > 0:
+            return f"{minutes}分鐘{secs}秒"
+        else:
+            return f"{secs}秒"
 
 
 def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):

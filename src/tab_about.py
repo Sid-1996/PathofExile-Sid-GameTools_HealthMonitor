@@ -62,7 +62,7 @@ class AboutTab:
         ttk.Label(info_card, text=self._app.get_text("status_display"),
                   font=('Microsoft YaHei', 12), foreground='#27ae60').pack(anchor=tk.W, pady=(0, 8))
 
-        usage_time_text = format_usage_time(self._app.total_usage_time)
+        usage_time_text = format_usage_time(self._app.total_usage_time, lang=self._app.current_language)
         usage_time_label = ttk.Label(info_card, text=self._app.get_text("total_usage_time").format(time=usage_time_text),
                                      font=('Microsoft YaHei', 12), foreground='#1976D2')
         usage_time_label.pack(anchor=tk.W, pady=(0, 8))
