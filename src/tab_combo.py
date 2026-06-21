@@ -331,11 +331,11 @@ class ComboTab:
         for i in enabled_sets:
             combo_set = self._state.combo_sets[i]
             if not combo_set['trigger_key']:
-                messagebox.showerror("錯誤", f"連段套組 {i+1} 的觸發技能未設定")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("combo_trigger_key_not_set").format(number=i + 1))
                 return
             has_combo = any(key for key in combo_set['combo_keys'] if key and key != 'off' and key != '')
             if not has_combo:
-                messagebox.showerror("錯誤", f"連段套組 {i+1} 沒有設定任何連段技能")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("combo_skill_sequence_empty").format(number=i + 1))
                 return
 
         self._state.set_combo_running(True)
@@ -370,7 +370,7 @@ class ComboTab:
         self.combo_stop_btn.config(state=tk.DISABLED)
         self.combo_status_label.config(text=self._app.get_text("combo_stopped"), foreground="red")
 
-        self._app.status_tab.add_status_message("技能連擊系統已停止", "info")
+        self._app.status_tab.add_status_message(self._app.get_text("combo_system_stopped"), "info")
         print("[STOP] 連段系統已完全停止")
 
     def restart_combo_system_silently(self):
@@ -379,15 +379,15 @@ class ComboTab:
 
         enabled_sets = [i for i, enabled in enumerate(self._state.combo_enabled) if enabled]
         if not enabled_sets:
-            raise Exception("沒有啟用的連段套組")
+            raise Exception(self._app.get_text("combo_no_enabled_sets"))
 
         for i in enabled_sets:
             combo_set = self._state.combo_sets[i]
             if not combo_set['trigger_key']:
-                raise Exception(f"連段套組 {i+1} 的觸發技能未設定")
+                raise Exception(self._app.get_text("combo_trigger_key_not_set").format(number=i + 1))
             has_combo = any(key for key in combo_set['combo_keys'] if key and key != 'off' and key != '')
             if not has_combo:
-                raise Exception(f"連段套組 {i+1} 沒有設定任何連段技能")
+                raise Exception(self._app.get_text("combo_skill_sequence_empty").format(number=i + 1))
 
         self._state.set_combo_running(True)
         self._state.combo_thread = threading.Thread(target=self.run_combo_system, daemon=True)
@@ -463,7 +463,7 @@ class ComboTab:
         for i, key in enumerate(combo_keys):
             if not key or key == 'off' or key == '' or not self._state.is_combo_running():
                 if not self._state.is_combo_running():
-                    self._app.status_tab.add_status_message(f"⏹️ 連擊套組 {set_index + 1} 被中斷", "warning")
+                    self._app.status_tab.add_status_message(self._app.get_text("combo_set_interrupted").format(number=set_index + 1), "warning")
                     print(f"連段套組 {set_index + 1} 被中斷")
                     return
                 continue
@@ -522,7 +522,7 @@ class ComboTab:
                             index=i+1, skill=key, type=self._app.get_text("normal_attack"), method=self._app.get_text("global_send")), "warning")
                         print(f"  全局按下技能鍵: {key} (無法獲取窗口句柄)")
             except Exception as e:
-                self._app.status_tab.add_status_message(f"❌ 技能 {i+1}: {key} 執行失敗 - {str(e)}", "error")
+                self._app.status_tab.add_status_message(self._app.get_text("combo_skill_execution_failed").format(index=i + 1, key=key, error=str(e)), "error")
                 print(f"  按鍵模擬失敗 {key}: {e}")
                 continue
 
@@ -563,17 +563,17 @@ class ComboTab:
             with open(self._app.config_file, 'w', encoding='utf-8') as f:
                 json.dump(existing_config, f, indent=4, ensure_ascii=False)
 
-            messagebox.showinfo("成功", "連段設定已儲存")
+            messagebox.showinfo(self._app.get_text("success"), self._app.get_text("combo_settings_saved"))
             print("連段設定已儲存")
 
         except Exception as e:
-            messagebox.showerror("錯誤", f"儲存連段設定失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("save_failed").format(error=str(e)))
             print(f"儲存連段設定失敗: {e}")
 
     def load_combo_config(self):
         try:
             if not os.path.exists(self._app.config_file):
-                messagebox.showinfo("提示", "沒有找到設定檔案，使用預設設定")
+                messagebox.showinfo(self._app.get_text("info"), self._app.get_text("combo_settings_load_default"))
                 return
 
             with open(self._app.config_file, 'r', encoding='utf-8') as f:

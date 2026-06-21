@@ -1158,7 +1158,7 @@ class HealthMonitor:
 
         # 檢查OpenCV是否可用
         if not OPENCV_AVAILABLE:
-            messagebox.showerror(self.get_text("error"), "OpenCV不可用，無法啟動監控功能。請重新安裝應用程式。")
+            messagebox.showerror(self.get_text("error"), self.get_text("opencv_unavailable_error"))
             return
 
         if not self.monitor_tab.window_var.get():
@@ -1555,11 +1555,11 @@ class HealthMonitor:
                     # 靜默重新啟動技能連段系統
                     self.combo_tab.restart_combo_system_silently()
                     print("[START] 技能連段已自動重新啟動")
-                    self.status_tab.add_status_message("技能連段已自動重新啟動", "success")
+                    self.status_tab.add_status_message(self.get_text("combo_system_auto_restarted"), "success")
                 except Exception as e:
                     print(f"[WARN] 技能連段自動重新啟動失敗: {e}")
                     print(" 請手動重新啟動技能連段系統")
-                    self.status_tab.add_status_message(f"技能連段自動重啟失敗: {str(e)}", "error")
+                    self.status_tab.add_status_message(self.get_text("combo_system_auto_restart_failed").format(error=str(e)), "error")
 
             print(" 所有功能已完全恢復正常")
 
@@ -1571,13 +1571,13 @@ class HealthMonitor:
         if self.pause_status_label:
             if self.is_global_pause():
                 self.pause_status_label.config(
-                    text="[STOP] 全域暫停中 - 所有熱鍵已停用",
+                    text=self.get_text("global_pause_status_active"),
                     foreground="red",
                     font=("Microsoft YaHei", 10, "bold")
                 )
             else:
                 self.pause_status_label.config(
-                    text="🟢 正常運行",
+                    text=self.get_text("normal_operation"),
                     foreground="green",
                     font=("Microsoft YaHei", 10, "normal")
                 )
@@ -1600,17 +1600,17 @@ class HealthMonitor:
         # 全域暫停檢查
         if self.is_global_pause():
             print("[STOP] 全域暫停中，跳過F10熱鍵")
-            self.status_tab.add_status_message("按下 F10 - 因全域暫停模式而跳過執行", "warning")
+            self.status_tab.add_status_message(self.get_text("f10_skip_global_pause"), "warning")
             return
 
         target_rect = self._get_game_window_rect()
 
         if self.is_monitoring():
-            self.status_tab.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
+            self.status_tab.add_status_message(self.get_text("f10_stop_monitoring"), "hotkey")
             self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_stopped"), 1000, target_rect))
             self.stop_monitoring()
         else:
-            self.status_tab.add_status_message("按下 F10 - 啟動血魔監控", "hotkey")
+            self.status_tab.add_status_message(self.get_text("f10_start_monitoring"), "hotkey")
             self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_started"), 1000, target_rect))
             self.start_monitoring()
 
@@ -1653,10 +1653,10 @@ class HealthMonitor:
         runtime = end_time - self.start_time
         runtime_str = f"{runtime.days}天 {runtime.seconds//3600}小時 {(runtime.seconds%3600)//60}分鐘 {runtime.seconds%60}秒"
         print(f"應用程式運行時間: {runtime_str}")
-        self.status_tab.add_status_message(f"應用程式運行時間: {runtime_str}", "info")
+        self.status_tab.add_status_message(self.get_text("application_runtime").format(runtime=runtime_str), "info")
 
         # 添加關閉訊息
-        self.status_tab.add_status_message("工具正在關閉，清理資源中...", "info")
+        self.status_tab.add_status_message(self.get_text("tool_closing_cleanup"), "info")
 
         # 儲存設定
         try:
@@ -1738,7 +1738,7 @@ class HealthMonitor:
                                creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
             print(f"重啟失敗: {e}")
-            messagebox.showerror("錯誤", f"無法重新啟動程式: {e}")
+            messagebox.showerror(self.get_text("error"), self.get_text("restart_failed").format(error=e))
             return
 
         # 關閉當前程式
@@ -1968,7 +1968,7 @@ class HealthMonitor:
         except Exception as e:
             error_msg = f"?????????: {e}"
             print(f"[ERROR] {error_msg}")
-            self.status_tab.add_status_message(f"??????- {str(e)}", "error")
+            self.status_tab.add_status_message(self.get_text("config_load_failed").format(error=str(e)), "error")
             self.config = {}
 
     def save_config(self, show_message=True):  # noqa: C901 — linear per-key config writes, not worth splitting
@@ -2101,12 +2101,12 @@ class HealthMonitor:
             # 儲存到檔案
             self.config_manager.save_config(self.config)
 
-            self.status_tab.add_status_message("設定檔案儲存成功", "success")
+            self.status_tab.add_status_message(self.get_text("config_saved_successfully"), "success")
             if show_message:
-                messagebox.showinfo("成功", "所有紀錄都已儲存")
+                messagebox.showinfo(self.get_text("success"), self.get_text("all_records_saved"))
         except Exception as e:
-            self.status_tab.add_status_message(f"設定檔案儲存失敗 - {str(e)}", "error")
-            messagebox.showerror("錯誤", f"儲存失敗: {str(e)}")
+            self.status_tab.add_status_message(self.get_text("config_save_failed").format(error=str(e)), "error")
+            messagebox.showerror(self.get_text("error"), self.get_text("save_failed").format(error=str(e)))
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
@@ -2179,7 +2179,7 @@ class HealthMonitor:
         try:
             # 創建載入提示視窗
             self.loading_window = tk.Toplevel(self.root)
-            self.loading_window.title("載入中")
+            self.loading_window.title(self.get_text("loading_text"))
             self.loading_window.geometry("300x150")
             self.loading_window.resizable(False, False)
             self.loading_window.attributes("-topmost", True)

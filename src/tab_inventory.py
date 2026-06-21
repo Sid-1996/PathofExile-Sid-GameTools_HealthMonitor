@@ -45,6 +45,17 @@ class InventoryTab:
         self.inventory_frame = inventory_frame
         self.inventory_clear_btn = None
         self.pickup_items_btn = None
+        self.clear_click_mode_label = None
+        self.clear_click_left_radio = None
+        self.clear_click_right_radio = None
+        self.gui_settings_label = None
+        self.always_on_top_check = None
+        self.inventory_settings_frame = None
+        self.control_frame = None
+        self.status_frame = None
+        self.pickup_frame = None
+        self.ui_preview_frame = None
+        self.preview_frame = None
         self.inventory_ui_screenshot = None
         self.interface_ui_screenshot = None
         self.create_inventory_tab()
@@ -53,22 +64,18 @@ class InventoryTab:
         """更新一鍵清包分頁的語言"""
         try:
             # 更新LabelFrame標題
-            if hasattr(self, 'inventory_frame'):
-                for child in self.inventory_frame.winfo_children():
-                    if isinstance(child, ttk.LabelFrame):
-                        text = child.cget('text')
-                        if text == "背包設定" or text == "Inventory Settings":
-                            child.config(text=self._app.get_text("inventory_settings"))
-                        elif text == "控制面板" or text == "Control Panel":
-                            child.config(text=self._app.get_text("control_panel"))
-                        elif text == "狀態" or text == "Status":
-                            child.config(text=self._app.get_text("status"))
-                        elif text == "F6取物座標" or text == "F6 Pickup Coordinates":
-                            child.config(text=self._app.get_text("pickup_coordinates"))
-                        elif text == "背包UI截圖" or text == "Inventory UI Screenshot":
-                            child.config(text=self._app.get_text("inventory_ui_screenshot"))
-                        elif text == "背包預覽" or text == "Inventory Preview":
-                            child.config(text=self._app.get_text("inventory_preview"))
+            if getattr(self, 'inventory_settings_frame', None):
+                self.inventory_settings_frame.config(text=self._app.get_text("inventory_settings"))
+            if getattr(self, 'control_frame', None):
+                self.control_frame.config(text=self._app.get_text("control_panel"))
+            if getattr(self, 'status_frame', None):
+                self.status_frame.config(text=self._app.get_text("status"))
+            if getattr(self, 'pickup_frame', None):
+                self.pickup_frame.config(text=self._app.get_text("pickup_coordinates"))
+            if getattr(self, 'ui_preview_frame', None):
+                self.ui_preview_frame.config(text=self._app.get_text("inventory_ui_screenshot"))
+            if getattr(self, 'preview_frame', None):
+                self.preview_frame.config(text=self._app.get_text("inventory_preview"))
 
             # 更新按鈕文字
             if hasattr(self, 'select_inventory_region_btn'):
@@ -91,14 +98,23 @@ class InventoryTab:
                 self.record_status_label.config(text=self._app.get_text("record_status"))
             if hasattr(self, 'inventory_ui_status_label'):
                 self.inventory_ui_status_label.config(text=self._app.get_text("inventory_ui_status"))
+            if hasattr(self, 'inventory_status_label'):
+                self.inventory_status_label.config(text=self._app.get_text("ready"), foreground="green")
             if hasattr(self, 'inventory_f3_label'):
                 self.inventory_f3_label.config(text=self._app.get_text("f3_hotkey"))
             if hasattr(self, 'pause_status_label_title'):
                 self.pause_status_label_title.config(text=self._app.get_text("global_pause"))
+            if hasattr(self, 'pause_status_label'):
+                self.pause_status_label.config(text=self._app.get_text("normal_operation"), foreground="green")
             if hasattr(self, 'coordinates_set_label'):
                 self.coordinates_set_label.config(text=self._app.get_text("coordinates_set"))
+            if hasattr(self, 'pickup_coords_label'):
+                valid_coords = sum(1 for x, y in (self.pickup_coordinates or []) if x != 0 or y != 0)
+                self.pickup_coords_label.config(text=self._app.get_text("coordinates_count").format(count=valid_coords))
             if hasattr(self, 'pickup_f6_label'):
                 self.pickup_f6_label.config(text=self._app.get_text("f6_hotkey"))
+            if hasattr(self, 'pickup_status_label'):
+                self.pickup_status_label.config(text=self._app.get_text("ready"), foreground="green")
             if hasattr(self, 'occupied_label_title'):
                 self.occupied_label_title.config(text=self._app.get_text("occupied_slots"))
             if hasattr(self, 'grid_adjustment_label'):
@@ -108,6 +124,30 @@ class InventoryTab:
             if hasattr(self, 'vertical_label'):
                 self.vertical_label.config(text=self._app.get_text("vertical"))
 
+            if hasattr(self, 'empty_color_label'):
+                if self.empty_inventory_colors:
+                    recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
+                    self.empty_color_label.config(
+                        text=self._app.get_text("recorded_colors_template").format(count=recorded_count),
+                        background="lightgreen",
+                    )
+                else:
+                    self.empty_color_label.config(
+                        text=self._app.get_text("not_recorded"),
+                        background="lightgray",
+                    )
+            if hasattr(self, 'inventory_ui_label'):
+                if self.inventory_ui_region and self.inventory_ui_screenshot is not None:
+                    self.inventory_ui_label.config(
+                        text=self._app.get_text("inventory_ui_recorded"),
+                        background="lightgreen",
+                    )
+                else:
+                    self.inventory_ui_label.config(
+                        text=self._app.get_text("not_recorded"),
+                        background="lightgray",
+                    )
+
             # 更新重置按鈕
             if hasattr(self, 'reset_offset_btn'):
                 self.reset_offset_btn.config(text=self._app.get_text("reset"))
@@ -115,15 +155,28 @@ class InventoryTab:
             # 更新說明文字
             if hasattr(self, 'ui_preview_hint_label'):
                 self.ui_preview_hint_label.config(text=self._app.get_text("inventory_ui_screenshot_hint"))
+            if hasattr(self, 'inventory_exclude_hint'):
+                self.inventory_exclude_hint.config(text=self._app.get_text("inventory_exclude_hint"))
+
+            if hasattr(self, 'clear_click_mode_label'):
+                self.clear_click_mode_label.config(text=self._app.get_text("clear_click_mode"))
+            if hasattr(self, 'clear_click_left_radio'):
+                self.clear_click_left_radio.config(text=self._app.get_text("clear_click_left"))
+            if hasattr(self, 'clear_click_right_radio'):
+                self.clear_click_right_radio.config(text=self._app.get_text("clear_click_right"))
+            if hasattr(self, 'gui_settings_label'):
+                self.gui_settings_label.config(text=self._app.get_text("gui_settings"))
+            if hasattr(self, 'always_on_top_check'):
+                self.always_on_top_check.config(text=self._app.get_text("always_on_top"))
 
             # 更新預覽標籤的初始文字
             if hasattr(self, 'inventory_preview_label') and not getattr(self, '_preview_has_image', False):
                 self.inventory_preview_label.itemconfig(self._preview_placeholder, text=self._app.get_text("select_inventory_region_first"))
 
             # 更新舊的按鈕引用（向後相容）
-            if hasattr(self, 'inventory_clear_btn'):
+            if getattr(self, 'inventory_clear_btn', None):
                 self.inventory_clear_btn.config(text=self._app.get_text("clear_inventory"))
-            if hasattr(self, 'pickup_items_btn'):
+            if getattr(self, 'pickup_items_btn', None):
                 self.pickup_items_btn.config(text=self._app.get_text("pickup_items"))
 
             # 重繪 Canvas placeholder 文字
@@ -214,7 +267,7 @@ class InventoryTab:
         if self._state.global_pause:
             print("[STOP] 全域暫停中，跳過F3熱鍵")
             try:
-                self._app.root.after(0, lambda: self._app.status_tab.add_status_message("按下 F3 - 因全域暫停模式而跳過執行", "warning"))
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_skip_global_pause"), "warning"))
             except Exception:
                 pass
             return None
@@ -241,7 +294,7 @@ class InventoryTab:
         if not window_title:
             try:
                 self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_game_window_not_set"), "error"))
-                self._app.root.after(0, lambda: messagebox.showwarning("F3 清包提醒", "未設定遊戲視窗！\n\n請先在「血量監控」分頁選擇遊戲視窗。"))
+                self._app.root.after(0, lambda: messagebox.showwarning(self._app.get_text("f3_inventory_reminder"), self._app.get_text("set_game_window_first")))
             except Exception:
                 pass
             return None
@@ -350,7 +403,7 @@ class InventoryTab:
                 print("F3(worker): 已清空背包物品")
         else:
             try:
-                self._app.root.after(0, lambda: self._app.status_tab.add_status_message("F3 執行完成 - 背包已為空狀態", "success"))
+                self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success"))
             except Exception:
                 pass
             print("F3(worker): 背包已淨空，無需操作")
@@ -419,7 +472,7 @@ class InventoryTab:
                 _err_msg = str(e)
                 print(f"F3(worker): 發生例外: {e}")
                 try:
-                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(f"F3 執行失敗 - {_err_msg}", "error"))
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f3_fail_with_error").format(error=_err_msg), "error"))
                 except Exception:
                     pass
             finally:
@@ -783,126 +836,129 @@ class InventoryTab:
 
         # === 左側區域：控制面板 ===
         # 背包設定區域
-        inventory_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_settings"), padding="15")
-        inventory_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        self.inventory_settings_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_settings"), padding="15")
+        self.inventory_settings_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
 
         # 框選背包區域
-        self.select_inventory_region_btn = ttk.Button(inventory_frame, text=self._app.get_text("select_inventory_region"), command=self.select_inventory_region)
+        self.select_inventory_region_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("select_inventory_region"), command=self.select_inventory_region)
         self.select_inventory_region_btn.grid(row=0, column=0, pady=2)
         Tooltip(self.select_inventory_region_btn, self._app.get_text("select_inventory_region_tip"))
-        self.record_empty_color_btn = ttk.Button(inventory_frame, text=self._app.get_text("record_empty_color"), command=self.record_empty_inventory_color)
+        self.record_empty_color_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("record_empty_color"), command=self.record_empty_inventory_color)
         self.record_empty_color_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
         Tooltip(self.record_empty_color_btn, self._app.get_text("record_empty_color_tip"))
-        self.select_inventory_ui_btn = ttk.Button(inventory_frame, text=self._app.get_text("select_inventory_ui"), command=self.select_inventory_ui_region)
+        self.select_inventory_ui_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("select_inventory_ui"), command=self.select_inventory_ui_region)
         self.select_inventory_ui_btn.grid(row=0, column=2, padx=(10, 0), pady=2)
         Tooltip(self.select_inventory_ui_btn, self._app.get_text("select_inventory_ui_tip"))
 
         # 顏色顯示
-        self.record_status_label = ttk.Label(inventory_frame, text=self._app.get_text("record_status"))
+        self.record_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("record_status"))
         self.record_status_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.empty_color_label = ttk.Label(inventory_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
+        self.empty_color_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
         self.empty_color_label.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 背包UI顯示
-        self.inventory_ui_status_label = ttk.Label(inventory_frame, text=self._app.get_text("inventory_ui_status"))
+        self.inventory_ui_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("inventory_ui_status"))
         self.inventory_ui_status_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.inventory_ui_label = ttk.Label(inventory_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
+        self.inventory_ui_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
         self.inventory_ui_label.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 控制按鈕
-        control_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("control_panel"), padding="15")
-        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        self.control_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("control_panel"), padding="15")
+        self.control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
 
-        self.test_clear_inventory_btn = ttk.Button(control_frame, text=self._app.get_text("test_clear_inventory"), command=self.test_inventory_clearing)
+        self.test_clear_inventory_btn = ttk.Button(self.control_frame, text=self._app.get_text("test_clear_inventory"), command=self.test_inventory_clearing)
         self.test_clear_inventory_btn.grid(row=0, column=0, pady=2)
         Tooltip(self.test_clear_inventory_btn, self._app.get_text("test_clear_inventory_tip"))
-        self.save_inventory_settings_btn = ttk.Button(control_frame, text=self._app.get_text("save_inventory_settings"), command=self.save_inventory_config)
+        self.save_inventory_settings_btn = ttk.Button(self.control_frame, text=self._app.get_text("save_inventory_settings"), command=self.save_inventory_config)
         self.save_inventory_settings_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
         # 清包點擊模式選擇
-        click_mode_frame = ttk.Frame(control_frame)
+        click_mode_frame = ttk.Frame(self.control_frame)
         click_mode_frame.grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky=tk.W)
 
-        ttk.Label(click_mode_frame, text=self._app.get_text("clear_click_mode")).grid(row=0, column=0, sticky=tk.W)
+        self.clear_click_mode_label = ttk.Label(click_mode_frame, text=self._app.get_text("clear_click_mode"))
+        self.clear_click_mode_label.grid(row=0, column=0, sticky=tk.W)
         self.inventory_clear_click_mode = tk.StringVar(value="left")
 
-        left_rb = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_left"),
-                                  variable=self.inventory_clear_click_mode, value="left",
-                                  command=self._on_click_mode_changed)
-        left_rb.grid(row=0, column=1, padx=(5, 10))
-        Tooltip(left_rb, self._app.get_text("clear_click_left_tip"))
+        self.clear_click_left_radio = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_left"),
+                                                       variable=self.inventory_clear_click_mode, value="left",
+                                                       command=self._on_click_mode_changed)
+        self.clear_click_left_radio.grid(row=0, column=1, padx=(5, 10))
+        Tooltip(self.clear_click_left_radio, self._app.get_text("clear_click_left_tip"))
 
-        right_rb = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_right"),
-                                   variable=self.inventory_clear_click_mode, value="right",
-                                   command=self._on_click_mode_changed)
-        right_rb.grid(row=0, column=2, padx=(5, 10))
-        Tooltip(right_rb, self._app.get_text("clear_click_right_tip"))
+        self.clear_click_right_radio = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_right"),
+                                                        variable=self.inventory_clear_click_mode, value="right",
+                                                        command=self._on_click_mode_changed)
+        self.clear_click_right_radio.grid(row=0, column=2, padx=(5, 10))
+        Tooltip(self.clear_click_right_radio, self._app.get_text("clear_click_right_tip"))
 
         # GUI設定選項
-        gui_control_frame = ttk.Frame(control_frame)
+        gui_control_frame = ttk.Frame(self.control_frame)
         gui_control_frame.grid(row=2, column=0, columnspan=2, pady=(10, 0))
 
-        ttk.Label(gui_control_frame, text=self._app.get_text("gui_settings")).grid(row=0, column=0, sticky=tk.W)
-        ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var,
-                       command=self._app.toggle_always_on_top).grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=(5, 0))
+        self.gui_settings_label = ttk.Label(gui_control_frame, text=self._app.get_text("gui_settings"))
+        self.gui_settings_label.grid(row=0, column=0, sticky=tk.W)
+        self.always_on_top_check = ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var,
+                       command=self._app.toggle_always_on_top)
+        self.always_on_top_check.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=(5, 0))
 
         # 狀態顯示
-        status_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("status"), padding="15")
-        status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
+        self.status_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("status"), padding="15")
+        self.status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
 
-        self.inventory_f3_label = ttk.Label(status_frame, text=self._app.get_text("f3_hotkey"))
+        self.inventory_f3_label = ttk.Label(self.status_frame, text=self._app.get_text("f3_hotkey"))
         self.inventory_f3_label.grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.inventory_status_label = ttk.Label(status_frame, text=self._app.get_text("ready"), foreground="green")
+        self.inventory_status_label = ttk.Label(self.status_frame, text=self._app.get_text("ready"), foreground="green")
         self.inventory_status_label.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
-        self.pause_status_label_title = ttk.Label(status_frame, text=self._app.get_text("global_pause"))
+        self.pause_status_label_title = ttk.Label(self.status_frame, text=self._app.get_text("global_pause"))
         self.pause_status_label_title.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.pause_status_label = ttk.Label(status_frame, text=self._app.get_text("normal_operation"), foreground="green")
+        self.pause_status_label = ttk.Label(self.status_frame, text=self._app.get_text("normal_operation"), foreground="green")
         self.pause_status_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # F6取物座標設定
-        pickup_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("pickup_coordinates"), padding="10")
-        pickup_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.pickup_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("pickup_coordinates"), padding="10")
+        self.pickup_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
         # 座標設定按鈕
-        self.setup_pickup_coordinates_btn = ttk.Button(pickup_frame, text=self._app.get_text("setup_pickup_coordinates"), command=self.setup_pickup_coordinates)
+        self.setup_pickup_coordinates_btn = ttk.Button(self.pickup_frame, text=self._app.get_text("setup_pickup_coordinates"), command=self.setup_pickup_coordinates)
         self.setup_pickup_coordinates_btn.grid(row=0, column=0, pady=2)
         Tooltip(self.setup_pickup_coordinates_btn, self._app.get_text("setup_pickup_coordinates_tip"))
-        self.save_pickup_coordinates_btn = ttk.Button(pickup_frame, text=self._app.get_text("save_coordinates"), command=self.save_pickup_coordinates)
+        self.save_pickup_coordinates_btn = ttk.Button(self.pickup_frame, text=self._app.get_text("save_coordinates"), command=self.save_pickup_coordinates)
         self.save_pickup_coordinates_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
         # 座標狀態顯示
-        self.coordinates_set_label = ttk.Label(pickup_frame, text=self._app.get_text("coordinates_set"))
+        self.coordinates_set_label = ttk.Label(self.pickup_frame, text=self._app.get_text("coordinates_set"))
         self.coordinates_set_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.pickup_coords_label = ttk.Label(pickup_frame, text=self._app.get_text("coordinates_count"), foreground="gray")
+        self.pickup_coords_label = ttk.Label(self.pickup_frame, text=self._app.get_text("coordinates_count"), foreground="gray")
         self.pickup_coords_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # F6狀態顯示
-        self.pickup_f6_label = ttk.Label(pickup_frame, text=self._app.get_text("f6_hotkey"))
+        self.pickup_f6_label = ttk.Label(self.pickup_frame, text=self._app.get_text("f6_hotkey"))
         self.pickup_f6_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.pickup_status_label = ttk.Label(pickup_frame, text=self._app.get_text("ready"), foreground="green")
+        self.pickup_status_label = ttk.Label(self.pickup_frame, text=self._app.get_text("ready"), foreground="green")
         self.pickup_status_label.grid(row=2, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # UI截圖顯示區域
-        ui_preview_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_ui_screenshot"), padding="10")
-        ui_preview_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.ui_preview_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_ui_screenshot"), padding="10")
+        self.ui_preview_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
         # 創建一個Canvas來顯示UI截圖
-        self.ui_preview_canvas = tk.Canvas(ui_preview_frame, width=200, height=150, bg='lightgray', relief='sunken')
+        self.ui_preview_canvas = tk.Canvas(self.ui_preview_frame, width=200, height=150, bg='lightgray', relief='sunken')
         self.ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         # 添加說明文字
-        self.ui_preview_hint_label = ttk.Label(ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"),
+        self.ui_preview_hint_label = ttk.Label(self.ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"),
                  font=("", 8), foreground="gray")
         self.ui_preview_hint_label.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
 
         # === 右側區域：背包預覽 ===
         # 背包預覽區域
-        preview_frame = ttk.LabelFrame(right_frame, text=self._app.get_text("inventory_preview"), padding="10")
-        preview_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.preview_frame = ttk.LabelFrame(right_frame, text=self._app.get_text("inventory_preview"), padding="10")
+        self.preview_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # 統計資訊區域
-        stats_frame = ttk.Frame(preview_frame)
+        stats_frame = ttk.Frame(self.preview_frame)
         stats_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
 
         self.occupied_label_title = ttk.Label(stats_frame, text=self._app.get_text("occupied_slots"))
@@ -911,7 +967,7 @@ class InventoryTab:
         self.occupied_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
 
         # 偏移調整區域
-        offset_frame = ttk.Frame(preview_frame)
+        offset_frame = ttk.Frame(self.preview_frame)
         offset_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
 
         self.grid_adjustment_label = ttk.Label(offset_frame, text=self._app.get_text("grid_alignment_adjustment"))
@@ -936,19 +992,19 @@ class InventoryTab:
         self.reset_offset_btn = ttk.Button(offset_frame, text=self._app.get_text("reset"), command=self.reset_grid_offset)
         self.reset_offset_btn.grid(row=1, column=8, padx=(10, 0))
 
-        self.inventory_preview_label = tk.Canvas(preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
+        self.inventory_preview_label = tk.Canvas(self.preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
         self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0), sticky=(tk.N, tk.S, tk.W, tk.E))
         self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("select_inventory_region_first"), anchor='nw', fill='gray')
         self.inventory_preview_label.bind('<Button-1>', self._on_preview_click)
         self.inventory_preview_label.bind('<Configure>', self._on_preview_resize)
         self._preview_has_image = False
 
-        self.inventory_exclude_hint = ttk.Label(preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground="gray")
+        self.inventory_exclude_hint = ttk.Label(self.preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground="gray")
         self.inventory_exclude_hint.grid(row=3, column=0, sticky=tk.W, pady=(2, 5))
 
         # 設定預覽區域大小
-        preview_frame.columnconfigure(0, weight=1)
-        preview_frame.rowconfigure(2, weight=1)  # 預覽圖片區域
+        self.preview_frame.columnconfigure(0, weight=1)
+        self.preview_frame.rowconfigure(2, weight=1)  # 預覽圖片區域
         right_frame.rowconfigure(0, weight=1)
 
         # 初始化偏移標籤
@@ -1317,7 +1373,7 @@ class InventoryTab:
             # 計算格子位置
             self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
             if not self.inventory_grid_positions:
-                messagebox.showerror("錯誤", "無法計算格子位置")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("inventory_grid_position_calc_failed"))
                 return
 
             # 擷取整個背包區域
@@ -1373,7 +1429,7 @@ class InventoryTab:
         except Exception as e:
             # 如果發生錯誤，也要恢復GUI視窗
             self.restore_all_guis()
-            messagebox.showerror("錯誤", f"記錄顏色失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
 
     def select_inventory_ui_region(self):
         """框選背包UI區域"""
@@ -1415,7 +1471,7 @@ class InventoryTab:
             self.create_inventory_ui_selection_window(game_window)
 
         except Exception as e:
-            messagebox.showerror("錯誤", f"框選失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
             # 確保GUI被恢復
             self._app.root.deiconify()
 
@@ -1459,7 +1515,7 @@ class InventoryTab:
             self.create_interface_ui_selection_window(game_window)
 
         except Exception as e:
-            messagebox.showerror("錯誤", f"框選失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
             # 確保GUI被恢復
             self._app.root.deiconify()
 
@@ -1645,7 +1701,7 @@ class InventoryTab:
                         self.update_ui_preview()
 
                 except Exception as e:
-                    messagebox.showerror("錯誤", f"截圖失敗: {str(e)}")
+                    messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
                     print(f"詳細錯誤: {e}")
                     import traceback
                     traceback.print_exc()
@@ -1816,7 +1872,7 @@ class InventoryTab:
                         self.update_interface_ui_preview()
 
                 except Exception as e:
-                    messagebox.showerror("錯誤", f"截圖失敗: {str(e)}")
+                    messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
                     print(f"詳細錯誤: {e}")
                     import traceback
                     traceback.print_exc()
@@ -2443,7 +2499,7 @@ class InventoryTab:
     def _on_preview_click(self, event):
         """點擊背包預覽切換格子的排除狀態"""
         if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
-            self._app.status_tab.add_status_message("無法切換排除：請先完成背包設定（框選區域＋記錄空格顏色）", "warning")
+            self._app.status_tab.add_status_message(self._app.get_text("inventory_exclusion_toggle_unavailable"), "warning")
             return
         meta = self._preview_meta
         click_x = event.x - meta.get('canvas_x', 0) - meta['offset_x']
@@ -2460,7 +2516,7 @@ class InventoryTab:
         else:
             self.excluded_inventory_slots.add(idx)
         self._draw_exclusion_overlay()
-        self._app.status_tab.add_status_message(f"格子 {idx} 已{'排除' if idx in self.excluded_inventory_slots else '取消排除'}", "info")
+        self._app.status_tab.add_status_message(self._app.get_text("inventory_slot_exclusion_toggled").format(index=idx, state=self._app.get_text("excluded") if idx in self.excluded_inventory_slots else self._app.get_text("included")), "info")
         self._app.save_config(show_message=False)
 
     def _on_preview_resize(self, event=None):
@@ -2733,20 +2789,20 @@ class InventoryTab:
         if gui_was_topmost:
             self._app.root.attributes("-topmost", True)
             print("已恢復 GUI 置頂設定")
-        status = "需要清空" if should_clear else "背包淨空"
-        result_msg = f"背包狀態: {status}\n"
-        result_msg += f"占用格子: {len(occupied_slots)}/60\n"
+        status_key = "test_clear_inventory_needs_clear" if should_clear else "test_clear_inventory_empty"
+        result_msg = self._app.get_text("test_clear_inventory_status").format(status=self._app.get_text(status_key))
+        result_msg += self._app.get_text("test_clear_inventory_occupied_slots").format(count=len(occupied_slots))
         if occupied_slots:
-            result_msg += "\n占用格子位置:\n"
+            result_msg += self._app.get_text("test_clear_inventory_occupied_positions")
             for i, index in enumerate(occupied_slots[:10]):
                 if index < len(self.inventory_grid_positions):
                     x, y = self.inventory_grid_positions[index]
-                    result_msg += f"  {i+1}. 格子{index} ({x}, {y})\n"
+                    result_msg += self._app.get_text("test_clear_inventory_slot_line").format(index=i + 1, slot=index, x=x, y=y)
                 else:
-                    result_msg += f"  {i+1}. 格子{index} (無效位置)\n"
+                    result_msg += self._app.get_text("test_clear_inventory_invalid_slot_line").format(index=i + 1, slot=index)
             if len(occupied_slots) > 10:
-                result_msg += f"  ...還有{len(occupied_slots)-10}個\n"
-        messagebox.showinfo("測試清包結果", result_msg)
+                result_msg += self._app.get_text("test_clear_inventory_more").format(count=len(occupied_slots) - 10)
+        messagebox.showinfo(self._app.get_text("test_clear_inventory_result_title"), result_msg)
 
     def _minimize_gui_for_test_if_needed(self, game_window):
         gui_minimized_for_test = False
@@ -2850,7 +2906,7 @@ class InventoryTab:
                 should_clear, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
             self._restore_gui_after_test(gui_minimized_for_test, original_state, original_geometry, gui_was_topmost, should_clear, occupied_slots, img)
         except Exception as e:
-            messagebox.showerror("錯誤", f"測試失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
             try:
                 self._app.root.deiconify()
             except Exception:
@@ -2887,33 +2943,33 @@ class InventoryTab:
                     self._app.root.attributes("-topmost", True)
 
         except Exception as e:
-            messagebox.showerror("錯誤", f"儲存失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("save_failed").format(error=str(e)))
 
     def return_to_hideout(self):
         """F5 返回藏身功能"""
         # 全域暫停檢查
         if self._state.global_pause:
             print("[STOP] 全域暫停中，跳過F5熱鍵")
-            self._app.status_tab.add_status_message("按下 F5 - 因全域暫停模式而跳過執行", "warning")
+            self._app.status_tab.add_status_message(self._app.get_text("f5_skip_global_pause"), "warning")
             return
 
-        self._app.status_tab.add_status_message("按下 F5 - 執行返回藏身", "hotkey")
+        self._app.status_tab.add_status_message(self._app.get_text("f5_hotkey_pressed"), "hotkey")
 
         try:
             # 檢查是否有設定遊戲視窗
             window_title = self._app.monitor_tab.window_var.get()
             if not window_title:
                 print("F5: 未設定遊戲視窗，無法使用返回藏身功能")
-                self._app.status_tab.add_status_message("F5 執行失敗 - 未設定遊戲視窗", "error")
+                self._app.status_tab.add_status_message(self._app.get_text("f5_fail_game_window_not_set"), "error")
                 return
 
             # 檢查遊戲視窗是否在前台
             if not self._app.window_key_sender.is_game_window_foreground(window_title):
                 print(f"F5: 遊戲視窗 '{window_title}' 不在前台，跳過返回藏身操作")
-                self._app.status_tab.add_status_message("F5 執行取消 - 遊戲視窗不在前台", "warning")
+                self._app.status_tab.add_status_message(self._app.get_text("f5_cancel_game_window_not_foreground"), "warning")
                 return
 
-            self._app.status_tab.add_status_message("F5 執行中 - 發送返回藏身指令", "info")
+            self._app.status_tab.add_status_message(self._app.get_text("f5_processing_return_to_hideout"), "info")
             print("F5: 執行返回藏身")
 
             # 暫時阻止輸入，防止按鍵衝突
@@ -2939,7 +2995,7 @@ class InventoryTab:
 
         except Exception as e:
             print(f"F5: 返回藏身失敗: {str(e)}")
-            self._app.status_tab.add_status_message(f"F5 執行失敗 - {str(e)}", "error")
+            self._app.status_tab.add_status_message(self._app.get_text("f5_fail_with_error").format(error=str(e)), "error")
 
     def _validate_f6(self):
         if self._state.global_pause:
@@ -3144,7 +3200,7 @@ class InventoryTab:
                 print(f"F6(worker): 發生例外: {e}")
                 _err_msg = str(e)
                 try:
-                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(f"F6 執行失敗 - {_err_msg}", "error"))
+                    self._app.root.after(0, lambda: self._app.status_tab.add_status_message(self._app.get_text("f6_fail_with_error").format(error=_err_msg), "error"))
                 except Exception:
                     pass
                 try:
@@ -3186,7 +3242,7 @@ class InventoryTab:
 
         except Exception as e:
             print(f"儲存取物座標失敗: {str(e)}")
-            messagebox.showerror("錯誤", f"儲存失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("save_failed").format(error=str(e)))
 
     def setup_pickup_coordinates(self):
         """設定取物座標 - 一次性連續設定5個座標"""
@@ -3444,13 +3500,13 @@ class InventoryTab:
 
         # 檢查取物座標
         if not any(x != 0 or y != 0 for x, y in self.pickup_coordinates):
-            messagebox.showerror("錯誤", "請先設定至少一個取物座標")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_coordinates_required"))
             return
 
         # 檢查遊戲視窗設定
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
-            messagebox.showerror("錯誤", "請先選擇遊戲視窗")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_game_window_required"))
             return
 
         # 檢查遊戲視窗是否最小化
@@ -3461,13 +3517,13 @@ class InventoryTab:
         try:
             # 檢查當前配置
             if 'pickup_coordinates' not in self._app.config:
-                messagebox.showerror("錯誤", "取物座標配置未找到，請重新設定")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_config_missing"))
                 return
 
             # 驗證配置中的座標
             config_coords = self._app.config['pickup_coordinates']
             if len(config_coords) != 5:
-                messagebox.showerror("錯誤", "取物座標配置不完整")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_config_incomplete"))
                 return
 
             # 檢查配置與當前座標是否一致
@@ -3479,14 +3535,14 @@ class InventoryTab:
             print("[OK] 座標和遊戲視窗設定檢查通過")
 
         except Exception as e:
-            messagebox.showerror("錯誤", f"配置檢查失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
             return
 
         try:
             # 獲取遊戲視窗
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
-                messagebox.showerror("錯誤", f"找不到遊戲視窗: {window_title}")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
 
             game_window = windows[0]
@@ -3511,7 +3567,7 @@ class InventoryTab:
             print(f"測試取物功能失敗: {e}")
             # 測試模式：在異常情況下也不恢復GUI視窗
             print("F6: 測試模式 - 異常處理時不恢復GUI視窗")
-            messagebox.showerror("錯誤", f"測試取物功能失敗: {str(e)}")
+            messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_test_failed").format(error=str(e)))
 
     def update_pickup_status(self):
         """更新取物狀態顯示"""

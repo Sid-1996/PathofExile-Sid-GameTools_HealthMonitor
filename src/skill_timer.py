@@ -289,7 +289,7 @@ class SkillTimerModule:
         if not _PYAUTOGUI_OK:
             warn = tk.Label(
                 f,
-                text="⚠ 找不到 pyautogui，請執行：pip install pyautogui",
+                text=self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"),
                 fg="#e67e22", font=("Consolas", 8)
             )
             warn.grid(row=ctrl_row + 2, column=0, columnspan=7,
@@ -313,10 +313,11 @@ class SkillTimerModule:
                 self._set_status(idx, True)
             else:
                 messagebox.showwarning(
-                    "設定錯誤",
-                    f"Skill {idx + 1}：\n"
-                    f"• 請確認「按鍵」欄位不為空\n"
-                    f"• 間隔需 ≥ {_MIN_MS} ms"
+                    self._t("error", "Error"),
+                    self._t("skill_timer_error", "Skill {slot}: Key cannot be empty and interval must be ≥ {min}ms").format(
+                        slot=idx + 1,
+                        min=_MIN_MS,
+                    ),
                 )
 
     def _set_status(self, idx: int, running: bool):
@@ -409,7 +410,6 @@ class SkillTimerModule:
 # ══════════════════════════════════════════════════════════
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("SkillTimerModule 獨立測試")
 
     log_text = tk.Text(root, height=6, width=60, state="disabled",
                        font=("Consolas", 9))
@@ -422,6 +422,7 @@ if __name__ == "__main__":
         log_text.config(state="disabled")
 
     module = SkillTimerModule(root, max_slots=4, on_log=on_log)
+    root.title(module._t("skill_timer_title", "⏱ 技能計時器(Beta)"))
     module.frame.pack(padx=10, pady=10, fill="x")
 
     def on_close():

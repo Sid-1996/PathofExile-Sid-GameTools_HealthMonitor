@@ -85,13 +85,13 @@ class AboutTab:
                 import webbrowser
                 webbrowser.open("https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor")
             except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開 GitHub 頁面: {e}")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_github_failed").format(error=e))
 
         github_btn = ttk.Button(row1_frame, text=self._app.get_text("github_button"), command=open_github, width=12)
         github_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         def discord_placeholder():
-            messagebox.showinfo("提示", self._app.get_text("discord_placeholder_message"))
+            messagebox.showinfo(self._app.get_text("info"), self._app.get_text("discord_placeholder_message"))
 
         discord_btn = ttk.Button(row1_frame, text=self._app.get_text("discord_button"), command=discord_placeholder,
                                  state='disabled', width=12)
@@ -105,7 +105,7 @@ class AboutTab:
                 import webbrowser
                 webbrowser.open("https://lelive.weebly.com/")
             except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開 Sid流亡工具箱 頁面: {e}")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_sid_toolbox_failed").format(error=e))
 
         sid_btn = ttk.Button(row2_frame, text=self._app.get_text("sid_toolbox_button"), command=open_sid_toolbox, width=12)
         sid_btn.pack(side=tk.LEFT)
@@ -130,7 +130,7 @@ class AboutTab:
                 import webbrowser
                 webbrowser.open("https://p.ecpay.com.tw/E0E3A")
             except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開ECPay頁面: {e}")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_ecpay_failed").format(error=e))
 
         ecpay_btn = ttk.Button(sponsor_frame, text=self._app.get_text("ecpay_button"), command=open_ecpay)
         ecpay_btn.pack(side=tk.LEFT, padx=(0, 8), expand=True, fill=tk.X)
@@ -140,7 +140,7 @@ class AboutTab:
                 import webbrowser
                 webbrowser.open("https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4")
             except Exception as e:
-                messagebox.showerror("錯誤", f"無法打開PayPal頁面: {e}")
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_paypal_failed").format(error=e))
 
         paypal_btn = ttk.Button(sponsor_frame, text=self._app.get_text("paypal_button"), command=open_paypal)
         paypal_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)

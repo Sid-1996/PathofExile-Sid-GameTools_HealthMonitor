@@ -72,6 +72,15 @@ class MonitorTab:
 
         self.window_var = None
         self.window_combo = None
+        self.window_frame = None
+        self.game_window_label = None
+        self.refresh_windows_btn = None
+        self.health_bar_region_label = None
+        self.mana_bar_region_label = None
+        self.interface_ui_region_label = None
+        self.select_health_region_btn = None
+        self.select_mana_region_btn = None
+        self.select_interface_ui_btn = None
         self.region_label = None
         self.mana_region_label = None
         self.interface_ui_label = None
@@ -80,6 +89,16 @@ class MonitorTab:
         self.key_var = None
         self.cooldown_var = None
         self.multi_trigger_var = None
+        self.trigger_settings_frame = None
+        self.type_label = None
+        self.percentage_label = None
+        self.hotkey_label = None
+        self.cooldown_label = None
+        self.add_trigger_btn = None
+        self.remove_selected_btn = None
+        self.adjust_colors_btn = None
+        self.adjust_interface_ui_btn = None
+        self.multi_trigger_check = None
         self.settings_tree = None
         self.control_frame = None
         self.start_btn = None
@@ -111,6 +130,8 @@ class MonitorTab:
         self.preview_frame = None
         self.health_preview_frame = None
         self.mana_preview_frame = None
+        self.interface_ui_preview_frame = None
+        self.interface_ui_preview_hint = None
         self.preview_label = None
         self.mana_preview_label = None
         self.interface_ui_preview_canvas = None
@@ -132,86 +153,95 @@ class MonitorTab:
         main_frame.columnconfigure(1, weight=0)
         main_frame.rowconfigure(0, weight=1)
 
-        window_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("game_window_settings"), padding="10")
-        window_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.window_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("game_window_settings"), padding="10")
+        self.window_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
 
-        ttk.Label(window_frame, text=self._app.get_text("game_window")).grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.game_window_label = ttk.Label(self.window_frame, text=self._app.get_text("game_window"))
+        self.game_window_label.grid(row=0, column=0, sticky=tk.W, pady=2)
         self.window_var = tk.StringVar(value='')
-        self.window_combo = ttk.Combobox(window_frame, textvariable=self.window_var, width=35)
+        self.window_combo = ttk.Combobox(self.window_frame, textvariable=self.window_var, width=35)
         self.window_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
-        ttk.Button(window_frame, text=self._app.get_text("refresh"), command=self.refresh_windows).grid(row=0, column=2, padx=(5, 0))
+        self.refresh_windows_btn = ttk.Button(self.window_frame, text=self._app.get_text("refresh"), command=self.refresh_windows)
+        self.refresh_windows_btn.grid(row=0, column=2, padx=(5, 0))
 
-        ttk.Label(window_frame, text=self._app.get_text("health_bar_region")).grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.region_label = ttk.Label(window_frame, text=get_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
+        self.health_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("health_bar_region"))
+        self.health_bar_region_label.grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.region_label = ttk.Label(self.window_frame, text=get_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
         self.region_label.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
-        ttk.Label(window_frame, text=self._app.get_text("mana_bar_region")).grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.mana_region_label = ttk.Label(window_frame, text=get_mana_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
+        self.mana_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("mana_bar_region"))
+        self.mana_bar_region_label.grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.mana_region_label = ttk.Label(self.window_frame, text=get_mana_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
         self.mana_region_label.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
-        ttk.Label(window_frame, text=self._app.get_text("interface_ui_region")).grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.interface_ui_label = ttk.Label(window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgray", relief="sunken", padding=2)
+        self.interface_ui_region_label = ttk.Label(self.window_frame, text=self._app.get_text("interface_ui_region"))
+        self.interface_ui_region_label.grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.interface_ui_label = ttk.Label(self.window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgray", relief="sunken", padding=2)
         self.interface_ui_label.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
-        btn = ttk.Button(window_frame, text=self._app.get_text("select_health_region"), command=self.start_selection)
-        btn.grid(row=4, column=0, pady=(5, 0))
-        Tooltip(btn, self._app.get_text("select_health_region_tip"))
-        btn = ttk.Button(window_frame, text=self._app.get_text("select_mana_region"), command=self.start_mana_selection)
-        btn.grid(row=4, column=1, pady=(5, 0), padx=(5, 0))
-        Tooltip(btn, self._app.get_text("select_mana_region_tip"))
-        btn = ttk.Button(window_frame, text=self._app.get_text("select_interface_ui"), command=self._app.select_interface_ui_region)
-        btn.grid(row=4, column=2, pady=(5, 0), padx=(5, 0))
-        Tooltip(btn, self._app.get_text("select_interface_ui_tip"))
+        self.select_health_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_health_region"), command=self.start_selection)
+        self.select_health_region_btn.grid(row=4, column=0, pady=(5, 0))
+        Tooltip(self.select_health_region_btn, self._app.get_text("select_health_region_tip"))
+        self.select_mana_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_mana_region"), command=self.start_mana_selection)
+        self.select_mana_region_btn.grid(row=4, column=1, pady=(5, 0), padx=(5, 0))
+        Tooltip(self.select_mana_region_btn, self._app.get_text("select_mana_region_tip"))
+        self.select_interface_ui_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_interface_ui"), command=self._app.select_interface_ui_region)
+        self.select_interface_ui_btn.grid(row=4, column=2, pady=(5, 0), padx=(5, 0))
+        Tooltip(self.select_interface_ui_btn, self._app.get_text("select_interface_ui_tip"))
 
-        window_frame.columnconfigure(1, weight=1)
+        self.window_frame.columnconfigure(1, weight=1)
 
-        settings_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("trigger_settings"), padding="10")
-        settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.trigger_settings_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("trigger_settings"), padding="10")
+        self.trigger_settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
 
-        add_frame = ttk.Frame(settings_frame)
+        add_frame = ttk.Frame(self.trigger_settings_frame)
         add_frame.grid(row=0, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 10))
 
-        ttk.Label(add_frame, text=self._app.get_text("type")).grid(row=0, column=0, sticky=tk.W)
+        self.type_label = ttk.Label(add_frame, text=self._app.get_text("type"))
+        self.type_label.grid(row=0, column=0, sticky=tk.W)
         self.type_var = tk.StringVar(value="HP")
         type_combo = ttk.Combobox(add_frame, textvariable=self.type_var,
                                  values=["HP", "MP"], state="readonly", width=8)
         type_combo.grid(row=0, column=1, padx=(5, 0))
         type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
 
-        ttk.Label(add_frame, text=self._app.get_text("percentage")).grid(row=0, column=2, sticky=tk.W, padx=(10, 0))
+        self.percentage_label = ttk.Label(add_frame, text=self._app.get_text("percentage"))
+        self.percentage_label.grid(row=0, column=2, sticky=tk.W, padx=(10, 0))
         self.percent_var = tk.StringVar(value="60")
         ttk.Entry(add_frame, textvariable=self.percent_var, width=8).grid(row=0, column=3, padx=(5, 0))
 
-        ttk.Label(add_frame, text=self._app.get_text("hotkey")).grid(row=0, column=4, sticky=tk.W, padx=(10, 0))
+        self.hotkey_label = ttk.Label(add_frame, text=self._app.get_text("hotkey"))
+        self.hotkey_label.grid(row=0, column=4, sticky=tk.W, padx=(10, 0))
         self.key_var = tk.StringVar(value="1")
         ttk.Entry(add_frame, textvariable=self.key_var, width=12).grid(row=0, column=5, padx=(5, 0))
 
-        ttk.Label(add_frame, text=self._app.get_text("cooldown_ms")).grid(row=0, column=6, sticky=tk.W, padx=(10, 0))
+        self.cooldown_label = ttk.Label(add_frame, text=self._app.get_text("cooldown_ms"))
+        self.cooldown_label.grid(row=0, column=6, sticky=tk.W, padx=(10, 0))
         self.cooldown_var = tk.StringVar(value="1500")
         ttk.Entry(add_frame, textvariable=self.cooldown_var, width=8).grid(row=0, column=7, padx=(5, 0))
 
-        btn = ttk.Button(add_frame, text=self._app.get_text("add_trigger"), command=self.add_setting_new)
-        btn.grid(row=0, column=8, padx=(10, 0))
-        Tooltip(btn, self._app.get_text("add_trigger_tip"))
+        self.add_trigger_btn = ttk.Button(add_frame, text=self._app.get_text("add_trigger"), command=self.add_setting_new)
+        self.add_trigger_btn.grid(row=0, column=8, padx=(10, 0))
+        Tooltip(self.add_trigger_btn, self._app.get_text("add_trigger_tip"))
 
-        options_frame = ttk.Frame(settings_frame)
+        options_frame = ttk.Frame(self.trigger_settings_frame)
         options_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(10, 0))
 
-        btn = ttk.Button(options_frame, text=self._app.get_text("remove_selected"), command=self.remove_setting)
-        btn.grid(row=0, column=0, padx=(0, 0))
-        Tooltip(btn, self._app.get_text("remove_selected_tip"))
-        btn = ttk.Button(options_frame, text=self._app.get_text("adjust_colors"), command=self.adjust_colors)
-        btn.grid(row=0, column=1, padx=(20, 0))
-        Tooltip(btn, self._app.get_text("adjust_colors_tip"))
-        btn = ttk.Button(options_frame, text=self._app.get_text("adjust_interface_ui"), command=self.adjust_interface_ui_thresholds)
-        btn.grid(row=0, column=2, padx=(10, 0))
-        Tooltip(btn, self._app.get_text("adjust_interface_ui_tip"))
+        self.remove_selected_btn = ttk.Button(options_frame, text=self._app.get_text("remove_selected"), command=self.remove_setting)
+        self.remove_selected_btn.grid(row=0, column=0, padx=(0, 0))
+        Tooltip(self.remove_selected_btn, self._app.get_text("remove_selected_tip"))
+        self.adjust_colors_btn = ttk.Button(options_frame, text=self._app.get_text("adjust_colors"), command=self.adjust_colors)
+        self.adjust_colors_btn.grid(row=0, column=1, padx=(20, 0))
+        Tooltip(self.adjust_colors_btn, self._app.get_text("adjust_colors_tip"))
+        self.adjust_interface_ui_btn = ttk.Button(options_frame, text=self._app.get_text("adjust_interface_ui"), command=self.adjust_interface_ui_thresholds)
+        self.adjust_interface_ui_btn.grid(row=0, column=2, padx=(10, 0))
+        Tooltip(self.adjust_interface_ui_btn, self._app.get_text("adjust_interface_ui_tip"))
 
         self.multi_trigger_var = tk.BooleanVar(value=True)
-        cb = ttk.Checkbutton(options_frame, text=self._app.get_text("multiple_triggers"),
+        self.multi_trigger_check = ttk.Checkbutton(options_frame, text=self._app.get_text("multiple_triggers"),
                              variable=self.multi_trigger_var)
-        cb.grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
-        Tooltip(cb, self._app.get_text("multiple_triggers_tip"))
+        self.multi_trigger_check.grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
+        Tooltip(self.multi_trigger_check, self._app.get_text("multiple_triggers_tip"))
 
         options_frame.columnconfigure(0, weight=0)
         options_frame.columnconfigure(1, weight=0)
@@ -219,7 +249,7 @@ class MonitorTab:
         options_frame.columnconfigure(3, weight=1)
         options_frame.columnconfigure(4, weight=0)
 
-        list_frame = ttk.Frame(settings_frame)
+        list_frame = ttk.Frame(self.trigger_settings_frame)
         list_frame.grid(row=2, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(10, 0))
 
         self.settings_tree = ttk.Treeview(list_frame, columns=("type", "percent", "key", "cooldown"), show="headings", height=4)
@@ -238,7 +268,7 @@ class MonitorTab:
         self.settings_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
 
-        settings_frame.columnconfigure(3, weight=1)
+        self.trigger_settings_frame.columnconfigure(3, weight=1)
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
 
@@ -370,11 +400,13 @@ class MonitorTab:
         interface_ui_preview_frame = ttk.LabelFrame(right_frame, text=self._app.get_text("interface_ui_preview"), padding="5")
         interface_ui_preview_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
+        self.interface_ui_preview_frame = interface_ui_preview_frame
         self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg='lightgray', relief='sunken')
         self.interface_ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
-        ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"),
-                 font=("", 7), foreground="gray").grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
+        self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"),
+                 font=("", 7), foreground="gray")
+        self.interface_ui_preview_hint.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
 
         right_frame.rowconfigure(1, weight=1)
 
@@ -856,7 +888,7 @@ class MonitorTab:
             except Exception as e:
                 print(f"\u8f09\u5165\u9810\u89bd\u5716\u7247\u5931\u6557: {e}")
                 if hasattr(self, 'preview_label'):
-                    self.preview_label.config(text="\u8f09\u5165\u9810\u89bd\u5931\u6557", image="")
+                    self.preview_label.config(text=self._app.get_text("ui_preview_failed"), image="")
                 return False
         else:
             if self.selected_region and hasattr(self, 'preview_label'):
@@ -1564,7 +1596,50 @@ class MonitorTab:
         ttk.Button(button_frame, text=self._app.get_text("reset_to_defaults"), command=reset_to_defaults, width=18).grid(row=0, column=1, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("cancel"), command=adjust_window.destroy, width=10).grid(row=0, column=2)
 
-    def update_monitor_tab_language(self):
+    def update_monitor_tab_language(self):  # noqa: C901 -- intentionally linear widget refresh
+        if hasattr(self, 'window_frame'):
+            self.window_frame.config(text=self._app.get_text("game_window_settings"))
+        if hasattr(self, 'game_window_label'):
+            self.game_window_label.config(text=self._app.get_text("game_window"))
+        if hasattr(self, 'refresh_windows_btn'):
+            self.refresh_windows_btn.config(text=self._app.get_text("refresh"))
+        if hasattr(self, 'health_bar_region_label'):
+            self.health_bar_region_label.config(text=self._app.get_text("health_bar_region"))
+        if hasattr(self, 'mana_bar_region_label'):
+            self.mana_bar_region_label.config(text=self._app.get_text("mana_bar_region"))
+        if hasattr(self, 'interface_ui_region_label'):
+            self.interface_ui_region_label.config(text=self._app.get_text("interface_ui_region"))
+        if hasattr(self, 'select_health_region_btn'):
+            self.select_health_region_btn.config(text=self._app.get_text("select_health_region"))
+        if hasattr(self, 'select_mana_region_btn'):
+            self.select_mana_region_btn.config(text=self._app.get_text("select_mana_region"))
+        if hasattr(self, 'select_interface_ui_btn'):
+            self.select_interface_ui_btn.config(text=self._app.get_text("select_interface_ui"))
+        if hasattr(self, 'trigger_settings_frame'):
+            self.trigger_settings_frame.config(text=self._app.get_text("trigger_settings"))
+        if hasattr(self, 'type_label'):
+            self.type_label.config(text=self._app.get_text("type"))
+        if hasattr(self, 'percentage_label'):
+            self.percentage_label.config(text=self._app.get_text("percentage"))
+        if hasattr(self, 'hotkey_label'):
+            self.hotkey_label.config(text=self._app.get_text("hotkey"))
+        if hasattr(self, 'cooldown_label'):
+            self.cooldown_label.config(text=self._app.get_text("cooldown_ms"))
+        if hasattr(self, 'add_trigger_btn'):
+            self.add_trigger_btn.config(text=self._app.get_text("add_trigger"))
+        if hasattr(self, 'remove_selected_btn'):
+            self.remove_selected_btn.config(text=self._app.get_text("remove_selected"))
+        if hasattr(self, 'adjust_colors_btn'):
+            self.adjust_colors_btn.config(text=self._app.get_text("adjust_colors"))
+        if hasattr(self, 'adjust_interface_ui_btn'):
+            self.adjust_interface_ui_btn.config(text=self._app.get_text("adjust_interface_ui"))
+        if hasattr(self, 'multi_trigger_check'):
+            self.multi_trigger_check.config(text=self._app.get_text("multiple_triggers"))
+        if hasattr(self, 'settings_tree'):
+            self.settings_tree.heading("type", text=self._app.get_text("type"))
+            self.settings_tree.heading("percent", text=self._app.get_text("percentage"))
+            self.settings_tree.heading("key", text=self._app.get_text("hotkey"))
+            self.settings_tree.heading("cooldown", text=self._app.get_text("cooldown_ms"))
         self.control_frame.config(text=self._app.get_text("control_panel"))
         self.start_btn.config(text=self._app.get_text("start_monitoring"))
         self.stop_btn.config(text=self._app.get_text("stop_monitoring"))
@@ -1594,6 +1669,10 @@ class MonitorTab:
         self.mana_preview_frame.config(text=self._app.get_text("mana_preview"))
         self.preview_label.config(text=self._app.get_text("select_health_region_first"))
         self.mana_preview_label.config(text=self._app.get_text("select_mana_region_first"))
+        if hasattr(self, 'interface_ui_preview_frame'):
+            self.interface_ui_preview_frame.config(text=self._app.get_text("interface_ui_preview"))
+        if hasattr(self, 'interface_ui_preview_hint'):
+            self.interface_ui_preview_hint.config(text=self._app.get_text("interface_ui_preview_hint"))
 
         current_display = self.language_reverse_map.get(self._app.current_language, "\u7e41\u9ad4\u4e2d\u6587")
         self._app.language_var.set(current_display)
