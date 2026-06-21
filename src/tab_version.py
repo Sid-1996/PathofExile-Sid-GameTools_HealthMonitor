@@ -241,6 +241,10 @@ class VersionTab:
 
                     def update_ui():
                         try:
+                            skipped = self._app.config.get('skipped_version', '')
+                            if skipped == latest_version:
+                                return
+
                             self.latest_version_var.set(latest_version)
                             self.download_url = download_url
 
@@ -314,11 +318,21 @@ class VersionTab:
         button_frame = ttk.Frame(update_window)
         button_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
 
+        skip_var = tk.BooleanVar(value=False)
+        skip_cb = ttk.Checkbutton(button_frame, text=self._app.get_text("skip_this_version"), variable=skip_var)
+        skip_cb.pack(side=tk.LEFT, padx=(0, 10))
+
+        def on_close():
+            if skip_var.get():
+                self._app.config['skipped_version'] = latest_version
+                self._app.config_manager.save_config(self._app.config)
+            update_window.destroy()
+
         def open_download():
             try:
                 import webbrowser
                 webbrowser.open(download_url)
-                update_window.destroy()
+                on_close()
             except Exception as e:
                 messagebox.showerror(self._app.get_text("download_page_error_title"),
                                    self._app.get_text("download_page_error_message").format(error=e))
@@ -331,14 +345,14 @@ class VersionTab:
             self.latest_version_label.config(foreground='red')
             self.download_btn.config(state='normal')
             self.download_url = download_url
-            update_window.destroy()
+            on_close()
 
         ttk.Button(button_frame, text=self._app.get_text("download_now_button"),
                   command=open_download).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("view_details_button"),
                   command=switch_to_version_tab).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("remind_later_button"),
-                  command=update_window.destroy).pack(side=tk.RIGHT)
+                  command=on_close).pack(side=tk.RIGHT)
 
     def update_language(self):
         try:
