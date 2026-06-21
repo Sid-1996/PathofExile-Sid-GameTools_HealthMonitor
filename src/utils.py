@@ -173,8 +173,9 @@ def format_usage_time(total_seconds):
         return f"{seconds}秒"
 
 
-def show_toast(parent, text, duration=1000):
-    """黑底白字半透明提示視窗，自動在 duration 毫秒後消失"""
+def show_toast(parent, text, duration=1000, target_rect=None):
+    """黑底白字半透明提示視窗，自動在 duration 毫秒後消失
+    target_rect: (x, y, w, h) 定位目標，None 時退回落 parent"""
     import tkinter as tk
     from tkinter import ttk
     toast = tk.Toplevel(parent)
@@ -182,12 +183,17 @@ def show_toast(parent, text, duration=1000):
     toast.attributes("-topmost", True)
     toast.attributes("-alpha", 0.85)
 
-    parent.update_idletasks()
-    px, py = parent.winfo_rootx(), parent.winfo_rooty()
-    pw = parent.winfo_width()
     tw, th = 320, 56
-    x = px + (pw - tw) // 2
-    y = py + 60
+    if target_rect:
+        tx, ty, tw_win, th_win = target_rect
+        x = tx + (tw_win - tw) // 2
+        y = ty + 60
+    else:
+        parent.update_idletasks()
+        px, py = parent.winfo_rootx(), parent.winfo_rooty()
+        pw = parent.winfo_width()
+        x = px + (pw - tw) // 2
+        y = py + 60
     toast.geometry(f"{tw}x{th}+{x}+{y}")
 
     frame = tk.Frame(toast, bg="black", highlightthickness=0)

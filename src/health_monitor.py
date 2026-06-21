@@ -1570,6 +1570,19 @@ class HealthMonitor:
                     font=("Microsoft YaHei", 10, "normal")
                 )
 
+    def _get_game_window_rect(self):
+        window_title = self.monitor_tab.window_var.get()
+        if not window_title:
+            return None
+        try:
+            windows = gw.getWindowsWithTitle(window_title)
+            if windows:
+                w = windows[0]
+                return (w.left, w.top, w.width, w.height)
+        except Exception:
+            pass
+        return None
+
     def toggle_monitoring(self):
         """F10: 血魔監控開關（線程安全）"""
         # 全域暫停檢查
@@ -1578,13 +1591,15 @@ class HealthMonitor:
             self.status_tab.add_status_message("按下 F10 - 因全域暫停模式而跳過執行", "warning")
             return
 
+        target_rect = self._get_game_window_rect()
+
         if self.is_monitoring():
             self.status_tab.add_status_message("按下 F10 - 停止血魔監控", "hotkey")
-            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_stopped"), 1000))
+            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_stopped"), 1000, target_rect))
             self.stop_monitoring()
         else:
             self.status_tab.add_status_message("按下 F10 - 啟動血魔監控", "hotkey")
-            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_started"), 1000))
+            self.root.after(0, lambda: show_toast(self.root, self.get_text("monitoring_toast_started"), 1000, target_rect))
             self.start_monitoring()
 
     def minimize_all_guis(self):
