@@ -132,21 +132,21 @@ class HealthMonitor:
         if new_language == self.current_language:
             return  # 如果選擇的語言和當前語言相同，不做任何動作
 
-        # 創建雙語確認訊息（已經包含重啟說明）
+        # 創建雙語確認訊息
         bilingual_title = self.get_text("language_change_title")
         bilingual_message = self.get_text("language_change_message")
 
-        # 顯示雙語確認視窗（訊息已包含重啟說明）
+        # 顯示雙語確認視窗
         result = CustomMessageBox.ask_yes_no(bilingual_title, bilingual_message, self.root)
 
         if result:
-            # 保存語言設定並重新啟動應用程式
+            # 保存語言設定並立即切換
             self.language_manager.change_language(new_language)
             self.current_language = new_language  # 同步主程序的 current_language
             self.language_var.set(self.language_reverse_map.get(new_language, "繁體中文"))
             self.config['language'] = new_language
 
-            # 立即更新UI語言（在重啟前）
+            # 立即更新所有 UI 語言
             self.update_ui_language()
 
             # 保存設定，如果失敗則顯示錯誤訊息
@@ -155,23 +155,6 @@ class HealthMonitor:
                 print("語言設定已保存")
             except Exception as e:
                 print(f"保存語言設定失敗: {e}")
-
-            # 依執行模式選擇重啟方式
-            if getattr(sys, 'frozen', False):
-                # EXE 版：直接重啟自己，不依賴 Run.bat
-                try:
-                    subprocess.Popen([sys.executable])
-                except Exception as e:
-                    print(f"重啟失敗: {e}")
-            else:
-                # 開發版：寫 flag 給 Run.bat
-                try:
-                    flag_path = os.path.join(get_app_dir(), "restart.flag")
-                    with open(flag_path, "w") as f:
-                        f.write("restart")
-                except Exception as e:
-                    print(f"寫入重啟標記失敗: {e}")
-            self.close_app()
         else:
             # 使用者選擇取消，恢復語言選擇器到當前語言
             display_name = self.language_manager.get_current_display_name()
@@ -277,10 +260,22 @@ class HealthMonitor:
             pass
 
     def update_ui_language(self):
-        """更新UI語言（保持向後相容）"""
+        """更新所有 UI 語言，不需重啟"""
         self.update_ui_text()
         if hasattr(self, 'monitor_tab'):
             self.monitor_tab.update_monitor_tab_language()
+        if hasattr(self, 'inventory_tab'):
+            self.inventory_tab.update_inventory_tab_language()
+        if hasattr(self, 'combo_tab'):
+            self.update_combo_tab_language()
+        if hasattr(self, 'status_tab'):
+            self.update_status_tab_language()
+        if hasattr(self, 'help_tab'):
+            self.update_help_tab_language()
+        if hasattr(self, 'version_tab'):
+            self.update_version_tab_language()
+        if hasattr(self, 'about_tab'):
+            self.update_about_tab_language()
 
     def update_status_tab_language(self):
         try:
