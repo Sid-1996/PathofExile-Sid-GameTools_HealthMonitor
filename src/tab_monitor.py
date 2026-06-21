@@ -181,13 +181,13 @@ class MonitorTab:
 
         self.select_health_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_health_region"), command=self.start_selection)
         self.select_health_region_btn.grid(row=4, column=0, pady=(5, 0))
-        Tooltip(self.select_health_region_btn, self._app.get_text("select_health_region_tip"))
+        self.tip_health_region = Tooltip(self.select_health_region_btn, self._app.get_text("select_health_region_tip"))
         self.select_mana_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_mana_region"), command=self.start_mana_selection)
         self.select_mana_region_btn.grid(row=4, column=1, pady=(5, 0), padx=(5, 0))
-        Tooltip(self.select_mana_region_btn, self._app.get_text("select_mana_region_tip"))
+        self.tip_mana_region = Tooltip(self.select_mana_region_btn, self._app.get_text("select_mana_region_tip"))
         self.select_interface_ui_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_interface_ui"), command=self._app.select_interface_ui_region)
         self.select_interface_ui_btn.grid(row=4, column=2, pady=(5, 0), padx=(5, 0))
-        Tooltip(self.select_interface_ui_btn, self._app.get_text("select_interface_ui_tip"))
+        self.tip_interface_ui = Tooltip(self.select_interface_ui_btn, self._app.get_text("select_interface_ui_tip"))
 
         self.window_frame.columnconfigure(1, weight=1)
 
@@ -222,26 +222,26 @@ class MonitorTab:
 
         self.add_trigger_btn = ttk.Button(add_frame, text=self._app.get_text("add_trigger"), command=self.add_setting_new)
         self.add_trigger_btn.grid(row=0, column=8, padx=(10, 0))
-        Tooltip(self.add_trigger_btn, self._app.get_text("add_trigger_tip"))
+        self.tip_add_trigger = Tooltip(self.add_trigger_btn, self._app.get_text("add_trigger_tip"))
 
         options_frame = ttk.Frame(self.trigger_settings_frame)
         options_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(10, 0))
 
         self.remove_selected_btn = ttk.Button(options_frame, text=self._app.get_text("remove_selected"), command=self.remove_setting)
         self.remove_selected_btn.grid(row=0, column=0, padx=(0, 0))
-        Tooltip(self.remove_selected_btn, self._app.get_text("remove_selected_tip"))
+        self.tip_remove_selected = Tooltip(self.remove_selected_btn, self._app.get_text("remove_selected_tip"))
         self.adjust_colors_btn = ttk.Button(options_frame, text=self._app.get_text("adjust_colors"), command=self.adjust_colors)
         self.adjust_colors_btn.grid(row=0, column=1, padx=(20, 0))
-        Tooltip(self.adjust_colors_btn, self._app.get_text("adjust_colors_tip"))
+        self.tip_adjust_colors = Tooltip(self.adjust_colors_btn, self._app.get_text("adjust_colors_tip"))
         self.adjust_interface_ui_btn = ttk.Button(options_frame, text=self._app.get_text("adjust_interface_ui"), command=self.adjust_interface_ui_thresholds)
         self.adjust_interface_ui_btn.grid(row=0, column=2, padx=(10, 0))
-        Tooltip(self.adjust_interface_ui_btn, self._app.get_text("adjust_interface_ui_tip"))
+        self.tip_adjust_interface_ui = Tooltip(self.adjust_interface_ui_btn, self._app.get_text("adjust_interface_ui_tip"))
 
         self.multi_trigger_var = tk.BooleanVar(value=True)
         self.multi_trigger_check = ttk.Checkbutton(options_frame, text=self._app.get_text("multiple_triggers"),
                              variable=self.multi_trigger_var)
         self.multi_trigger_check.grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
-        Tooltip(self.multi_trigger_check, self._app.get_text("multiple_triggers_tip"))
+        self.tip_multi_trigger = Tooltip(self.multi_trigger_check, self._app.get_text("multiple_triggers_tip"))
 
         options_frame.columnconfigure(0, weight=0)
         options_frame.columnconfigure(1, weight=0)
@@ -288,7 +288,7 @@ class MonitorTab:
 
         self.test_preview_btn = ttk.Button(self.control_frame, text=self._app.get_text("test_preview"), command=self.test_preview)
         self.test_preview_btn.grid(row=0, column=3, padx=(5, 0))
-        Tooltip(self.test_preview_btn, self._app.get_text("test_preview_tip"))
+        self.tip_test_preview = Tooltip(self.test_preview_btn, self._app.get_text("test_preview_tip"))
 
         self.check_freq_label = ttk.Label(self.control_frame, text=self._app.get_text("check_frequency"))
         self.check_freq_label.grid(row=1, column=0, sticky=tk.W, pady=(15, 0))
@@ -1673,6 +1673,20 @@ class MonitorTab:
             self.interface_ui_preview_frame.config(text=self._app.get_text("interface_ui_preview"))
         if hasattr(self, 'interface_ui_preview_hint'):
             self.interface_ui_preview_hint.config(text=self._app.get_text("interface_ui_preview_hint"))
+
+        for tip_attr, key in [
+            ("tip_health_region", "select_health_region_tip"),
+            ("tip_mana_region", "select_mana_region_tip"),
+            ("tip_interface_ui", "select_interface_ui_tip"),
+            ("tip_add_trigger", "add_trigger_tip"),
+            ("tip_remove_selected", "remove_selected_tip"),
+            ("tip_adjust_colors", "adjust_colors_tip"),
+            ("tip_adjust_interface_ui", "adjust_interface_ui_tip"),
+            ("tip_multi_trigger", "multiple_triggers_tip"),
+            ("tip_test_preview", "test_preview_tip"),
+        ]:
+            if hasattr(self, tip_attr):
+                getattr(self, tip_attr).update_text(self._app.get_text(key))
 
         current_display = self.language_reverse_map.get(self._app.current_language, "\u7e41\u9ad4\u4e2d\u6587")
         self._app.language_var.set(current_display)

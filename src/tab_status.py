@@ -28,7 +28,7 @@ class StatusTab:
 
         self.clear_btn = ttk.Button(control_frame, text=self._app.get_text("clear_records"), command=self.clear_status_log)
         self.clear_btn.pack(side="left", padx=(0, 10))
-        Tooltip(self.clear_btn, self._app.get_text("clear_records_tip"))
+        self.tip_clear_btn = Tooltip(self.clear_btn, self._app.get_text("clear_records_tip"))
 
         self.auto_scroll_var = tk.BooleanVar(value=True)
         self.auto_scroll_cb = ttk.Checkbutton(control_frame, text=self._app.get_text("auto_scroll_to_latest"), variable=self.auto_scroll_var)
@@ -196,5 +196,8 @@ class StatusTab:
 
             if hasattr(self, 'auto_scroll_cb'):
                 self.auto_scroll_cb.config(text=self._app.get_text("auto_scroll_to_latest"))
+
+            if hasattr(self, 'tip_clear_btn'):
+                self.tip_clear_btn.update_text(self._app.get_text("clear_records_tip"))
         except Exception as e:
             print(f"更新狀態分頁語言時發生錯誤: {e}")

@@ -150,6 +150,9 @@ class Tooltip:
                           borderwidth=1, padding=2)
         label.pack()
 
+    def update_text(self, new_text):
+        self.text = new_text
+
     def _hide(self, event=None):
         if self._after_id:
             self.widget.after_cancel(self._after_id)

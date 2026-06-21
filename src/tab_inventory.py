@@ -183,6 +183,19 @@ class InventoryTab:
             self.update_ui_preview()
             self.update_interface_ui_preview()
 
+            # 更新 Tooltip 文字
+            for tip_attr, key in [
+                ("tip_select_region", "select_inventory_region_tip"),
+                ("tip_record_color", "record_empty_color_tip"),
+                ("tip_select_ui", "select_inventory_ui_tip"),
+                ("tip_test_clear", "test_clear_inventory_tip"),
+                ("tip_click_left", "clear_click_left_tip"),
+                ("tip_click_right", "clear_click_right_tip"),
+                ("tip_pickup_coords", "setup_pickup_coordinates_tip"),
+            ]:
+                if hasattr(self, tip_attr):
+                    getattr(self, tip_attr).update_text(self._app.get_text(key))
+
         except Exception as e:
             print(f"更新一鍵清包分頁語言時發生錯誤: {e}")
 
@@ -842,13 +855,13 @@ class InventoryTab:
         # 框選背包區域
         self.select_inventory_region_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("select_inventory_region"), command=self.select_inventory_region)
         self.select_inventory_region_btn.grid(row=0, column=0, pady=2)
-        Tooltip(self.select_inventory_region_btn, self._app.get_text("select_inventory_region_tip"))
+        self.tip_select_region = Tooltip(self.select_inventory_region_btn, self._app.get_text("select_inventory_region_tip"))
         self.record_empty_color_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("record_empty_color"), command=self.record_empty_inventory_color)
         self.record_empty_color_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
-        Tooltip(self.record_empty_color_btn, self._app.get_text("record_empty_color_tip"))
+        self.tip_record_color = Tooltip(self.record_empty_color_btn, self._app.get_text("record_empty_color_tip"))
         self.select_inventory_ui_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("select_inventory_ui"), command=self.select_inventory_ui_region)
         self.select_inventory_ui_btn.grid(row=0, column=2, padx=(10, 0), pady=2)
-        Tooltip(self.select_inventory_ui_btn, self._app.get_text("select_inventory_ui_tip"))
+        self.tip_select_ui = Tooltip(self.select_inventory_ui_btn, self._app.get_text("select_inventory_ui_tip"))
 
         # 顏色顯示
         self.record_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("record_status"))
@@ -868,7 +881,7 @@ class InventoryTab:
 
         self.test_clear_inventory_btn = ttk.Button(self.control_frame, text=self._app.get_text("test_clear_inventory"), command=self.test_inventory_clearing)
         self.test_clear_inventory_btn.grid(row=0, column=0, pady=2)
-        Tooltip(self.test_clear_inventory_btn, self._app.get_text("test_clear_inventory_tip"))
+        self.tip_test_clear = Tooltip(self.test_clear_inventory_btn, self._app.get_text("test_clear_inventory_tip"))
         self.save_inventory_settings_btn = ttk.Button(self.control_frame, text=self._app.get_text("save_inventory_settings"), command=self.save_inventory_config)
         self.save_inventory_settings_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
@@ -884,13 +897,13 @@ class InventoryTab:
                                                        variable=self.inventory_clear_click_mode, value="left",
                                                        command=self._on_click_mode_changed)
         self.clear_click_left_radio.grid(row=0, column=1, padx=(5, 10))
-        Tooltip(self.clear_click_left_radio, self._app.get_text("clear_click_left_tip"))
+        self.tip_click_left = Tooltip(self.clear_click_left_radio, self._app.get_text("clear_click_left_tip"))
 
         self.clear_click_right_radio = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_right"),
                                                         variable=self.inventory_clear_click_mode, value="right",
                                                         command=self._on_click_mode_changed)
         self.clear_click_right_radio.grid(row=0, column=2, padx=(5, 10))
-        Tooltip(self.clear_click_right_radio, self._app.get_text("clear_click_right_tip"))
+        self.tip_click_right = Tooltip(self.clear_click_right_radio, self._app.get_text("clear_click_right_tip"))
 
         # GUI設定選項
         gui_control_frame = ttk.Frame(self.control_frame)
@@ -923,7 +936,7 @@ class InventoryTab:
         # 座標設定按鈕
         self.setup_pickup_coordinates_btn = ttk.Button(self.pickup_frame, text=self._app.get_text("setup_pickup_coordinates"), command=self.setup_pickup_coordinates)
         self.setup_pickup_coordinates_btn.grid(row=0, column=0, pady=2)
-        Tooltip(self.setup_pickup_coordinates_btn, self._app.get_text("setup_pickup_coordinates_tip"))
+        self.tip_pickup_coords = Tooltip(self.setup_pickup_coordinates_btn, self._app.get_text("setup_pickup_coordinates_tip"))
         self.save_pickup_coordinates_btn = ttk.Button(self.pickup_frame, text=self._app.get_text("save_coordinates"), command=self.save_pickup_coordinates)
         self.save_pickup_coordinates_btn.grid(row=0, column=1, padx=(10, 0), pady=2)
 
