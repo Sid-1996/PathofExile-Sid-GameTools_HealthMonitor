@@ -54,52 +54,75 @@ class ComboTab:
         main_frame = _combo_scrollable
 
         title_label = ttk.Label(main_frame, text=self._app.get_text("skill_combo_system_title"), font=('Microsoft YaHei', 20, 'bold'))
-        title_label.pack(pady=(15, 35))
+        title_label.pack(pady=(15, 25))
 
+        # 左右雙欄佈局
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.initialize_combo_sets()
+        left_frame = ttk.Frame(content_frame)
+        left_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
 
-        for i in range(3):
-            self.create_combo_set_frame_horizontal(content_frame, i)
-
-        control_frame = ttk.LabelFrame(content_frame, text=self._app.get_text("global_control"), padding="20")
-        control_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(25, 0))
-
-        button_frame = ttk.Frame(control_frame)
-        button_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.combo_start_btn = ttk.Button(button_frame, text=self._app.get_text("start_combo_system"),
-                                        command=self.start_combo_system, width=20)
-        self.combo_start_btn.pack(side=tk.LEFT, padx=(0, 15))
-        Tooltip(self.combo_start_btn, self._app.get_text("start_combo_system_tip"))
-
-        self.combo_stop_btn = ttk.Button(button_frame, text=self._app.get_text("stop_combo_system"),
-                                       command=self.stop_combo_system, state=tk.DISABLED, width=20)
-        self.combo_stop_btn.pack(side=tk.LEFT, padx=(0, 15))
-
-        ttk.Button(button_frame, text=self._app.get_text("save_combo_settings"), command=self.save_combo_config, width=15).pack(side=tk.LEFT)
-
-        status_frame = ttk.Frame(control_frame)
-        status_frame.pack(fill=tk.X, pady=(10, 0))
-
-        ttk.Label(status_frame, text=self._app.get_text("system_status"), font=('Microsoft YaHei', 13, 'bold')).pack(side=tk.LEFT)
-        self.combo_status_label = ttk.Label(status_frame, text=self._app.get_text("not_started"), foreground="red", font=('Microsoft YaHei', 13))
-        self.combo_status_label.pack(side=tk.LEFT, padx=(8, 0))
+        right_frame = ttk.Frame(content_frame)
+        right_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(10, 0))
 
         content_frame.columnconfigure(0, weight=1)
         content_frame.columnconfigure(1, weight=1)
-        content_frame.columnconfigure(2, weight=1)
         content_frame.rowconfigure(0, weight=1)
 
-        help_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("usage_instructions"), padding="20")
-        help_frame.pack(fill=tk.X, pady=(25, 0))
+        # === 左欄：連段套組（Notebook 分頁）+ 控制區 ===
+        self.initialize_combo_sets()
+
+        notebook = ttk.Notebook(left_frame)
+        notebook.pack(fill=tk.BOTH, expand=True)
+
+        for i in range(3):
+            tab_frame = ttk.Frame(notebook, padding="10")
+            notebook.add(tab_frame, text=f"套組 {i + 1}")
+            self.create_combo_set_frame_horizontal(tab_frame, i)
+
+        # 控制區
+        control_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("global_control"), padding="15")
+        control_frame.pack(fill=tk.X, pady=(10, 0))
+
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(fill=tk.X, pady=(0, 8))
+
+        self.combo_start_btn = ttk.Button(button_frame, text=self._app.get_text("start_combo_system"),
+                                        command=self.start_combo_system, width=18)
+        self.combo_start_btn.pack(side=tk.LEFT, padx=(0, 10))
+        Tooltip(self.combo_start_btn, self._app.get_text("start_combo_system_tip"))
+
+        self.combo_stop_btn = ttk.Button(button_frame, text=self._app.get_text("stop_combo_system"),
+                                       command=self.stop_combo_system, state=tk.DISABLED, width=18)
+        self.combo_stop_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        ttk.Button(button_frame, text=self._app.get_text("save_combo_settings"), command=self.save_combo_config, width=12).pack(side=tk.LEFT)
+
+        status_frame = ttk.Frame(control_frame)
+        status_frame.pack(fill=tk.X, pady=(5, 0))
+
+        ttk.Label(status_frame, text=self._app.get_text("system_status"), font=('Microsoft YaHei', 12, 'bold')).pack(side=tk.LEFT)
+        self.combo_status_label = ttk.Label(status_frame, text=self._app.get_text("not_started"), foreground="red", font=('Microsoft YaHei', 12))
+        self.combo_status_label.pack(side=tk.LEFT, padx=(8, 0))
+
+        # === 右欄：技能計時器 + 使用提示 ===
+        if not hasattr(self._app, 'skill_timer'):
+            self.skill_timer = SkillTimerModule(
+                parent=right_frame,
+                max_slots=4,
+                on_log=self._app.status_tab.add_status_message,
+                get_text=self._app.get_text
+            )
+            self.skill_timer.frame.pack(fill="x", padx=5, pady=(5, 10))
+            self._app.skill_timer = self.skill_timer
+
+        help_frame = ttk.LabelFrame(right_frame, text=self._app.get_text("usage_instructions"), padding="10")
+        help_frame.pack(fill=tk.X, pady=(10, 0))
 
         help_text = self._app.get_text("skill_combo_usage_title") + "\n\n" + self._app.get_text("skill_combo_usage_content")
-
         help_label = ttk.Label(help_frame, text=help_text, justify=tk.LEFT,
-                             font=('Arial', 9), foreground="gray")
+                             font=('Arial', 9), foreground="gray", wraplength=400)
         help_label.pack(anchor=tk.W)
 
     def initialize_combo_sets(self):
@@ -115,8 +138,8 @@ class ComboTab:
                 self._state.combo_sets.append(combo_set)
 
     def create_combo_set_frame_horizontal(self, parent, set_index):
-        set_frame = ttk.LabelFrame(parent, text=self._app.get_text("combo_set_template").format(number=set_index + 1), padding="15")
-        set_frame.grid(row=0, column=set_index, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(0, 15) if set_index < 2 else (0, 0))
+        set_frame = ttk.Frame(parent)
+        set_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
 
         if len(self.combo_ui_refs) <= set_index:
             self.combo_ui_refs.extend([{}] * (set_index + 1 - len(self.combo_ui_refs)))
@@ -212,16 +235,6 @@ class ComboTab:
         skills_frame.columnconfigure(3, weight=0)
         skills_frame.columnconfigure(4, weight=0)
         skills_frame.columnconfigure(5, weight=1)
-
-        if not hasattr(self._app, 'skill_timer'):
-            self.skill_timer = SkillTimerModule(
-                parent=self.parent_frame,
-                max_slots=4,
-                on_log=self._app.status_tab.add_status_message,
-                get_text=self._app.get_text
-            )
-            self.skill_timer.frame.pack(fill="x", padx=5, pady=(10, 5))
-            self._app.skill_timer = self.skill_timer
 
     def toggle_combo_set(self, set_index, enabled_var, event=None):
         self._state.combo_enabled[set_index] = enabled_var.get()
