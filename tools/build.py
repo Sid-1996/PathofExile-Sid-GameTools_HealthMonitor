@@ -291,18 +291,23 @@ class GameToolBuilder:
                 self.log(f"WARNING: {src_path} not found, skipping {dst_name}")
 
         # Create launch bat
-        bat_content = '''@echo off
+        bat_content = r"""@echo off
 chcp 65001 >nul
-echo ========================================
-echo  GameTools Health Monitor - Launcher
-echo ========================================
-echo.
-echo Starting Path of Exile Health Monitor...
-echo.
-echo If you encounter issues, check the 使用說明.md file.
-echo.
-start "" "GameTools_HealthMonitor.exe"
-'''
+title GameTools Health Monitor
+
+:restart
+echo [INFO] 啟動 GameTools Health Monitor...
+start /WAIT "" "%~dp0GameTools_HealthMonitor.exe"
+
+if exist "%~dp0restart.flag" (
+    del "%~dp0restart.flag"
+    echo [INFO] 偵測到重啟標記，重新啟動...
+    goto restart
+)
+
+echo [INFO] 工具已結束。
+pause
+"""
 
         bat_path = os.path.join(package_dir, "啟動工具.bat")
         with open(bat_path, 'w', encoding='utf-8') as f:
