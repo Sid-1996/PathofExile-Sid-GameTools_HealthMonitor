@@ -184,10 +184,10 @@ def show_toast(parent, text, duration=1000):
 
     parent.update_idletasks()
     px, py = parent.winfo_rootx(), parent.winfo_rooty()
-    pw, ph = parent.winfo_width(), parent.winfo_height()
+    pw = parent.winfo_width()
     tw, th = 320, 56
     x = px + (pw - tw) // 2
-    y = py + (ph - th) // 2
+    y = py + 60
     toast.geometry(f"{tw}x{th}+{x}+{y}")
 
     frame = tk.Frame(toast, bg="black", highlightthickness=0)
