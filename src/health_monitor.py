@@ -156,24 +156,15 @@ class HealthMonitor:
             except Exception as e:
                 print(f"保存語言設定失敗: {e}")
 
-            # 重新啟動應用程式
+            # 寫入重啟標記並關閉（由 Run.bat 偵測後自動重啟）
             try:
-                import subprocess
-                import sys
-                script_path = os.path.abspath(__file__)
-                current_dir = os.getcwd()
-
-                print(f"重新啟動Python腳本: {sys.executable} {script_path}")
-
-                # 啟動新實例
-                subprocess.Popen([sys.executable, script_path], cwd=current_dir)
-
-                # 關閉當前應用程式
-                self.close_app()
-
+                flag_path = os.path.join(get_app_dir(), "restart.flag")
+                with open(flag_path, "w") as f:
+                    f.write("restart")
+                print("重啟標記已寫入，準備關閉")
             except Exception as e:
-                print(f"Python腳本重新啟動失敗: {e}")
-                CustomMessageBox.show_error("錯誤", f"無法重新啟動應用程式：{e}", self.root)
+                print(f"寫入重啟標記失敗: {e}")
+            self.close_app()
         else:
             # 使用者選擇取消，恢復語言選擇器到當前語言
             display_name = self.language_manager.get_current_display_name()
