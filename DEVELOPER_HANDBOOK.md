@@ -30,6 +30,34 @@ For project structure, module responsibilities, and available tooling, see `AGEN
 - `CustomMessageBox` — shared modal dialog wrapper
 - `HealthMonitor` — main application controller
 
+### Project Structure
+
+```text
+src/
+  health_monitor.py         # Main entry, UI orchestration, event loop
+  app_state.py              # Shared application state container
+  auto_click_manager.py     # Auto-click management (AHK)
+  usage_tracker.py          # Usage time statistics
+  window_key_sender.py      # Window-focused key sending
+  config_manager.py         # JSON config load/save with backup
+  language_system.py        # Bilingual string lookup
+  custom_dialogs.py         # Modal dialogs
+  utils.py                  # Emergency cleanup, F12 handler, Tooltip
+  skill_timer.py            # Skill cooldown timer
+  monitor_analyzer.py       # Health/mana HSV analysis
+  capture_utils.py          # Screenshot capture (mss)
+  image_utils.py            # Image drawing, resizing
+  inventory_utils.py        # Inventory slot analysis
+  language_packs.json       # UI string resources
+  tab_monitor.py            # Health/mana monitor tab
+  tab_inventory.py          # Inventory clear + pickup tab
+  tab_combo.py              # Skill combo tab
+  tab_status.py             # Execution status log tab
+  tab_help.py               # Help / instructions tab
+  tab_version.py            # Version check tab
+  tab_about.py              # About tab
+```
+
 ## Important Runtime Concepts
 
 ### Configuration

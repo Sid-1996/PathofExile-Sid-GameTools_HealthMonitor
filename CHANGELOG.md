@@ -5,6 +5,26 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.2.0] - 2026-06-21
+
+### Refactor
+- 將 health_monitor.py 從 ~9,800 行拆分為 11 個獨立模組（↓80%）
+  - src/app_state.py — 應用狀態容器
+  - src/auto_click_manager.py — 自動點擊管理
+  - src/usage_tracker.py — 使用統計
+  - src/window_key_sender.py — 視窗按鍵發送
+  - src/tab_help.py / tab_about.py / tab_status.py / tab_version.py / tab_combo.py / tab_inventory.py / tab_monitor.py — 各分頁模組
+
+### Fix
+- 修復重構後大量跨模組屬性引用路徑錯誤（monitor_tab、inventory_tab）
+- 修復 config 存取路徑錯誤（combo、monitor-interval、pickup-coordinates）
+- 修復 capture_utils threading 問題（mss 跨執行緒 GDI handle）
+- 修復啟動時視窗幾何跳動（withdraw/deiconify + 尊重已儲存尺寸）
+- F3 清包改為非阻塞背景執行緒，移植 F6 視窗管理邏輯
+
+### Feat
+- 關閉確認對話框新增「不再詢問」選項
+
 ## [1.1.0] - 2026-06-08
 
 ### 🐛 修復
