@@ -54,7 +54,9 @@ class MonitorTab:
         self.selection_end = None
         self.selected_region = None
         self.selected_mana_region = None
-        self.selection_window = None
+        self.selection_window: tk.Toplevel | None = None
+        self._selection_canvas: tk.Canvas | None = None
+        self._mana_selection_canvas: tk.Canvas | None = None
         self.global_esc_active = False
 
         self.preview_size = (380, 280)
@@ -70,73 +72,73 @@ class MonitorTab:
         self.last_status_update = 0
         self.status_update_interval = 100
 
-        self.window_var = None
-        self.window_combo = None
-        self.window_frame = None
-        self.game_window_label = None
-        self.refresh_windows_btn = None
-        self.health_bar_region_label = None
-        self.mana_bar_region_label = None
-        self.interface_ui_region_label = None
-        self.select_health_region_btn = None
-        self.select_mana_region_btn = None
-        self.select_interface_ui_btn = None
-        self.region_label = None
-        self.mana_region_label = None
-        self.interface_ui_label = None
-        self.type_var = None
-        self.percent_var = None
-        self.key_var = None
-        self.cooldown_var = None
-        self.multi_trigger_var = None
-        self.trigger_settings_frame = None
-        self.type_label = None
-        self.percentage_label = None
-        self.hotkey_label = None
-        self.cooldown_label = None
-        self.add_trigger_btn = None
-        self.remove_selected_btn = None
-        self.adjust_colors_btn = None
-        self.adjust_interface_ui_btn = None
-        self.multi_trigger_check = None
-        self.settings_tree = None
-        self.control_frame = None
-        self.start_btn = None
-        self.stop_btn = None
-        self.save_btn = None
-        self.test_preview_btn = None
-        self.check_freq_label = None
-        self.monitor_interval_var = None
-        self.ms_label = None
-        self.reminder_frame = None
-        self.reminder_label = None
-        self.language_label = None
-        self.gui_settings_label = None
-        self.always_on_top_check = None
-        self.preview_control_frame = None
-        self.preview_settings_label = None
-        self.enable_preview_check = None
-        self.preview_interval_label = None
-        self.preview_ms_label = None
-        self.real_time_status_frame = None
-        self.current_health_label = None
-        self.health_label = None
-        self.current_mana_label = None
-        self.mana_label = None
-        self.main_color_label = None
-        self.color_label = None
-        self.trigger_status_label = None
-        self.trigger_label = None
-        self.preview_frame = None
-        self.health_preview_frame = None
-        self.mana_preview_frame = None
-        self.interface_ui_preview_frame = None
-        self.interface_ui_preview_hint = None
-        self.preview_label = None
-        self.mana_preview_label = None
-        self.interface_ui_preview_canvas = None
-        self.language_display_map = None
-        self.language_reverse_map = None
+        self.window_var: tk.StringVar
+        self.window_combo: ttk.Combobox
+        self.window_frame: ttk.LabelFrame
+        self.game_window_label: ttk.Label
+        self.refresh_windows_btn: ttk.Button
+        self.health_bar_region_label: ttk.Label
+        self.mana_bar_region_label: ttk.Label
+        self.interface_ui_region_label: ttk.Label
+        self.select_health_region_btn: ttk.Button
+        self.select_mana_region_btn: ttk.Button
+        self.select_interface_ui_btn: ttk.Button
+        self.region_label: ttk.Label
+        self.mana_region_label: ttk.Label
+        self.interface_ui_label: ttk.Label
+        self.type_var: tk.StringVar
+        self.percent_var: tk.StringVar
+        self.key_var: tk.StringVar
+        self.cooldown_var: tk.StringVar
+        self.multi_trigger_var: tk.BooleanVar
+        self.trigger_settings_frame: ttk.LabelFrame
+        self.type_label: ttk.Label
+        self.percentage_label: ttk.Label
+        self.hotkey_label: ttk.Label
+        self.cooldown_label: ttk.Label
+        self.add_trigger_btn: ttk.Button
+        self.remove_selected_btn: ttk.Button
+        self.adjust_colors_btn: ttk.Button
+        self.adjust_interface_ui_btn: ttk.Button
+        self.multi_trigger_check: ttk.Checkbutton
+        self.settings_tree: ttk.Treeview
+        self.control_frame: ttk.LabelFrame
+        self.start_btn: ttk.Button
+        self.stop_btn: ttk.Button
+        self.save_btn: ttk.Button
+        self.test_preview_btn: ttk.Button
+        self.check_freq_label: ttk.Label
+        self.monitor_interval_var: tk.StringVar
+        self.ms_label: ttk.Label
+        self.reminder_frame: ttk.LabelFrame
+        self.reminder_label: ttk.Label
+        self.language_label: ttk.Label
+        self.gui_settings_label: ttk.Label
+        self.always_on_top_check: ttk.Checkbutton
+        self.preview_control_frame: ttk.Frame
+        self.preview_settings_label: ttk.Label
+        self.enable_preview_check: ttk.Checkbutton
+        self.preview_interval_label: ttk.Label
+        self.preview_ms_label: ttk.Label
+        self.real_time_status_frame: ttk.LabelFrame
+        self.current_health_label: ttk.Label
+        self.health_label: ttk.Label
+        self.current_mana_label: ttk.Label
+        self.mana_label: ttk.Label
+        self.main_color_label: ttk.Label
+        self.color_label: ttk.Label
+        self.trigger_status_label: ttk.Label
+        self.trigger_label: ttk.Label
+        self.preview_frame: ttk.LabelFrame
+        self.health_preview_frame: ttk.LabelFrame
+        self.mana_preview_frame: ttk.LabelFrame
+        self.interface_ui_preview_frame: ttk.LabelFrame
+        self.interface_ui_preview_hint: ttk.Label
+        self.preview_label: ttk.Label
+        self.mana_preview_label: ttk.Label
+        self.interface_ui_preview_canvas: tk.Canvas
+        self.language_display_map: dict
+        self.language_reverse_map: dict
 
         self.create_monitor_tab()
 
@@ -576,6 +578,7 @@ class MonitorTab:
             self._app.root.iconify()
 
             self.selection_window = self._app.create_child_window("", f"{window.width}x{window.height}")
+            assert self.selection_window is not None
             self.selection_window.geometry(f"+{window.left}+{window.top}")
             self.selection_window.attributes("-alpha", 0.3)
             self.selection_window.overrideredirect(True)
@@ -583,6 +586,7 @@ class MonitorTab:
 
             canvas = tk.Canvas(self.selection_window, bg='gray', highlightthickness=0)
             canvas.pack(fill=tk.BOTH, expand=True)
+            self._selection_canvas = canvas
 
             canvas.bind("<ButtonPress-1>", self.on_selection_start)
             canvas.bind("<B1-Motion>", self.on_selection_drag)
@@ -604,15 +608,14 @@ class MonitorTab:
         self.selection_start = (event.x, event.y)
 
     def on_selection_drag(self, event):
-        if self.selection_start:
+        if self.selection_start and self._selection_canvas is not None and self.selection_window is not None:
             self.selection_end = (event.x, event.y)
 
-            canvas = self.selection_window.winfo_children()[0]
-            canvas.delete("selection")
+            self._selection_canvas.delete("selection")
 
             x1, y1 = self.selection_start
             x2, y2 = self.selection_end
-            canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="selection")
+            self._selection_canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="selection")
 
             self.selection_window.update()
 
@@ -711,6 +714,7 @@ class MonitorTab:
             self._app.root.iconify()
 
             self.selection_window = self._app.create_child_window("", f"{window.width}x{window.height}")
+            assert self.selection_window is not None
             self.selection_window.geometry(f"+{window.left}+{window.top}")
             self.selection_window.attributes("-alpha", 0.3)
             self.selection_window.overrideredirect(True)
@@ -718,6 +722,7 @@ class MonitorTab:
 
             canvas = tk.Canvas(self.selection_window, bg='blue', highlightthickness=0)
             canvas.pack(fill=tk.BOTH, expand=True)
+            self._mana_selection_canvas = canvas
 
             canvas.bind("<ButtonPress-1>", self.on_mana_selection_start)
             canvas.bind("<B1-Motion>", self.on_mana_selection_drag)
@@ -742,15 +747,14 @@ class MonitorTab:
         self.selection_start = (event.x, event.y)
 
     def on_mana_selection_drag(self, event):
-        if self.selection_start:
+        if self.selection_start and self._mana_selection_canvas is not None and self.selection_window is not None:
             self.selection_end = (event.x, event.y)
 
-            canvas = self.selection_window.winfo_children()[0]
-            canvas.delete("selection")
+            self._mana_selection_canvas.delete("selection")
 
             x1, y1 = self.selection_start
             x2, y2 = self.selection_end
-            canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2, tags="selection")
+            self._mana_selection_canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2, tags="selection")
 
             self.selection_window.update()
 

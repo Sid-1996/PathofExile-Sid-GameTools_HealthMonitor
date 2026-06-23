@@ -220,14 +220,14 @@ class HealthMonitor:
                 if self.monitor_tab.interface_ui_label:
                     self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region))
 
-            # 更新觸發設定區域（保留 hasattr 避免舊配置無對應 UI 元素時報錯）
-            if hasattr(self, 'remove_selected_btn'):
+            # 更新觸發設定區域
+            if self.remove_selected_btn is not None:
                 self.remove_selected_btn.config(text=self.get_text("remove_selected"))
-            if hasattr(self, 'adjust_colors_btn'):
+            if self.adjust_colors_btn is not None:
                 self.adjust_colors_btn.config(text=self.get_text("adjust_colors"))
-            if hasattr(self, 'adjust_interface_ui_btn'):
+            if self.adjust_interface_ui_btn is not None:
                 self.adjust_interface_ui_btn.config(text=self.get_text("adjust_interface_ui"))
-            if hasattr(self, 'multi_trigger_check'):
+            if self.multi_trigger_check is not None:
                 self.multi_trigger_check.config(text=self.get_text("multiple_triggers"))
 
             # 更新即時狀態區域
@@ -422,6 +422,12 @@ class HealthMonitor:
         self.pickup_coordinates = []  # 儲存5個取物座標 [x, y]
         self.pause_status_label = None  # 暫停狀態顯示標籤
         self._pause_overlay = None  # F9 全域暫停持久覆蓋層
+        # 遍佈在功能中的動態屬性（由 MonitorTab / ComboTab 設定）
+        self.remove_selected_btn: ttk.Button | None = None
+        self.adjust_colors_btn: ttk.Button | None = None
+        self.adjust_interface_ui_btn: ttk.Button | None = None
+        self.multi_trigger_check: ttk.Checkbutton | None = None
+        self.skill_timer: SkillTimerModule | None = None
 
         # 線程鎖（定義在 AppState 中）
 
@@ -957,7 +963,7 @@ class HealthMonitor:
         self.manage_window_hierarchy(window, "SETTINGS")
         return window
 
-    def create_child_window(self, title, geometry="400x300", parent=None):
+    def create_child_window(self, title, geometry="400x300", parent=None) -> tk.Toplevel:
         """創建子視窗（最高層級）"""
         window = tk.Toplevel(parent or self.root)
         window.title(title)
@@ -2169,7 +2175,7 @@ class HealthMonitor:
         except Exception as e:
             print(f"保存使用時間時發生錯誤: {e}")
 
-        if hasattr(self, 'skill_timer'):
+        if self.skill_timer is not None:
             self.skill_timer.stop_all()
 
         self.close_app()
@@ -2243,7 +2249,8 @@ class HealthMonitor:
     def update_loading_status(self, status_text):
         """更新載入狀態文字"""
         try:
-            if hasattr(self, 'loading_status_label') and self.loading_status_label:
+            if (hasattr(self, 'loading_status_label') and self.loading_status_label
+                    and hasattr(self, 'loading_window') and self.loading_window):
                 self.loading_status_label.config(text=status_text)
                 self.loading_window.update()
         except Exception as e:

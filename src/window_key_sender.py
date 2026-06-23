@@ -157,7 +157,7 @@ class WindowKeySender:
         }
         return vk_mapping.get(vk_code, None)
 
-    def map_key_name(self, key):
+    def map_key_name(self, key: str) -> str:
         key = key.lower()
         key_mapping = {
             'esc': 'esc', 'escape': 'esc',
