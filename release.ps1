@@ -68,29 +68,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ── 找到 ZIP 並壓縮 ─────────────────────────────────────
+# ── 建立 release ZIP ──────────────────────────────────────
 Write-Host "`n[5/7] Preparing release ZIP..."
 $packageDir = Join-Path $PSScriptRoot "dist" "GameTools_Package"
-$timestamp = Get-Date -Format "yyyyMMdd_HHmm"
-$zipName = "GameTools_HealthMonitor_v${currentVersion}_${timestamp}"
-$zipPath = Join-Path $PSScriptRoot "dist" $zipName
-
-if (Test-Path "$zipPath.zip") { Remove-Item "$zipPath.zip" -Force }
-Compress-Archive -Path "$packageDir\*" -DestinationPath "$zipPath.zip"
-Write-Host "  Created: $zipName.zip"
-
-# 同時建立一份固定名稱的 ZIP（供自動更新下載，僅含核心檔案）
 $fixedZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor.zip"
 if (Test-Path $fixedZip) { Remove-Item $fixedZip -Force }
-$autoUpdateDir = Join-Path $PSScriptRoot "dist" "AutoUpdate_Package"
-if (Test-Path $autoUpdateDir) { Remove-Item $autoUpdateDir -Recurse -Force }
-New-Item -ItemType Directory -Path $autoUpdateDir -Force | Out-Null
-Copy-Item "$packageDir\GameTools_HealthMonitor.exe" "$autoUpdateDir\" -Force
-Copy-Item "$packageDir\updater.exe" "$autoUpdateDir\" -Force
-Copy-Item "$packageDir\language_packs.json" "$autoUpdateDir\" -Force
-Compress-Archive -Path "$autoUpdateDir\*" -DestinationPath $fixedZip
-Remove-Item $autoUpdateDir -Recurse -Force
-Write-Host "  Created: GameTools_HealthMonitor.zip (for auto-update, core files only)"
+Compress-Archive -Path "$packageDir\*" -DestinationPath $fixedZip
+Write-Host "  Created: GameTools_HealthMonitor.zip"
 
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
@@ -113,7 +97,6 @@ if ($Preview) {
         --title "v$currentVersion (preview)" `
         --prerelease `
         --generate-notes `
-        "$zipPath.zip" `
         "$fixedZip"
     Write-Host "`n========================================" -ForegroundColor Yellow
     Write-Host " Preview v$currentVersion published!" -ForegroundColor Yellow
@@ -123,10 +106,9 @@ if ($Preview) {
     gh release create $tagName `
         --title "v$currentVersion" `
         --generate-notes `
-        "$zipPath.zip" `
         "$fixedZip"
     Write-Host "`n========================================" -ForegroundColor Green
     Write-Host " Release v$currentVersion published!" -ForegroundColor Green
-    Write-Host " ZIP: $zipName.zip" -ForegroundColor Green
+    Write-Host " ZIP: GameTools_HealthMonitor.zip" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
 }
