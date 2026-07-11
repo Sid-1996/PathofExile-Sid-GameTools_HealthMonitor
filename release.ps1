@@ -87,7 +87,6 @@ if (Test-Path $autoUpdateDir) { Remove-Item $autoUpdateDir -Recurse -Force }
 New-Item -ItemType Directory -Path $autoUpdateDir -Force | Out-Null
 Copy-Item "$packageDir\GameTools_HealthMonitor.exe" "$autoUpdateDir\" -Force
 Copy-Item "$packageDir\updater.exe" "$autoUpdateDir\" -Force
-Copy-Item "$packageDir\auto_click.exe" "$autoUpdateDir\" -Force
 Copy-Item "$packageDir\language_packs.json" "$autoUpdateDir\" -Force
 Compress-Archive -Path "$autoUpdateDir\*" -DestinationPath $fixedZip
 Remove-Item $autoUpdateDir -Recurse -Force
