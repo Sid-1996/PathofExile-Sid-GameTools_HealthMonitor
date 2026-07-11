@@ -156,6 +156,10 @@ class VersionTab:
 
                 def _update_ui():
                     if info is None:
+                        self.latest_version_var.set(self._app.get_text("using_latest_version"))
+                        self.latest_version_label.config(foreground="green")
+                        self.version_status_var.set(self._app.get_text("using_latest_version"))
+                        self.download_btn.config(state="disabled")
                         return
                     skipped = self._app.config.get("skipped_version", "")
                     if skipped == f"v{info.version}":
