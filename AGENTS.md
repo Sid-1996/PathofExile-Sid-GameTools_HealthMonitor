@@ -144,6 +144,48 @@ Runtime-generated files — do not treat as source:
   - `使用說明.md`, `啟動工具.bat`, `README.txt`
 - If PyInstaller cache is locked on Windows (`WinError 5`), clear `build/GameTools_HealthMonitor` and rebuild.
 
+## Release Workflow
+
+### Dual-Track Version Check
+
+Users are on one of two version check mechanisms:
+
+| User version | Check method | Endpoint |
+|---|---|---|
+| ≤ v1.2.0 (old) | GitHub API `/releases/latest` | `api.github.com/repos/.../releases/latest` |
+| ≥ v1.2.1 (new) | `latest_version.txt` | `raw.githubusercontent.com/.../master/latest_version.txt` |
+
+GitHub API `/releases/latest` **only returns non-pre-release, non-draft releases**. This means pre-release versions are invisible to old users automatically.
+
+### Pre-release Testing (no user notification)
+
+When you want to test a new version without notifying users:
+
+1. Set `_version.py` to pre-release: `__version__ = "1.2.2-beta"`
+2. Run `.\release.ps1 -Preview` — builds, creates GitHub **Pre-release**, updates `latest_version_prerelease.txt` only
+3. `latest_version.txt` is **NOT updated** → all existing users see no change
+4. Your config: `"allow_prerelease": true` → your app detects `1.2.2-beta`
+5. Test the full auto-download flow (download → extract → updater.exe → restart)
+6. When stable: `_version.py` = `"1.2.2"`, run `.\release.ps1` (normal) → updates `latest_version.txt` → all users notified
+
+### Stable Release
+
+Run `.\release.ps1` — updates `latest_version.txt`, creates normal GitHub Release, all users notified on next launch.
+
+### Key Rules
+
+- **NEVER update `latest_version.txt` to a pre-release version** — this would notify all users
+- `allow_prerelease` config defaults to `false` — only you (the developer) should set it to `true` for testing
+- `_parse_version()` treats `1.2.2-beta` as lower than `1.2.2` (stable beats pre-release)
+- Pre-release assets on GitHub Releases are downloadable via the same URL pattern as normal releases
+
+### When User Mentions Release Keywords
+
+If the user says "發版", "release", "測試更新", "不通知用戶", "pre-release", or similar:
+- Remind them about the `-Preview` flag and `allow_prerelease` config
+- Confirm whether they want to test first (preview) or release to all users (stable)
+- Guide them through the correct flow
+
 ## Safety/Review Checklist Before Commit
 
 - No secrets/tokens/private keys.

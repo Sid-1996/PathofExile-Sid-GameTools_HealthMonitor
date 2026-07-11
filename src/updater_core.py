@@ -21,6 +21,7 @@ import requests
 _GITHUB_OWNER = "Sid-1996"
 _GITHUB_REPO = "PathofExile-Sid-GameTools_HealthMonitor"
 _RAW_VERSION_URL = f"https://raw.githubusercontent.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/master/latest_version.txt"
+_RAW_PRERELEASE_URL = f"https://raw.githubusercontent.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/master/latest_version_prerelease.txt"
 ASSET_NAME = "GameTools_HealthMonitor.zip"
 UPDATER_EXE_NAME = "updater.exe"
 _TEMP_PREFIX = "gtool_update_"
@@ -37,13 +38,21 @@ class UpdateInfo:
 
 
 def _parse_version(v: str) -> tuple[int, ...]:
+    """解析版本字串，支援 SemVer 後綴（-beta, -alpha 等）。
+    Stable 版本比同版本號的 pre-release 高：
+      "1.2.2"      → (1, 2, 2, 1)
+      "1.2.2-beta" → (1, 2, 2, 0)
+    """
     v = v.strip().lstrip("v")
     if not v:
         return (0,)
-    parts = []
-    for x in v.split("."):
-        m = re.match(r"(\d+)", x)
-        parts.append(int(m.group(1)) if m else 0)
+    match = re.match(r"^(\d+\.\d+\.\d+)(.*)", v)
+    if not match:
+        return (0,)
+    version_part = match.group(1)
+    suffix = match.group(2).strip()
+    parts = [int(x) for x in version_part.split(".")]
+    parts.append(1 if not suffix else 0)
     return tuple(parts)
 
 
@@ -59,21 +68,43 @@ def current_exe_path() -> Path:
 # ── 版本檢查 ──────────────────────────────────────────────
 
 
-def check_for_update(current_version: str) -> UpdateInfo | None:
-    """從 GitHub raw 取 latest_version.txt，比對後回傳 UpdateInfo 或 None"""
+def check_for_update(current_version: str, allow_prerelease: bool = False) -> UpdateInfo | None:
+    """比對版本，回傳 UpdateInfo 或 None。
+    allow_prerelease=True 時會同時檢查 pre-release 版本檔。
+    """
+    stable_text = ""
+    prerelease_text = ""
+
     resp = requests.get(_RAW_VERSION_URL, timeout=10)
     resp.raise_for_status()
-    latest = _parse_version(resp.text)
+    stable_text = resp.text.strip()
+
+    if allow_prerelease:
+        try:
+            resp_pre = requests.get(_RAW_PRERELEASE_URL, timeout=10)
+            resp_pre.raise_for_status()
+            prerelease_text = resp_pre.text.strip()
+        except Exception:
+            pass
+
+    # 取 stable 與 pre-release 中較高的版本
+    if prerelease_text:
+        stable_ver = _parse_version(stable_text)
+        prerelease_ver = _parse_version(prerelease_text)
+        latest_text = prerelease_text if prerelease_ver > stable_ver else stable_text
+    else:
+        latest_text = stable_text
+
+    latest = _parse_version(latest_text)
     current = _parse_version(current_version)
 
     if latest <= current:
         return None
 
-    version_str = ".".join(str(x) for x in latest)
     return UpdateInfo(
-        version=version_str,
-        download_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/download/v{version_str}/{ASSET_NAME}"),
-        release_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/tag/v{version_str}"),
+        version=latest_text,
+        download_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/download/v{latest_text}/{ASSET_NAME}"),
+        release_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/tag/v{latest_text}"),
     )
 
 

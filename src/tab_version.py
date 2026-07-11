@@ -96,6 +96,9 @@ class VersionTab:
 
         self._silent_version_check_after_id = self._app.root.after(2000, self.silent_version_check)
 
+    def _allow_prerelease(self) -> bool:
+        return bool(self._app.config.get("allow_prerelease", False))
+
     # ── 版本檢查 ─────────────────────────────────────────
 
     def check_for_updates(self):
@@ -108,7 +111,7 @@ class VersionTab:
                 self._app.root.after(0, lambda: self.latest_version_var.set(self._app.get_text("checking_version")))
                 self._app.root.after(0, lambda: self.version_status_var.set(self._app.get_text("connecting_github")))
 
-                info = updater_core.check_for_update(CURRENT_VERSION)
+                info = updater_core.check_for_update(CURRENT_VERSION, self._allow_prerelease())
 
                 def _update_ui():
                     if info is None:
@@ -152,7 +155,7 @@ class VersionTab:
 
         def _silent_check():
             try:
-                info = updater_core.check_for_update(CURRENT_VERSION)
+                info = updater_core.check_for_update(CURRENT_VERSION, self._allow_prerelease())
 
                 def _update_ui():
                     if info is None:

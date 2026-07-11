@@ -1,10 +1,14 @@
 # release.ps1
 # 一鍵發佈腳本：版本號同步 → build → ZIP → git tag → GitHub Release
-# Usage: .\release.ps1
+# Usage:
+#   .\release.ps1                # 正式版：更新 latest_version.txt
+#   .\release.ps1 -Preview       # 測試版：只更新 latest_version_prerelease.txt，建 Pre-release
+#   .\release.ps1 -Version 1.3.0 # 指定版本號
 # Prerequisites: gh CLI (GitHub CLI) 已登入
 
 param(
-    [string]$Version = ""
+    [string]$Version = "",
+    [switch]$Preview
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,20 +23,26 @@ if ($content -match '__version__\s*=\s*"(.+?)"') {
     exit 1
 }
 
-# 若有指定版本，更新 _version.py 和 latest_version.txt
+# 若有指定版本，更新 _version.py
 if ($Version -and $Version -ne $currentVersion) {
     Write-Host "[1/7] Updating version: $currentVersion → $Version"
     $newContent = $content -replace "__version__\s*=\s*`"$currentVersion`"", "__version__ = `"$Version`""
     Set-Content $versionFile $newContent -Encoding UTF8
-    Set-Content (Join-Path $PSScriptRoot "latest_version.txt") "$Version`n" -Encoding UTF8
     $currentVersion = $Version
 } else {
     Write-Host "[1/7] Using current version: $currentVersion"
 }
 
-# 同步 latest_version.txt
-Set-Content (Join-Path $PSScriptRoot "latest_version.txt") "$currentVersion`n" -Encoding UTF8
-Write-Host "  latest_version.txt → $currentVersion"
+# 版本檔同步
+if ($Preview) {
+    $preFile = Join-Path $PSScriptRoot "latest_version_prerelease.txt"
+    Set-Content $preFile "$currentVersion`n" -Encoding UTF8
+    Write-Host "  latest_version_prerelease.txt → $currentVersion (preview)"
+    Write-Host "  latest_version.txt unchanged"
+} else {
+    Set-Content (Join-Path $PSScriptRoot "latest_version.txt") "$currentVersion`n" -Encoding UTF8
+    Write-Host "  latest_version.txt → $currentVersion"
+}
 
 # ── 檢查 gh CLI ──────────────────────────────────────────
 Write-Host "`n[2/7] Checking gh CLI..."
@@ -77,8 +87,12 @@ Write-Host "  Created: GameTools_HealthMonitor.zip (for auto-update)"
 
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py
-git commit -m "chore: release v$currentVersion"
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py
+if ($Preview) {
+    git commit -m "chore: release v$currentVersion (preview)"
+} else {
+    git commit -m "chore: release v$currentVersion"
+}
 git push origin master
 
 # ── Git tag + GitHub Release ─────────────────────────────
@@ -87,13 +101,25 @@ Write-Host "`n[7/7] Creating GitHub release: $tagName"
 git tag $tagName
 git push origin $tagName
 
-gh release create $tagName `
-    --title "v$currentVersion" `
-    --generate-notes `
-    "$zipPath.zip" `
-    "$fixedZip"
-
-Write-Host "`n========================================" -ForegroundColor Green
-Write-Host " Release v$currentVersion published!" -ForegroundColor Green
-Write-Host " ZIP: $zipName.zip" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
+if ($Preview) {
+    gh release create $tagName `
+        --title "v$currentVersion (preview)" `
+        --prerelease `
+        --generate-notes `
+        "$zipPath.zip" `
+        "$fixedZip"
+    Write-Host "`n========================================" -ForegroundColor Yellow
+    Write-Host " Preview v$currentVersion published!" -ForegroundColor Yellow
+    Write-Host " latest_version.txt UNCHANGED — users not notified" -ForegroundColor Yellow
+    Write-Host "========================================" -ForegroundColor Yellow
+} else {
+    gh release create $tagName `
+        --title "v$currentVersion" `
+        --generate-notes `
+        "$zipPath.zip" `
+        "$fixedZip"
+    Write-Host "`n========================================" -ForegroundColor Green
+    Write-Host " Release v$currentVersion published!" -ForegroundColor Green
+    Write-Host " ZIP: $zipName.zip" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+}
