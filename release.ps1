@@ -79,15 +79,23 @@ if (Test-Path "$zipPath.zip") { Remove-Item "$zipPath.zip" -Force }
 Compress-Archive -Path "$packageDir\*" -DestinationPath "$zipPath.zip"
 Write-Host "  Created: $zipName.zip"
 
-# 同時建立一份固定名稱的 ZIP（供自動更新下載）
+# 同時建立一份固定名稱的 ZIP（供自動更新下載，僅含核心檔案）
 $fixedZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor.zip"
 if (Test-Path $fixedZip) { Remove-Item $fixedZip -Force }
-Compress-Archive -Path "$packageDir\*" -DestinationPath $fixedZip
-Write-Host "  Created: GameTools_HealthMonitor.zip (for auto-update)"
+$autoUpdateDir = Join-Path $PSScriptRoot "dist" "AutoUpdate_Package"
+if (Test-Path $autoUpdateDir) { Remove-Item $autoUpdateDir -Recurse -Force }
+New-Item -ItemType Directory -Path $autoUpdateDir -Force | Out-Null
+Copy-Item "$packageDir\GameTools_HealthMonitor.exe" "$autoUpdateDir\" -Force
+Copy-Item "$packageDir\updater.exe" "$autoUpdateDir\" -Force
+Copy-Item "$packageDir\auto_click.exe" "$autoUpdateDir\" -Force
+Copy-Item "$packageDir\language_packs.json" "$autoUpdateDir\" -Force
+Compress-Archive -Path "$autoUpdateDir\*" -DestinationPath $fixedZip
+Remove-Item $autoUpdateDir -Recurse -Force
+Write-Host "  Created: GameTools_HealthMonitor.zip (for auto-update, core files only)"
 
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py release.ps1
 if ($Preview) {
     git commit -m "chore: release v$currentVersion (preview)"
 } else {

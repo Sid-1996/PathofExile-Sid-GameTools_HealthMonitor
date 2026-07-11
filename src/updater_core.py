@@ -148,17 +148,19 @@ def download_update(
                 if progress_cb:
                     progress_cb(downloaded, total)
 
+        MAIN_EXE_NAME = "GameTools_HealthMonitor.exe"
+
         with zipfile.ZipFile(zip_path, "r") as zf:
             names = zf.namelist()
 
-            # 解壓主程式 EXE
-            exe_entries = [n for n in names if n.endswith(".exe") and UPDATER_EXE_NAME not in n]
-            if not exe_entries:
-                raise RuntimeError("ZIP 內無主程式 EXE")
-            target = next(
-                (n for n in exe_entries if "/" not in n and "\\" not in n),
-                exe_entries[0],
-            )
+            # 精確匹配主程式 EXE（避免 auto_click.exe 等其他 EXE 被誤選）
+            target = None
+            for n in names:
+                if n == MAIN_EXE_NAME:
+                    target = n
+                    break
+            if not target:
+                raise RuntimeError(f"ZIP 內找不到主程式 {MAIN_EXE_NAME}")
             with zf.open(target) as src, open(main_exe_path, "wb") as dst:
                 shutil.copyfileobj(src, dst)
 
