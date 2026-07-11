@@ -54,8 +54,14 @@ src/
   tab_combo.py              # Skill combo tab
   tab_status.py             # Execution status log tab
   tab_help.py               # Help / instructions tab
-  tab_version.py            # Version check tab
+  tab_version.py            # Version check + in-app download/update
   tab_about.py              # About tab
+
+Root-level modules:
+  updater_core.py           # Update engine: version check, download, apply
+  updater_main.py           # Standalone updater process (built to updater.exe)
+  latest_version.txt        # Raw GitHub version string for update checks
+  release.ps1               # One-click publish script
 ```
 
 ## Important Runtime Concepts
@@ -77,6 +83,22 @@ UI text comes from `src/language_packs.json`.
 - Default runtime language is managed by `language_system.py`
 - UI strings should use language keys via `get_text()`, not hardcoded text
 - Language switching works at runtime; app must be restarted to apply
+
+### Auto-Update System
+
+The in-app update flow:
+
+1. **Version check** (`tab_version.py`): compares `CURRENT_VERSION` against `latest_version.txt` on GitHub raw (no API rate limit)
+2. **Download** (`updater_core.py`): downloads `GameTools_HealthMonitor.zip` from GitHub Releases with progress callback and cancel support
+3. **Extract & verify**: unzips main EXE + `updater.exe`, validates MZ header
+4. **Apply** (`updater_core.apply_update()`): launches `updater.exe` as detached process with `--old`, `--new`, `--pid` args
+5. **Replace** (`updater_main.py`): waits for main EXE PID exit, copies new EXE with retry, relaunches, cleans up temp files
+
+Key files:
+- `src/updater_core.py` — update engine (check, download, apply)
+- `updater_main.py` — standalone updater (root-level, built to `updater.exe`)
+- `latest_version.txt` — raw version string at repo root
+- `release.ps1` — one-click publish (version sync → build → ZIP → tag → gh release)
 
 ### Hotkeys
 

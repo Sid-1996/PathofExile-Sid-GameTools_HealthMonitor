@@ -174,10 +174,19 @@ src/
   custom_dialogs.py      # Shared dialogs
   utils.py               # Runtime utilities
   skill_timer.py         # Skill timer module
+  app_state.py           # Shared state container
+  tab_monitor.py         # Health/mana monitor tab
+  tab_inventory.py       # Inventory clear + pickup tab
+  tab_combo.py           # Skill combo tab
+  tab_version.py         # Version check + auto-update
+  tab_about.py           # About tab
+  updater_core.py        # Update engine (check/download/apply)
   language_packs.json    # UI strings
 scripts/                 # One-click workflows
 tools/                   # Build pipeline
 docs/                    # User/developer docs
+updater_main.py          # Standalone updater (built to updater.exe)
+release.ps1              # One-click publish script
 ```
 
 ---

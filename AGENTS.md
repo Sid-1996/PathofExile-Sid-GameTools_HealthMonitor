@@ -80,6 +80,9 @@ scripts/                      # One-click local workflows
 tools/build.py                # PyInstaller packaging pipeline
 docs/                         # User-facing documentation
 .github/workflows/ci.yml      # Lint + type check on push/PR
+latest_version.txt            # Raw GitHub version check (no API limit)
+release.ps1                   # One-click publish script
+updater_main.py               # Standalone updater process (built to updater.exe)
 ```
 
 ### src/ Module Responsibilities
@@ -98,6 +101,20 @@ docs/                         # User-facing documentation
 | `utils.py` | Emergency cleanup, F12 handler, Tooltip | 166 | keyboard, psutil |
 | `tab_inventory.py` | Inventory clear + pickup UI + logic | 3,628 | cv2, numpy, PIL, mss, pyautogui |
 | `tab_monitor.py` | Health/mana monitor tab UI + logic | 1,647 | cv2, numpy, PIL, mss, keyboard |
+| `tab_version.py` | Version check + in-app download/update | 402 | requests, updater_core |
+| `tab_about.py` | About tab, sponsor/donate buttons | ~200 | tkinter |
+| `app_state.py` | Shared application state container | ~100 | none |
+| `auto_click_manager.py` | Auto-click management (AHK) | ~150 | subprocess, psutil |
+| `usage_tracker.py` | Usage time statistics | ~100 | none |
+| `window_key_sender.py` | Window-focused key sending | ~80 | pygetwindow, pyautogui |
+
+Root-level modules (not in src/):
+
+| Module | Role | Dependencies |
+|---|---|---|
+| `updater_core.py` | Update engine: version check, download, apply | requests, zipfile |
+| `updater_main.py` | Standalone updater process (built to updater.exe) | ctypes, subprocess |
+| `latest_version.txt` | Raw GitHub version string for update checks | — |
 
 Runtime-generated files — do not treat as source:
 - `src/health_monitor_config.json` (user config state)
@@ -113,8 +130,8 @@ Runtime-generated files — do not treat as source:
 
 ## Version
 
-- Current: **v1.1.0**
-- Single source: `src/_version.py` (`__version__ = "1.1.0"`)
+- Current: **v1.2.1**
+- Single source: `src/_version.py` (`__version__ = "1.2.1"`)
 - `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
 - `build.py`: `APP_VERSION = __version__`
 - Managed by commitizen via `src/_version.py:__version__`
@@ -123,7 +140,7 @@ Runtime-generated files — do not treat as source:
 
 - `tools/build.py` sources all assets from `src/`.
 - Build output includes:
-  - `GameTools_HealthMonitor.exe`, `auto_click.exe`, `language_packs.json`
+  - `GameTools_HealthMonitor.exe`, `auto_click.exe`, `updater.exe`, `language_packs.json`
   - `使用說明.md`, `啟動工具.bat`, `README.txt`
 - If PyInstaller cache is locked on Windows (`WinError 5`), clear `build/GameTools_HealthMonitor` and rebuild.
 

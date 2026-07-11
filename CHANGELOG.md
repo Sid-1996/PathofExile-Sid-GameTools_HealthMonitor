@@ -5,6 +5,23 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.2.1] - 2026-07-12
+
+### Feat
+- 程式內自動更新：版本檢查（`latest_version.txt`）→ 下載 ZIP → 解壓驗證 → `updater.exe` 替換重啟
+- 新增 `updater_core.py`（更新引擎）、`updater_main.py`（獨立更新程序）
+- 版本頁新增「下載更新」按鈕、進度條、取消支援
+- 新增 `release.ps1` 一鍵發佈腳本（版本同步 → build → ZIP → tag → gh release）
+- 新增 `latest_version.txt` 供 raw GitHub 版本檢查（無 API 限制）
+
+### Fix
+- F9 全域暫停現在正確停止 SkillTimer（`restore_slots()` 只恢復原本運行的槽位）
+- 新增愛發電 Donate 按鈕
+
+### Chore
+- `tools/build.py` 新增 `build_updater()` 步驟，updater.exe 打包進 release ZIP
+- 全域暫停改用 `set[int]` 追蹤運行中槽位（非 boolean），精確還原狀態
+
 ## [1.2.0] - 2026-06-21
 
 ### Refactor
