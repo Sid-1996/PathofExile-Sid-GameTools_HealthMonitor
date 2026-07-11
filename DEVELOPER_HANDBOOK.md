@@ -125,7 +125,7 @@ Specific things to verify when modularization or cleanup code is touched:
 ### Recommended Local Flow
 
 1. Install dependencies: `scripts/install_dependencies.bat`
-2. Run locally: `scripts/run_monitor.bat`
+2. Run locally: `Run.bat`
 3. Make request-scoped code changes in `src/`
 4. Validate with targeted checks (see below)
 5. Build/package only when needed: `scripts/build_exe.bat`

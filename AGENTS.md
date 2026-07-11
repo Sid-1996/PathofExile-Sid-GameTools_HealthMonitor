@@ -107,9 +107,9 @@ Runtime-generated files — do not treat as source:
 ## One-Click Workflows
 
 1. Install dependencies: `scripts/install_dependencies.bat`
-2. Run from source: `scripts/run_monitor.bat`
+2. Run from source or EXE: `Run.bat`
 3. Build EXE: `scripts/build_exe.bat`
-4. Test built EXE: `scripts/launch_built_exe.bat`
+4. Test built EXE: `Run.bat`
 
 ## Version
 

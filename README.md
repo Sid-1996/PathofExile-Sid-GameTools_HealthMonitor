@@ -143,7 +143,7 @@ scripts\install_dependencies.bat
 ## Run / 執行
 
 ```bat
-scripts\run_monitor.bat
+Run.bat
 ```
 
 ---
@@ -159,7 +159,7 @@ scripts\build_exe.bat
 ## Test Built EXE / 測試 EXE
 
 ```bat
-scripts\launch_built_exe.bat
+Run.bat
 ```
 
 ---
