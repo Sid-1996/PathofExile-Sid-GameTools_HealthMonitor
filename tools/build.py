@@ -426,25 +426,29 @@ pause
         readme_content = f"""# Sid Game Tools
 
 ## Quick Start
-1. Run `GameTools_HealthMonitor.exe`.
+1. Run `GameTools_HealthMonitor.exe` or `啟動工具.bat`.
 2. If Windows prompts for permission, allow the app to run.
-3. See the included documentation file for setup guidance.
+3. See `使用說明.md` for detailed setup guidance.
 
 ## Package Contents
-- GameTools_HealthMonitor.exe
-- updater.exe
-- auto_click.exe
-- language_packs.json
-- README.txt
+- GameTools_HealthMonitor.exe (main app)
+- updater.exe (auto-update helper)
+- auto_click.exe (auto-click helper)
+- language_packs.json (language strings)
+- 使用說明.md (user documentation)
+- 啟動工具.bat (launcher)
+
+## Auto-Update
+The app checks for new versions on startup. When an update is available,
+a notification will appear. Click "Download Now" to update automatically.
 
 ## Version
 - Version: {APP_VERSION}
 - Build time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 ## Notes
-- This package is intended for local Windows use.
-- Keep the bundled files together in the same folder.
-- Do not remove language or helper executable files from the package.
+- Keep all files together in the same folder.
+- Do not remove language_packs.json or auto_click.exe.
 """
 
         readme_path = os.path.join(package_dir, "README.txt")
