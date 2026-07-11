@@ -44,6 +44,24 @@ if ($Preview) {
     Write-Host "  latest_version.txt → $currentVersion"
 }
 
+# ── 同步 GitHub Pages (index.html + sitemap.xml) ─────────
+$indexHtml = Join-Path $PSScriptRoot "index.html"
+if (Test-Path $indexHtml) {
+    $htmlContent = Get-Content $indexHtml -Raw -Encoding UTF8
+    $htmlContent = $htmlContent -replace '最新版本 <strong>v[^<]+</strong>', "最新版本 <strong>v$currentVersion</strong>"
+    Set-Content $indexHtml $htmlContent -Encoding UTF8 -NoNewline
+    Write-Host "  index.html → v$currentVersion"
+}
+
+$sitemapXml = Join-Path $PSScriptRoot "sitemap.xml"
+if (Test-Path $sitemapXml) {
+    $today = Get-Date -Format "yyyy-MM-dd"
+    $sitemapContent = Get-Content $sitemapXml -Raw -Encoding UTF8
+    $sitemapContent = $sitemapContent -replace '<lastmod>[^<]+</lastmod>', "<lastmod>$today</lastmod>"
+    Set-Content $sitemapXml $sitemapContent -Encoding UTF8 -NoNewline
+    Write-Host "  sitemap.xml → lastmod $today"
+}
+
 # ── 檢查 gh CLI ──────────────────────────────────────────
 Write-Host "`n[2/7] Checking gh CLI..."
 try {
@@ -78,7 +96,7 @@ Write-Host "  Created: GameTools_HealthMonitor.zip"
 
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py release.ps1
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py release.ps1 index.html sitemap.xml
 if ($Preview) {
     git commit -m "chore: release v$currentVersion (preview)"
 } else {
