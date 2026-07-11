@@ -103,7 +103,7 @@ class AboutTab:
         def open_sid_toolbox():
             try:
                 import webbrowser
-                webbrowser.open("https://lelive.weebly.com/")
+                webbrowser.open("https://sid-1996.github.io/sid-automation-lab/")
             except Exception as e:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_sid_toolbox_failed").format(error=e))
 
@@ -125,6 +125,9 @@ class AboutTab:
         sponsor_frame = ttk.Frame(support_card)
         sponsor_frame.pack(fill=tk.X)
 
+        sponsor_row1 = ttk.Frame(sponsor_frame)
+        sponsor_row1.pack(fill=tk.X, pady=(0, 8))
+
         def open_ecpay():
             try:
                 import webbrowser
@@ -132,7 +135,7 @@ class AboutTab:
             except Exception as e:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_ecpay_failed").format(error=e))
 
-        ecpay_btn = ttk.Button(sponsor_frame, text=self._app.get_text("ecpay_button"), command=open_ecpay)
+        ecpay_btn = ttk.Button(sponsor_row1, text=self._app.get_text("ecpay_button"), command=open_ecpay)
         ecpay_btn.pack(side=tk.LEFT, padx=(0, 8), expand=True, fill=tk.X)
 
         def open_paypal():
@@ -142,8 +145,18 @@ class AboutTab:
             except Exception as e:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_paypal_failed").format(error=e))
 
-        paypal_btn = ttk.Button(sponsor_frame, text=self._app.get_text("paypal_button"), command=open_paypal)
+        paypal_btn = ttk.Button(sponsor_row1, text=self._app.get_text("paypal_button"), command=open_paypal)
         paypal_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        def open_afdian():
+            try:
+                import webbrowser
+                webbrowser.open("https://afdian.com/a/sid-1996")
+            except Exception as e:
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("open_afdian_failed").format(error=e))
+
+        afdian_btn = ttk.Button(sponsor_frame, text=self._app.get_text("afdian_button"), command=open_afdian)
+        afdian_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         disclaimer_frame = ttk.LabelFrame(scrollable_frame, text=self._app.get_text("important_disclaimer"), padding="20")
         disclaimer_frame.pack(fill=tk.X, padx=20, pady=(0, 20))

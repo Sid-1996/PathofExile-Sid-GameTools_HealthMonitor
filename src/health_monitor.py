@@ -1535,6 +1535,15 @@ class HealthMonitor:
             else:
                 self.state.combo_was_running = False
 
+            # 記錄並停止技能計時器（如果正在運行）
+            if self.skill_timer is not None and self.skill_timer.is_any_running:
+                self.state.skill_timer_was_running_slots = self.skill_timer.running_slot_indices
+                self.skill_timer.stop_all()
+                print(" 技能計時器已自動停止")
+                self.status_tab.add_status_message(self.get_text("skill_timer_auto_stopped"), "info")
+            else:
+                self.state.skill_timer_was_running_slots = set()
+
         else:
             self.root.after(0, self._hide_global_pause_overlay)
 
@@ -1566,6 +1575,16 @@ class HealthMonitor:
                     print(f"[WARN] 技能連段自動重新啟動失敗: {e}")
                     print(" 請手動重新啟動技能連段系統")
                     self.status_tab.add_status_message(self.get_text("combo_system_auto_restart_failed").format(error=str(e)), "error")
+
+            # 自動恢復技能計時器（如果之前處於運行狀態）
+            if self.state.skill_timer_was_running_slots and self.skill_timer is not None:
+                try:
+                    self.skill_timer.restore_slots(self.state.skill_timer_was_running_slots)
+                    print("[START] 技能計時器已自動重新啟動")
+                    self.status_tab.add_status_message(self.get_text("skill_timer_auto_restarted"), "success")
+                except Exception as e:
+                    print(f"[WARN] 技能計時器自動重新啟動失敗: {e}")
+                    self.status_tab.add_status_message(self.get_text("skill_timer_auto_restart_failed").format(error=str(e)), "error")
 
             print(" 所有功能已完全恢復正常")
 

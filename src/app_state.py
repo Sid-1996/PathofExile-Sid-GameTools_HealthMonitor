@@ -28,6 +28,7 @@ class AppState:
     global_pause: bool
     monitoring_was_active: bool
     combo_was_running: bool
+    skill_timer_was_running_slots: set[int]
     global_pause_lock: threading.RLock
     last_trigger_times: dict
     inventory_clear_interrupt: bool
@@ -61,6 +62,7 @@ class AppState:
         self.global_pause = False
         self.monitoring_was_active = False
         self.combo_was_running = False
+        self.skill_timer_was_running_slots: set[int] = set()
         self.global_pause_lock = threading.RLock()
 
         # Trigger cooldown tracking

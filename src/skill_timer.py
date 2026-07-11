@@ -365,6 +365,30 @@ class SkillTimerModule:
         if self._on_log:
             self._on_log(self._t("skill_timer_log_all_stop", "[SkillTimer] 全部停止"), "info")
 
+    @property
+    def is_any_running(self) -> bool:
+        """是否有任何技能槽正在執行"""
+        return any(s.is_running for s in self.slots)
+
+    @property
+    def running_slot_indices(self) -> set[int]:
+        """回傳目前正在跑的槽 index 集合"""
+        return {i for i, s in enumerate(self.slots) if s.is_running}
+
+    def restore_slots(self, indices: set[int]):
+        """只恢復指定 index 的技能槽"""
+        restored = 0
+        for i in indices:
+            if i < len(self.slots):
+                slot = self.slots[i]
+                if not slot.is_running and slot.enabled.get():
+                    if slot.start():
+                        self._set_status(i, True)
+                        restored += 1
+        if restored and self._on_log:
+            msg = self._t("skill_timer_log_restore", "[SkillTimer] 恢復暫停前的技能槽，共 {count} 個")
+            self._on_log(msg.format(count=restored), "info")
+
     # ────────────────────────────────────────────────────
     #  Config 介面（接 health_monitor 的 save/load_config）
     # ────────────────────────────────────────────────────
