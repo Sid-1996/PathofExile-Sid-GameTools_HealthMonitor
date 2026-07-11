@@ -40,6 +40,7 @@ class VersionTab:
         self._downloading = False
         self._cancel_event = None
         self._pending_update_info = None
+        self._notification_window = None
         self.create_version_tab()
 
     # ── UI 建構 ──────────────────────────────────────────
@@ -348,6 +349,13 @@ class VersionTab:
     # ── 通知對話框 ───────────────────────────────────────
 
     def _show_update_notification(self, info):
+        if self._notification_window is not None:
+            try:
+                self._notification_window.lift()
+                return
+            except tk.TclError:
+                self._notification_window = None
+
         update_window = tk.Toplevel(self._app.root)
         update_window.title(self._app.get_text("new_version_found_title"))
         update_window.geometry("500x380")
@@ -355,6 +363,7 @@ class VersionTab:
         update_window.transient(self._app.root)
         update_window.grab_set()
         update_window.geometry("+%d+%d" % (self._app.root.winfo_rootx() + 50, self._app.root.winfo_rooty() + 50))
+        self._notification_window = update_window
 
         title_frame = ttk.Frame(update_window)
         title_frame.pack(fill=tk.X, padx=20, pady=20)
@@ -373,6 +382,7 @@ class VersionTab:
         ttk.Checkbutton(button_frame, text=self._app.get_text("skip_this_version"), variable=skip_var).pack(side=tk.LEFT, padx=(0, 10))
 
         def on_close():
+            self._notification_window = None
             if skip_var.get():
                 self._app.config["skipped_version"] = f"v{info.version}"
                 self._app.config_manager.save_config(self._app.config)
