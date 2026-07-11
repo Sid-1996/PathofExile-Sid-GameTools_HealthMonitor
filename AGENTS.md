@@ -49,6 +49,13 @@ The following tools are available in PATH and can be used by agents for searchin
   - Config lives in `pyproject.toml` `[tool.commitizen]`
   - Conventional commit format: `feat:`, `fix:`, `refactor:`, `chore:` etc.
 
+- **graphify** (`graphify`, via uv tool) — knowledge graph for codebase navigation
+  - `graphify query "what connects X to Y"` — traverse graph for architecture questions
+  - `graphify query "show the health monitoring flow"` — broad context via BFS
+  - `graphify . --update` — incremental rebuild (AST only, no API cost)
+  - Graph committed at `graphify-out/` — open `graph.html` in browser for visual map
+  - Report: `graphify-out/GRAPH_REPORT.md` (god nodes, surprising connections)
+
 ## When to Use Each Tool
 
 **Before editing any Python**
