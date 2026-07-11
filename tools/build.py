@@ -17,6 +17,7 @@ from _version import __version__
 
 APP_VERSION = __version__
 
+
 class GameToolBuilder:
     def __init__(self):
         self.project_dir = os.path.dirname(os.path.dirname(__file__))
@@ -99,70 +100,120 @@ class GameToolBuilder:
         try:
             # Build PyInstaller command for the main executable
             cmd = [
-                sys.executable, "-m", "PyInstaller",
+                sys.executable,
+                "-m",
+                "PyInstaller",
                 "--onefile",
                 "--noconsole",  # No console window for GUI app
                 "--noconfirm",
-                "--workpath", work_path,
-                "--specpath", spec_path,
-                "--name", "GameTools_HealthMonitor",
-                "--icon", self.icon_file,
+                "--workpath",
+                work_path,
+                "--specpath",
+                spec_path,
+                "--name",
+                "GameTools_HealthMonitor",
+                "--icon",
+                self.icon_file,
                 # Hidden imports
-                "--hidden-import", "PIL",
-                "--hidden-import", "PIL.Image",
-                "--hidden-import", "PIL.ImageTk",
-                "--hidden-import", "PIL.ImageDraw",
-                "--hidden-import", "PIL._imaging",
-                "--copy-metadata", "Pillow",
+                "--hidden-import",
+                "PIL",
+                "--hidden-import",
+                "PIL.Image",
+                "--hidden-import",
+                "PIL.ImageTk",
+                "--hidden-import",
+                "PIL.ImageDraw",
+                "--hidden-import",
+                "PIL._imaging",
+                "--copy-metadata",
+                "Pillow",
                 # OpenCV
-                "--hidden-import", "cv2",
+                "--hidden-import",
+                "cv2",
                 # NumPy
-                "--hidden-import", "numpy",
+                "--hidden-import",
+                "numpy",
                 # Automation libs
-                "--hidden-import", "mss",
-                "--hidden-import", "keyboard",
-                "--hidden-import", "pygetwindow",
-                "--hidden-import", "pyautogui",
-                "--hidden-import", "psutil",
-                "--hidden-import", "psutil._psutil_windows",
-                "--hidden-import", "psutil._pswindows",
+                "--hidden-import",
+                "mss",
+                "--hidden-import",
+                "keyboard",
+                "--hidden-import",
+                "pygetwindow",
+                "--hidden-import",
+                "pyautogui",
+                "--hidden-import",
+                "psutil",
+                "--hidden-import",
+                "psutil._psutil_windows",
+                "--hidden-import",
+                "psutil._pswindows",
                 # Windows API (screen capture helpers)
-                "--hidden-import", "winreg",
-                "--hidden-import", "ctypes",
-                "--hidden-import", "ctypes.wintypes",
+                "--hidden-import",
+                "winreg",
+                "--hidden-import",
+                "ctypes",
+                "--hidden-import",
+                "ctypes.wintypes",
                 # HTTP / network
-                "--hidden-import", "requests",
-                "--hidden-import", "urllib3",
+                "--hidden-import",
+                "requests",
+                "--hidden-import",
+                "urllib3",
                 # PyAutoGUI deps
-                "--hidden-import", "pymsgbox",
-                "--hidden-import", "pytweening",
-                "--hidden-import", "pyscreeze",
-                "--hidden-import", "mouseinfo",
+                "--hidden-import",
+                "pymsgbox",
+                "--hidden-import",
+                "pytweening",
+                "--hidden-import",
+                "pyscreeze",
+                "--hidden-import",
+                "mouseinfo",
                 # Tkinter
-                "--hidden-import", "tkinter",
-                "--hidden-import", "tkinter.ttk",
-                "--hidden-import", "tkinter.messagebox",
-                "--hidden-import", "_tkinter",
+                "--hidden-import",
+                "tkinter",
+                "--hidden-import",
+                "tkinter.ttk",
+                "--hidden-import",
+                "tkinter.messagebox",
+                "--hidden-import",
+                "_tkinter",
                 # Misc
-                "--hidden-import", "webbrowser",
-                "--hidden-import", "win32gui",
-                "--hidden-import", "traceback",
+                "--hidden-import",
+                "webbrowser",
+                "--hidden-import",
+                "win32gui",
+                "--hidden-import",
+                "traceback",
                 # 排除與本專案無關的大型套件（來自其他專案的環境污染）
-                "--exclude-module", "torch",
-                "--exclude-module", "torchvision",
-                "--exclude-module", "torchaudio",
-                "--exclude-module", "torch_lightning",
-                "--exclude-module", "onnxruntime",
-                "--exclude-module", "onnx",
-                "--exclude-module", "pandas",
-                "--exclude-module", "scipy",
-                "--exclude-module", "matplotlib",
-                "--exclude-module", "sklearn",
-                "--exclude-module", "transformers",
+                "--exclude-module",
+                "torch",
+                "--exclude-module",
+                "torchvision",
+                "--exclude-module",
+                "torchaudio",
+                "--exclude-module",
+                "torch_lightning",
+                "--exclude-module",
+                "onnxruntime",
+                "--exclude-module",
+                "onnx",
+                "--exclude-module",
+                "pandas",
+                "--exclude-module",
+                "scipy",
+                "--exclude-module",
+                "matplotlib",
+                "--exclude-module",
+                "sklearn",
+                "--exclude-module",
+                "transformers",
                 # Data files
-                "--add-data", f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
-                "--paths", self.src_dir,
-                source_file
+                "--add-data",
+                f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
+                "--paths",
+                self.src_dir,
+                source_file,
             ]
 
             if os.path.exists(auto_click_exe_file):
@@ -180,14 +231,7 @@ class GameToolBuilder:
             self.log("Running PyInstaller...")
             self.log(f"Build dir: {self.project_dir}")
 
-            result = subprocess.run(
-                cmd,
-                cwd=self.project_dir,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='replace'
-            )
+            result = subprocess.run(cmd, cwd=self.project_dir, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
             if result.returncode != 0:
                 self.log(f"PyInstaller error: {result.stderr}")
@@ -208,14 +252,14 @@ class GameToolBuilder:
         try:
             # Tkinter DLL
             python_home = os.path.normpath(sys.exec_prefix)
-            dlls_dir = os.path.join(python_home, 'DLLs')
-            for dll in ['tcl86t.dll', 'tk86t.dll', '_tkinter.pyd']:
+            dlls_dir = os.path.join(python_home, "DLLs")
+            for dll in ["tcl86t.dll", "tk86t.dll", "_tkinter.pyd"]:
                 dll_path = os.path.join(dlls_dir, dll)
                 if os.path.exists(dll_path):
                     cmd.extend(["--add-binary", f"{dll_path};."])
 
             # Tcl libs
-            tcl_base = os.path.join(python_home, 'tcl')
+            tcl_base = os.path.join(python_home, "tcl")
             if os.path.exists(tcl_base):
                 cmd.extend(["--add-data", f"{tcl_base};tcl"])
 
@@ -223,16 +267,10 @@ class GameToolBuilder:
             try:
                 import PIL
                 import sysconfig
+
                 pil_dir = os.path.dirname(PIL.__file__)
-                ext_suffix = sysconfig.get_config_var('EXT_SUFFIX') or '.cp312-win_amd64.pyd'
-                pillow_pyds = [
-                    f'_imaging{ext_suffix}',
-                    f'_imagingtk{ext_suffix}',
-                    f'_imagingmath{ext_suffix}',
-                    f'_imagingft{ext_suffix}',
-                    f'_imagingcms{ext_suffix}',
-                    f'_imagingmorph{ext_suffix}'
-                ]
+                ext_suffix = sysconfig.get_config_var("EXT_SUFFIX") or ".cp312-win_amd64.pyd"
+                pillow_pyds = [f"_imaging{ext_suffix}", f"_imagingtk{ext_suffix}", f"_imagingmath{ext_suffix}", f"_imagingft{ext_suffix}", f"_imagingcms{ext_suffix}", f"_imagingmorph{ext_suffix}"]
                 for pyd in pillow_pyds:
                     pyd_path = os.path.join(pil_dir, pyd)
                     if os.path.exists(pyd_path):
@@ -243,8 +281,9 @@ class GameToolBuilder:
             # OpenCV binary modules
             try:
                 import cv2
+
                 cv2_dir = os.path.dirname(cv2.__file__)
-                cv2_pyd = os.path.join(cv2_dir, 'cv2.pyd')
+                cv2_pyd = os.path.join(cv2_dir, "cv2.pyd")
                 if os.path.exists(cv2_pyd):
                     cmd.extend(["--add-binary", f"{cv2_pyd};cv2"])
             except Exception as e:
@@ -255,10 +294,7 @@ class GameToolBuilder:
 
     def _move_exe_to_package(self, package_dir):
         """Move built exe into package directory"""
-        possible_sources = [
-            os.path.join(self.dist_dir, "GameTools_HealthMonitor.exe"),
-            os.path.join(self.dist_dir, "GameTools_HealthMonitor", "GameTools_HealthMonitor.exe")
-        ]
+        possible_sources = [os.path.join(self.dist_dir, "GameTools_HealthMonitor.exe"), os.path.join(self.dist_dir, "GameTools_HealthMonitor", "GameTools_HealthMonitor.exe")]
 
         for src in possible_sources:
             if os.path.exists(src):
@@ -268,6 +304,63 @@ class GameToolBuilder:
                 shutil.move(src, dst)
                 self.log(f"Moved exe: {dst}")
                 break
+
+    def build_updater(self):
+        """Build updater_main.py → updater.exe (lightweight, no GUI deps)."""
+        source_file = os.path.join(self.project_dir, "updater_main.py")
+        if not os.path.exists(source_file):
+            self.log("updater_main.py not found, skipping updater build")
+            return True
+
+        package_dir = os.path.join(self.dist_dir, "GameTools_Package")
+        run_tag = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        work_path = os.path.join(self.build_dir, f"pyinstaller_updater_{run_tag}")
+        spec_path = os.path.join(self.build_dir, "pyinstaller_specs")
+        os.makedirs(work_path, exist_ok=True)
+        os.makedirs(spec_path, exist_ok=True)
+
+        try:
+            cmd = [
+                sys.executable,
+                "-m",
+                "PyInstaller",
+                "--onefile",
+                "--console",
+                "--noconfirm",
+                "--workpath",
+                work_path,
+                "--specpath",
+                spec_path,
+                "--name",
+                "updater",
+                "--distpath",
+                self.dist_dir,
+                source_file,
+            ]
+
+            self.log("Building updater.exe...")
+            result = subprocess.run(cmd, cwd=self.project_dir, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+            if result.returncode != 0:
+                self.log(f"PyInstaller updater error: {result.stderr}")
+                return False
+
+            updater_src = os.path.join(self.dist_dir, "updater.exe")
+            if os.path.exists(updater_src):
+                updater_dst = os.path.join(package_dir, "updater.exe")
+                if os.path.exists(updater_dst):
+                    os.remove(updater_dst)
+                shutil.move(updater_src, updater_dst)
+                self.log(f"Built updater.exe → {updater_dst}")
+            else:
+                self.log("WARNING: updater.exe not found in dist/")
+                return False
+
+            return True
+
+        except Exception as e:
+            self.log(f"Updater build failed: {e}")
+            return False
 
     def create_installation_package(self):
         """Create installation package."""
@@ -286,6 +379,10 @@ class GameToolBuilder:
             (
                 os.path.join(self.src_dir, "language_packs.json"),
                 "language_packs.json",
+            ),
+            (
+                os.path.join(self.dist_dir, "GameTools_Package", "updater.exe"),
+                "updater.exe",
             ),
         ]
 
@@ -318,7 +415,7 @@ pause
 """
 
         bat_path = os.path.join(package_dir, "啟動工具.bat")
-        with open(bat_path, 'w', encoding='utf-8') as f:
+        with open(bat_path, "w", encoding="utf-8") as f:
             f.write(bat_content)
         self.log("Created 啟動工具.bat")
 
@@ -332,6 +429,7 @@ pause
 
 ## Package Contents
 - GameTools_HealthMonitor.exe
+- updater.exe
 - auto_click.exe
 - language_packs.json
 - README.txt
@@ -347,7 +445,7 @@ pause
 """
 
         readme_path = os.path.join(package_dir, "README.txt")
-        with open(readme_path, 'w', encoding='utf-8') as f:
+        with open(readme_path, "w", encoding="utf-8") as f:
             f.write(readme_content)
         self.log("Created README.txt")
 
@@ -357,6 +455,7 @@ pause
         # The release ZIP contains:
         #   auto_click.exe              (AutoHotkey auto-clicker)
         #   GameTools_HealthMonitor.exe (Main application)
+        #   updater.exe                 (Auto-update helper)
         #   language_packs.json         (Language strings)
         #   README.txt                  (Quick start)
         #   使用說明.md                 (User documentation)
@@ -373,7 +472,7 @@ pause
 
         # Create ZIP
         # 壓 ZIP 前清理執行期殘留（使用者個人設定/截圖）
-        for item_name in ['health_monitor_config.json', 'health_monitor_config.json.backup', 'screenshots']:
+        for item_name in ["health_monitor_config.json", "health_monitor_config.json.backup", "screenshots"]:
             item_path = os.path.join(package_dir, item_name)
             if os.path.isfile(item_path):
                 os.remove(item_path)
@@ -386,7 +485,7 @@ pause
         zip_name = f"GameTools_HealthMonitor_v{APP_VERSION}_{timestamp}"
         zip_path = os.path.join(self.dist_dir, zip_name)
 
-        shutil.make_archive(zip_path, 'zip', package_dir)
+        shutil.make_archive(zip_path, "zip", package_dir)
         self.log(f"Created ZIP: {zip_name}.zip")
 
         return True
@@ -399,7 +498,8 @@ pause
             steps = [
                 ("Check Dependencies", self.check_dependencies),
                 ("Build main tool", self.build_main_tool),
-                ("Create package", self.create_installation_package)
+                ("Build updater", self.build_updater),
+                ("Create package", self.create_installation_package),
             ]
 
             for step_name, step_func in steps:
@@ -428,11 +528,13 @@ pause
             self.log(f"Build pipeline error: {e}")
             return False
 
+
 def main():
     builder = GameToolBuilder()
     success = builder.build_all()
     # input("\nPress Enter to exit...")  # Uncomment to pause before exit
     return 0 if success else 1
+
 
 if __name__ == "__main__":
     exit(main())
