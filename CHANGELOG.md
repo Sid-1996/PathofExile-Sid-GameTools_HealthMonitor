@@ -17,6 +17,9 @@
 ### Fix
 - F9 全域暫停現在正確停止 SkillTimer（`restore_slots()` 只恢復原本運行的槽位）
 - 新增愛發電 Donate 按鈕
+- 自動更新 ZIP 解壓精確匹配 `GameTools_HealthMonitor.exe`，避免 `auto_click.exe` 被誤選覆蓋主程式
+- 版本更新通知窗口防重複（同一時間只顯示一個）
+- 自動更新 ZIP 僅包含核心檔案，排除 `auto_click.exe`
 
 ### Chore
 - `tools/build.py` 新增 `build_updater()` 步驟，updater.exe 打包進 release ZIP

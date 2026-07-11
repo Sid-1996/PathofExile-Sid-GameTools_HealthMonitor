@@ -21,7 +21,7 @@ max-complexity = 20
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "1.0.8"
+version = "1.2.1"
 version_files = [
     "src/_version.py:__version__",
 ]

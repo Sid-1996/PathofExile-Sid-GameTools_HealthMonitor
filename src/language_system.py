@@ -13,7 +13,7 @@ from tkinter import messagebox
 try:
     from _version import __version__ as APP_VERSION
 except ImportError:
-    APP_VERSION = "1.0.9"
+    APP_VERSION = "1.2.1"
 
 
 def get_app_dir():
