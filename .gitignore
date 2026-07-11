@@ -135,6 +135,9 @@ src/screenshots/
 *.key
 *.log
 
+# graphify knowledge graph
+graphify-out/cost.json
+
 # Build artifacts
 *.exe
 *.msi
