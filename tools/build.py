@@ -390,8 +390,11 @@ class GameToolBuilder:
             dst_full = os.path.join(package_dir, dst_name)
 
             if os.path.exists(src_path):
-                shutil.copy2(src_path, dst_full)
-                self.log(f"Copied: {dst_name}")
+                if os.path.abspath(src_path) == os.path.abspath(dst_full):
+                    self.log(f"Skipped (same path): {dst_name}")
+                else:
+                    shutil.copy2(src_path, dst_full)
+                    self.log(f"Copied: {dst_name}")
             else:
                 self.log(f"WARNING: {src_path} not found, skipping {dst_name}")
 
