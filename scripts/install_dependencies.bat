@@ -50,7 +50,5 @@ echo  安裝完成!
 echo.
 echo 運行方法:
 echo   python src/health_monitor.py
-echo.
-echo 或雙擊 scripts\run_monitor.bat
 echo ========================================
 pause
