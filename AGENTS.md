@@ -145,10 +145,10 @@ Runtime-generated files — do not treat as source:
 
 ## Packaging Rules (Critical)
 
-- `tools/build.py` sources all assets from `src/`.
+- `tools/build.py` sources assets from `src/` and `docs/`.
 - Build output includes:
   - `GameTools_HealthMonitor.exe`, `auto_click.exe`, `updater.exe`, `language_packs.json`
-  - `使用說明.md`, `啟動工具.bat`, `README.txt`
+  - `使用說明.md` (from `docs/`), `啟動工具.bat`, `README.txt`
 - If PyInstaller cache is locked on Windows (`WinError 5`), clear `build/GameTools_HealthMonitor` and rebuild.
 
 ## Release Workflow

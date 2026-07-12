@@ -373,7 +373,7 @@ class GameToolBuilder:
                 "auto_click.exe",
             ),
             (
-                os.path.join(self.src_dir, "使用說明.md"),
+                os.path.join("docs", "使用說明.md"),
                 "使用說明.md",
             ),
             (
