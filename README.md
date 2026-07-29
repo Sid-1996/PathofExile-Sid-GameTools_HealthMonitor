@@ -215,6 +215,19 @@ https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/issues
 
 ---
 
+# ☕ Support / 贊助
+
+如果我的工具對你有幫助，歡迎用你喜歡的方式支持我。
+
+If my tools help you, feel free to support me in your own way.
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?logo=kofi&logoColor=white&label=Support%20Sid)](https://ko-fi.com/K3K11KMXOL)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?logo=paypal&logoColor=white&label=Support%20Sid)](https://www.paypal.com/ncp/payment/GJS4D5VTSVWG4)
+[![ECPay](https://img.shields.io/badge/ECPay-8A2BE2?logo=amazonpay&logoColor=white&label=Support%20Sid)](https://p.ecpay.com.tw/E0E3A)
+[![愛發電](https://img.shields.io/badge/愛發電-946CE6?logo=afdian&logoColor=white&label=Support%20Sid)](https://afdian.com/a/sid-1996)
+
+---
+
 # ⚠️ Disclaimer / 免責聲明
 
 This software is provided for:
@@ -263,16 +276,4 @@ AGPL-3.0
 
 ---
 
-# ⭐ Support / 支持
 
-If this project helped you:
-
-- Star the repository
-- Report issues
-- Submit improvements
-
-如果這個專案有幫助到你：
-
-- 歡迎 Star
-- 回報 Issue
-- 提交改進
