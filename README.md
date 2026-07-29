@@ -26,12 +26,8 @@
 
 <p align="center">
   <a href="https://www.dailymotion.com/video/xa9cau2">
-    <img src="https://www.dailymotion.com/img/video/thumb.png" width="480" alt="Demo Video" />
+    <img src="https://img.shields.io/badge/▶️_觀看完整示範-0066DC?style=for-the-badge&logo=dailymotion&logoColor=white" alt="Watch on Dailymotion" />
   </a>
-</p>
-
-<p align="center">
-  <a href="https://www.dailymotion.com/video/xa9cau2">▶️ 在 Dailymotion 觀看完整示範</a>
 </p>
 
 ---
