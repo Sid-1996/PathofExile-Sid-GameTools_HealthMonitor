@@ -13,12 +13,15 @@
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" />
   <img src="https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?style=flat-square" />
   <a href="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/"><img src="https://img.shields.io/badge/Web-GitHub%20Pages-58a6ff?style=flat-square&logo=github" /></a>
-  <img src="https://github-view-counter.vercel.app/api?username=PathofExile-Sid-GameTools_HealthMonitor&label=Repo+views&color=%23f85149&style=square" alt="Repo Views" />
 </p>
 
 <p align="center">
   以影像辨識與輸入模擬為核心的 Windows 自動化研究工具<br>
   <sub>External automation research toolkit for Path of Exile</sub>
+</p>
+
+<p align="center">
+  <img src="https://github-view-counter.vercel.app/api?username=PathofExile-Sid-GameTools_HealthMonitor&label=Repo+views&color=%23f85149&style=square" alt="Repo Views" />
 </p>
 
 ---
