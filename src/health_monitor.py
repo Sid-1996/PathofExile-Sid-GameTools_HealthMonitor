@@ -358,7 +358,7 @@ class HealthMonitor:
         # 存儲原始 exe 路徑（用於 exe 重啟）
         self.original_exe_path = None
         if getattr(sys, "frozen", False):
-            # 在 PyInstaller --onefile 模式下，找到原始 exe 路徑
+            # 在 PyInstaller 打包模式下，找到原始 exe 路徑
             try:
                 import psutil
 

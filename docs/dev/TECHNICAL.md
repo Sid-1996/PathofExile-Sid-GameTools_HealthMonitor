@@ -3,7 +3,7 @@
 ## 環境
 
 - Python 3.12（開發機）；`pyproject.toml` target-version `py310`（相容下限）
-- 打包：PyInstaller（`tools/build.py`，目前 onefile）
+- 打包：PyInstaller onedir（`tools/build.py`，exe + `_internal/` 樹）
 - Lint/格式：ruff（line-length 200、select E/F/W/C90、mccabe 20）
 - 型別檢查：pyright（僅 `src/health_monitor.py`）
 - 測試：pytest（`tests/` + 純邏輯模組 `__main__` self-check）
@@ -38,8 +38,8 @@
 
 - `_parse_version()`：`1.2.2-beta` → `(1,2,2,0)`，stable `1.2.2` → `(1,2,2,1)`（stable 勝 pre-release）
 - `check_for_update()`：抓 raw `latest_version.txt`，`allow_prerelease` 時併比 pre-release 檔
-- `download_update()`：stream 下載 → 解 EXE → 驗 MZ header → 回傳路徑
-- `apply_update()`：啟動 `updater.exe` 背景替換
+- `download_update()`：stream 下載 → 解整棵 onedir 樹 → 驗 MZ header → 回傳路徑
+- `apply_update()`：啟動 `updater.exe` 背景整樹交換（staging→swap→rollback）
 
 ## 已知限制
 

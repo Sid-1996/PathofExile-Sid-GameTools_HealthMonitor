@@ -28,6 +28,11 @@ class GameToolBuilder:
         self.dist_dir = os.path.join(self.project_dir, "dist")
 
         self.icon_file = os.path.join(self.tools_dir, "GameTools_HealthMonitor.ico")
+        # 93f3eeb 把 icon 移到 assets/，兩處皆支援
+        self.icon_file = self._first_existing_path(
+            self.icon_file,
+            os.path.join(self.project_dir, "assets", "GameTools_HealthMonitor.ico"),
+        ) or os.path.join(self.tools_dir, "GameTools_HealthMonitor.ico")
 
         self.start_time = datetime.now()
         self.step_times = {}
@@ -103,7 +108,7 @@ class GameToolBuilder:
                 sys.executable,
                 "-m",
                 "PyInstaller",
-                "--onefile",
+                "--onedir",
                 "--noconsole",  # No console window for GUI app
                 "--noconfirm",
                 "--workpath",
@@ -209,19 +214,19 @@ class GameToolBuilder:
                 "--exclude-module",
                 "transformers",
                 # Data files
-                "--add-data",
-                f"{os.path.join(self.project_dir, 'scripts', 'auto_click.ahk')};.",
                 "--paths",
                 self.src_dir,
                 source_file,
             ]
 
+            # 旁置資源（language_packs.json / auto_click.exe / auto_click.ahk）
+            # 一律由 create_installation_package 複製到 exe 旁，不塞進 _internal/
             if os.path.exists(auto_click_exe_file):
-                cmd.extend(["--add-data", f"{auto_click_exe_file};."])
+                self.log(f"Sidecar: auto_click.exe ({os.path.getsize(auto_click_exe_file)} bytes)")
             else:
                 self.log("WARNING: auto_click.exe not found in src/, skipping")
             if language_pack_file and os.path.exists(language_pack_file):
-                cmd.extend(["--add-data", f"{language_pack_file};."])
+                self.log(f"Sidecar: language_packs.json ({os.path.getsize(language_pack_file)} bytes)")
             else:
                 self.log("WARNING: language_packs.json not found in src/, skipping")
 
@@ -293,17 +298,32 @@ class GameToolBuilder:
             self.log(f"Failed to collect binary dependencies: {e}")
 
     def _move_exe_to_package(self, package_dir):
-        """Move built exe into package directory"""
-        possible_sources = [os.path.join(self.dist_dir, "GameTools_HealthMonitor.exe"), os.path.join(self.dist_dir, "GameTools_HealthMonitor", "GameTools_HealthMonitor.exe")]
+        """Move built onedir tree (exe + _internal/) into package directory"""
+        onedir_src = os.path.join(self.dist_dir, "GameTools_HealthMonitor")
+        onefile_src = os.path.join(self.dist_dir, "GameTools_HealthMonitor.exe")
 
-        for src in possible_sources:
-            if os.path.exists(src):
-                dst = os.path.join(package_dir, "GameTools_HealthMonitor.exe")
+        # onedir: move the whole tree so exe + _internal/ stay together
+        if os.path.isdir(onedir_src):
+            for item in os.listdir(onedir_src):
+                src = os.path.join(onedir_src, item)
+                dst = os.path.join(package_dir, item)
                 if os.path.exists(dst):
-                    os.remove(dst)
+                    if os.path.isdir(dst):
+                        shutil.rmtree(dst)
+                    else:
+                        os.remove(dst)
                 shutil.move(src, dst)
-                self.log(f"Moved exe: {dst}")
-                break
+                self.log(f"Moved onedir item: {item}")
+            os.rmdir(onedir_src)
+            return
+
+        # legacy onefile: move the single exe
+        if os.path.exists(onefile_src):
+            dst = os.path.join(package_dir, "GameTools_HealthMonitor.exe")
+            if os.path.exists(dst):
+                os.remove(dst)
+            shutil.move(onefile_src, dst)
+            self.log(f"Moved exe: {dst}")
 
     def build_updater(self):
         """Build updater_main.py → updater.exe (lightweight, no GUI deps)."""
@@ -373,6 +393,10 @@ class GameToolBuilder:
                 "auto_click.exe",
             ),
             (
+                os.path.join(self.project_dir, "scripts", "auto_click.ahk"),
+                "auto_click.ahk",
+            ),
+            (
                 os.path.join("docs", "使用說明.md"),
                 "使用說明.md",
             ),
@@ -432,8 +456,10 @@ pause
 
 ## Package Contents
 - GameTools_HealthMonitor.exe (main app)
+- _internal/ (runtime dependencies, keep next to the exe)
 - updater.exe (auto-update helper)
 - auto_click.exe (auto-click helper)
+- auto_click.ahk (auto-click script fallback)
 - language_packs.json (language strings)
 - 使用說明.md (user documentation)
 - 啟動工具.bat (launcher)
@@ -448,7 +474,7 @@ a notification will appear. Click "Download Now" to update automatically.
 
 ## Notes
 - Keep all files together in the same folder.
-- Do not remove language_packs.json or auto_click.exe.
+- Do not remove _internal/, language_packs.json or auto_click.exe.
 """
 
         readme_path = os.path.join(package_dir, "README.txt")
@@ -460,8 +486,10 @@ a notification will appear. Click "Download Now" to update automatically.
         # Package structure notes (IMPORTANT - DO NOT MODIFY)
         # =============================================================================
         # The release ZIP contains:
+        #   GameTools_HealthMonitor.exe (Main application, PyInstaller onedir)
+        #   _internal/                  (onedir 相依樹，需與 exe 同資料夾)
         #   auto_click.exe              (AutoHotkey auto-clicker)
-        #   GameTools_HealthMonitor.exe (Main application)
+        #   auto_click.ahk              (AutoHotkey script fallback)
         #   updater.exe                 (Auto-update helper)
         #   language_packs.json         (Language strings)
         #   README.txt                  (Quick start)

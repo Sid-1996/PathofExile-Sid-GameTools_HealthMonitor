@@ -123,8 +123,8 @@ def download_update(
     cancel_event=None,
 ) -> Path:
     """
-    下載 ZIP → 解壓 Main EXE + updater.exe → 驗證 MZ header
-    回傳 Main EXE 路徑。失敗時自動清理暫存目錄。
+    下載 ZIP → 解壓整個 onedir 樹（主 EXE + _internal/）→ 驗證 MZ header
+    回傳主 EXE 路徑（其父目錄即為 staging，含完整更新樹）。
     progress_cb(downloaded_bytes, total_bytes): 可選進度回呼。
     cancel_event: threading.Event，set() 時中止下載。
     """
@@ -148,34 +148,31 @@ def download_update(
                 if progress_cb:
                     progress_cb(downloaded, total)
 
-        MAIN_EXE_NAME = "GameTools_HealthMonitor.exe"
-
         with zipfile.ZipFile(zip_path, "r") as zf:
-            names = zf.namelist()
+            for member in zf.infolist():
+                # 防 zip-slip：確保解壓路徑留在 staging 內
+                dest = (tmp_dir / member.filename).resolve()
+                if not dest.is_relative_to(tmp_dir.resolve()):
+                    raise RuntimeError(f"ZIP 內含非法路徑: {member.filename}")
+                if member.is_dir():
+                    dest.mkdir(parents=True, exist_ok=True)
+                    continue
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(member) as src, open(dest, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
 
-            # 精確匹配主程式 EXE（避免 auto_click.exe 等其他 EXE 被誤選）
-            target = None
-            for n in names:
-                if n == MAIN_EXE_NAME:
-                    target = n
-                    break
-            if not target:
-                raise RuntimeError(f"ZIP 內找不到主程式 {MAIN_EXE_NAME}")
-            with zf.open(target) as src, open(main_exe_path, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-
-            # 解壓 updater.exe
-            updater_entries = [n for n in names if n == UPDATER_EXE_NAME]
-            if not updater_entries:
-                raise RuntimeError("ZIP 內缺少 updater.exe")
-            updater_dst = tmp_dir / UPDATER_EXE_NAME
-            with zf.open(UPDATER_EXE_NAME) as src, open(updater_dst, "wb") as dst:
-                shutil.copyfileobj(src, dst)
+        if not main_exe_path.exists():
+            raise RuntimeError("ZIP 內找不到主程式 GameTools_HealthMonitor.exe")
+        if not (tmp_dir / UPDATER_EXE_NAME).exists():
+            raise RuntimeError("ZIP 內缺少 updater.exe")
 
         # 驗證 MZ header
         with open(main_exe_path, "rb") as f:
             if f.read(2) != b"MZ":
                 raise RuntimeError("下載檔案不是有效的 EXE（PE 標頭錯誤）")
+
+        # 解壓完成後移除 ZIP，避免被 updater 當作 app 檔複製進安裝目錄
+        zip_path.unlink(missing_ok=True)
 
         return main_exe_path
 

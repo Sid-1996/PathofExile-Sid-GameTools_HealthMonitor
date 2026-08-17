@@ -38,4 +38,4 @@ health_monitor.py ──→ tab_*.py ──→ utils.py / language_system.py / c
 
 - 版本檢查：dual-track（`latest_version.txt` / pre-release 檔），見 AGENTS.md
 - 下載：整包 ZIP → 解出主 EXE + `updater.exe` → 驗 MZ header
-- 套用：`updater.exe` 背景替換（目前為單檔複製，delta 為下一階段）
+- 套用：`updater.exe` 背景整樹交換（onedir：exe + `_internal/`，含 rollback；delta 為下一階段）
