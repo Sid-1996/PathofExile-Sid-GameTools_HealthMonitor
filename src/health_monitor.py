@@ -327,7 +327,7 @@ class HealthMonitor:
         self.language_manager = get_language_manager()
 
         # 臨時載入設定以獲取語言偏好
-        success, message = self.config_manager.load_config()
+        self.config_manager.load_config()
         temp_config = self.config_manager.config
 
         # 嘗試從 config 讀取語言，若無則預設為 'zh-tw'
@@ -1775,7 +1775,7 @@ class HealthMonitor:
         """????"""
         print("[DEBUG] load_config ")
         try:
-            success, message = self.config_manager.load_config()
+            success = self.config_manager.load_config()
             self.config = self.config_manager.config
 
             if success:

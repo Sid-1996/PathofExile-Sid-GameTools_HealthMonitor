@@ -4,23 +4,22 @@
 def test_save_load_roundtrip(tmp_config_manager):
     cm = tmp_config_manager
     cm.set_config_value("language", "en")
-    ok, _ = cm.save_config()
+    ok = cm.save_config()
     assert ok
 
     from config_manager import ConfigManager
     import os
 
     cm2 = ConfigManager(config_path=os.path.dirname(cm.config_file))
-    ok, _ = cm2.load_config()
+    ok = cm2.load_config()
     assert ok
     assert cm2.get_config_value("language") == "en"
 
 
 def test_missing_config_uses_defaults(tmp_config_manager):
     cm = tmp_config_manager
-    ok, msg = cm.load_config()
+    ok = cm.load_config()
     assert ok
-    assert "不存在" in msg
     assert cm.get_config_value("language", "zh-tw") == "zh-tw"
 
 

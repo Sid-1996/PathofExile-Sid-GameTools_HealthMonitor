@@ -15,6 +15,6 @@ def tmp_config_manager(tmp_path):
     from config_manager import ConfigManager
 
     cm = ConfigManager(config_path=str(tmp_path))
-    ok, _ = cm.load_config()
+    ok = cm.load_config()
     assert ok
     return cm

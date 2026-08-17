@@ -25,13 +25,14 @@ class ConfigManager:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
-                return True, "設定檔案載入成功"
+                return True
             else:
                 self.config = {}
-                return True, "設定檔案不存在，使用預設值"
+                return True
         except Exception as e:
+            print(f"[ERROR] 載入設定檔案失敗: {e}")
             self.config = {}
-            return False, f"載入設定檔案失敗: {e}"
+            return False
 
     def save_config(self, config_data=None, show_message=True):
         """儲存設定檔案（帶備份和異常恢復機制）"""
@@ -55,10 +56,9 @@ class ConfigManager:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
 
             print(f"[DEBUG] 配置文件已保存: {self.config_file}")
-            return True, "設定檔案儲存成功"
+            return True
         except Exception as e:
-            error_msg = f"儲存設定檔案失敗: {e}"
-            print(f"[ERROR] {error_msg}")
+            print(f"[ERROR] 儲存設定檔案失敗: {e}")
 
             # 嘗試從備份恢復
             backup_file = self.config_file + ".backup"
@@ -68,12 +68,12 @@ class ConfigManager:
 
                     shutil.copy2(backup_file, self.config_file)
                     print("[WARN] 已從備份恢復配置文件")
-                    return False, f"{error_msg} - 已從備份恢復"
+                    return False
                 except Exception as restore_error:
                     print(f"[ERROR] 從備份恢復失敗: {restore_error}")
-                    return False, f"{error_msg} - 備份恢復失敗"
+                    return False
 
-            return False, error_msg
+            return False
 
     def get_config_value(self, key, default=None):
         """獲取設定值"""
@@ -157,15 +157,18 @@ class ConfigManager:
                 with open(backup_file, "w", encoding="utf-8") as dst:
                     dst.write(src.read())
 
-            return True, f"設定檔案已備份至: {backup_file}"
+            print(f"[DEBUG] 配置文件已備份至: {backup_file}")
+            return True
         except Exception as e:
-            return False, f"備份設定檔案失敗: {e}"
+            print(f"[ERROR] 備份設定檔案失敗: {e}")
+            return False
 
     def restore_config(self, backup_file):
         """恢復設定檔案"""
         try:
             if not os.path.exists(backup_file):
-                return False, f"備份檔案不存在: {backup_file}"
+                print(f"[ERROR] 備份檔案不存在: {backup_file}")
+                return False
 
             with open(backup_file, "r", encoding="utf-8") as src:
                 with open(self.config_file, "w", encoding="utf-8") as dst:
@@ -174,9 +177,10 @@ class ConfigManager:
             # 重新載入設定
             self.load_config()
 
-            return True, "設定檔案已恢復"
+            return True
         except Exception as e:
-            return False, f"恢復設定檔案失敗: {e}"
+            print(f"[ERROR] 恢復設定檔案失敗: {e}")
+            return False
 
 
 # 全域配置管理器實例
@@ -217,12 +221,12 @@ if __name__ == "__main__":
 
     tmp = tempfile.mkdtemp()
     cm = ConfigManager(config_path=tmp)
-    ok, _ = cm.load_config()
+    ok = cm.load_config()
     assert ok, "load_config on empty dir should succeed"
     cm.set_config_value("language", "en")
-    ok, _ = cm.save_config()
+    ok = cm.save_config()
     assert ok, "save_config should succeed"
     cm2 = ConfigManager(config_path=tmp)
-    ok, _ = cm2.load_config()
+    ok = cm2.load_config()
     assert ok and cm2.get_config_value("language") == "en", "round-trip language=en failed"
     print("config_manager self-check OK")
