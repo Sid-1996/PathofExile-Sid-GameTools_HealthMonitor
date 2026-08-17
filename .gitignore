@@ -102,9 +102,10 @@ tmp/
 # Local dev (DO NOT COMMIT)
 LOCAL_DEVELOPMENT.md
 
-# Test files
-test_*.py
-*_test.py
+# Test files (tests/ is tracked; only ignore stray root-level scratch)
+/test_*.py
+/*_test.py
+!tests/
 
 # License
 license_data.json
