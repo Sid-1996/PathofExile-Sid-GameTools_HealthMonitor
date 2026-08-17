@@ -1,0 +1,46 @@
+# 技術規格
+
+## 環境
+
+- Python 3.12（開發機）；`pyproject.toml` target-version `py310`（相容下限）
+- 打包：PyInstaller（`tools/build.py`，目前 onefile）
+- Lint/格式：ruff（line-length 200、select E/F/W/C90、mccabe 20）
+- 型別檢查：pyright（僅 `src/health_monitor.py`）
+- 測試：pytest（`tests/` + 純邏輯模組 `__main__` self-check）
+
+## 主要依賴
+
+| 依賴 | 用途 |
+|---|---|
+| OpenCV (cv2) | 影像分析、HSV 轉換 |
+| numpy | 影像陣列處理 |
+| mss | 截圖 |
+| Pillow (PIL) | 影像繪製/預覽 |
+| keyboard | 全域熱鍵（F12） |
+| psutil | 子進程管理 |
+| pyautogui / pygetwindow | 按鍵/視窗控制 |
+| requests | 版本檢查、下載 |
+
+## 監控分析
+
+- `monitor_analyzer.analyze_health/mana`：18 個等距偵測點 → 有顏色像素比例 → 百分比
+- 滿血/滿魔偵測：3 條規則（下半部比例、核心區比例、全部偵測點）
+- 觸發：優先最低百分比設定，支援 cooldown 與 multi-trigger
+
+## Config
+
+- `src/health_monitor_config.json`（runtime 產生，勿當 source）
+- 儲存前自動 `.backup`，異常時從備份恢復
+
+## 更新引擎（updater_core.py）
+
+移植自 ocr-trigger-clicker `core/12_updater.py`，**目前無 delta 支援**（只整包 ZIP）。
+
+- `_parse_version()`：`1.2.2-beta` → `(1,2,2,0)`，stable `1.2.2` → `(1,2,2,1)`（stable 勝 pre-release）
+- `check_for_update()`：抓 raw `latest_version.txt`，`allow_prerelease` 時併比 pre-release 檔
+- `download_update()`：stream 下載 → 解 EXE → 驗 MZ header → 回傳路徑
+- `apply_update()`：啟動 `updater.exe` 背景替換
+
+## 已知限制
+
+見 AGENTS.md「Known Issues」：PrintWindow 全黑、mss/dxcam 截合成桌面。
