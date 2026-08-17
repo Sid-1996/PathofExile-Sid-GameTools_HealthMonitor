@@ -2239,6 +2239,14 @@ class HealthMonitor:
             # 強制更新視窗
             self.loading_window.update()
 
+            # bootloader splash 交棒給載入視窗（僅打包模式存在 pyi_splash）
+            try:
+                import pyi_splash
+
+                pyi_splash.close()
+            except ImportError:
+                pass
+
         except Exception as e:
             print(f"創建載入提示視窗失敗: {e}")
 
