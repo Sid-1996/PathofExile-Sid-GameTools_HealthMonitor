@@ -10,6 +10,7 @@ import time
 try:
     import cv2
     import numpy as np
+
     OPENCV_AVAILABLE = True
 except ImportError as e:
     print(f"警告: OpenCV不可用 - {e}")
@@ -28,6 +29,7 @@ from datetime import datetime
 import psutil
 import requests
 import functools
+
 # Import new modularized components
 from skill_timer import SkillTimerModule
 from language_system import get_language_manager, get_text as get_localized_text
@@ -110,7 +112,6 @@ SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c
 SendMessageW.restype = ctypes.c_long
 
 
-
 class HealthMonitor:
     def get_text(self, key):
         """獲取本地化文字"""
@@ -144,7 +145,7 @@ class HealthMonitor:
             self.language_manager.change_language(new_language)
             self.current_language = new_language  # 同步主程序的 current_language
             self.language_var.set(self.language_reverse_map.get(new_language, "繁體中文"))
-            self.config['language'] = new_language
+            self.config["language"] = new_language
 
             # 立即更新所有 UI 語言
             self.update_ui_language()
@@ -179,7 +180,7 @@ class HealthMonitor:
             self.notebook.tab(6, text=self.get_text("tab_about"))
 
             # 更新控制面板的UI元素
-            if hasattr(self.monitor_tab, 'control_frame'):
+            if hasattr(self.monitor_tab, "control_frame"):
                 self.monitor_tab.control_frame.config(text=self.get_text("control_panel"))
                 if self.monitor_tab.start_btn:
                     self.monitor_tab.start_btn.config(text=self.get_text("start_monitoring"))
@@ -213,7 +214,7 @@ class HealthMonitor:
                     self.monitor_tab.preview_ms_label.config(text=self.get_text("ms"))
 
             # 更新遊戲視窗設定區域
-            if hasattr(self.monitor_tab, 'region_label'):
+            if hasattr(self.monitor_tab, "region_label"):
                 self.monitor_tab.region_label.config(text=get_region_text(self.config))
                 if self.monitor_tab.mana_region_label:
                     self.monitor_tab.mana_region_label.config(text=get_mana_region_text(self.config))
@@ -231,7 +232,7 @@ class HealthMonitor:
                 self.multi_trigger_check.config(text=self.get_text("multiple_triggers"))
 
             # 更新即時狀態區域
-            if hasattr(self.monitor_tab, 'real_time_status_frame'):
+            if hasattr(self.monitor_tab, "real_time_status_frame"):
                 self.monitor_tab.real_time_status_frame.config(text=self.get_text("real_time_status"))
                 if self.monitor_tab.current_health_label:
                     self.monitor_tab.current_health_label.config(text=self.get_text("current_health"))
@@ -243,7 +244,7 @@ class HealthMonitor:
                     self.monitor_tab.trigger_status_label.config(text=self.get_text("trigger_status"))
 
             # 更新預覽區域
-            if hasattr(self.monitor_tab, 'preview_frame'):
+            if hasattr(self.monitor_tab, "preview_frame"):
                 self.monitor_tab.preview_frame.config(text=self.get_text("region_preview"))
                 if self.monitor_tab.health_preview_frame:
                     self.monitor_tab.health_preview_frame.config(text=self.get_text("health_preview"))
@@ -262,49 +263,49 @@ class HealthMonitor:
     def update_ui_language(self):
         """更新所有 UI 語言，不需重啟"""
         self.update_ui_text()
-        if hasattr(self, 'monitor_tab'):
+        if hasattr(self, "monitor_tab"):
             self.monitor_tab.update_monitor_tab_language()
-        if hasattr(self, 'inventory_tab'):
+        if hasattr(self, "inventory_tab"):
             self.inventory_tab.update_inventory_tab_language()
-        if hasattr(self, 'combo_tab'):
+        if hasattr(self, "combo_tab"):
             self.update_combo_tab_language()
-        if hasattr(self, 'status_tab'):
+        if hasattr(self, "status_tab"):
             self.update_status_tab_language()
-        if hasattr(self, 'help_tab'):
+        if hasattr(self, "help_tab"):
             self.update_help_tab_language()
-        if hasattr(self, 'version_tab'):
+        if hasattr(self, "version_tab"):
             self.update_version_tab_language()
-        if hasattr(self, 'about_tab'):
+        if hasattr(self, "about_tab"):
             self.update_about_tab_language()
 
     def update_status_tab_language(self):
         try:
-            if hasattr(self, 'status_tab'):
+            if hasattr(self, "status_tab"):
                 self.status_tab.update_language()
         except Exception as e:
             print(f"更新狀態分頁語言時發生錯誤: {e}")
 
     def update_help_tab_language(self):
-        if hasattr(self, 'help_tab'):
+        if hasattr(self, "help_tab"):
             self.help_tab.update_language()
 
     def update_version_tab_language(self):
         try:
-            if hasattr(self, 'version_tab'):
+            if hasattr(self, "version_tab"):
                 self.version_tab.update_language()
         except Exception as e:
             print(f"更新版本分頁語言時發生錯誤: {e}")
 
     def update_about_tab_language(self):
         try:
-            if hasattr(self, 'about_tab'):
+            if hasattr(self, "about_tab"):
                 self.about_tab.update_language()
         except Exception as e:
             print(f"更新關於分頁語言時發生錯誤: {e}")
 
     def update_combo_tab_language(self):
         try:
-            if hasattr(self, 'combo_tab'):
+            if hasattr(self, "combo_tab"):
                 self.combo_tab.update_language()
         except Exception as e:
             print(f"更新技能連段分頁語言時發生錯誤: {e}")
@@ -356,10 +357,11 @@ class HealthMonitor:
 
         # 存儲原始 exe 路徑（用於 exe 重啟）
         self.original_exe_path = None
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # 在 PyInstaller --onefile 模式下，找到原始 exe 路徑
             try:
                 import psutil
+
                 current_process = psutil.Process()
                 # 獲取當前進程的可執行文件路徑
                 self.original_exe_path = current_process.exe()
@@ -372,12 +374,12 @@ class HealthMonitor:
                     if len(sys.argv) > 0:
                         # 檢查第一個參數是否是 exe 路徑
                         potential_path = sys.argv[0]
-                        if potential_path.endswith('.exe') and os.path.exists(potential_path):
+                        if potential_path.endswith(".exe") and os.path.exists(potential_path):
                             self.original_exe_path = potential_path
                         else:
                             # 嘗試從應用程式目錄查找
                             app_dir = get_app_dir()
-                            possible_exe_names = ['GameTools_HealthMonitor.exe', 'health_monitor.exe']
+                            possible_exe_names = ["GameTools_HealthMonitor.exe", "health_monitor.exe"]
                             for exe_name in possible_exe_names:
                                 exe_path = os.path.join(app_dir, exe_name)
                                 if os.path.exists(exe_path):
@@ -441,17 +443,16 @@ class HealthMonitor:
         self.green_h_range = 40  # 綠色H範圍下限
 
         # 新增HSV顏色參數
-        self.red_saturation_min = 50   # 紅色最小鮮豔度
-        self.red_value_min = 50        # 紅色最小明亮度
+        self.red_saturation_min = 50  # 紅色最小鮮豔度
+        self.red_value_min = 50  # 紅色最小明亮度
         self.green_saturation_min = 50  # 綠色最小鮮豔度
-        self.green_value_min = 50      # 綠色最小明亮度
+        self.green_value_min = 50  # 綠色最小明亮度
 
         # 介面UI檢測參數（可調整）
         self.interface_ui_mse_threshold = 800  # MSE閾值
         self.interface_ui_ssim_threshold = 0.6  # SSIM閾值
         self.interface_ui_hist_threshold = 0.7  # 直方圖相似度閾值
         self.interface_ui_color_threshold = 35  # 顏色差異閾值
-
 
         # 滑鼠自動點擊管理器
         self.auto_click_manager = AutoClickManager(self)
@@ -538,13 +539,13 @@ class HealthMonitor:
 
     def refresh_visual_previews_after_load(self):
         """Refresh heavier previews after startup so the main window appears sooner."""
-        if hasattr(self.inventory_tab, 'ui_preview_canvas') and hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_ui_region:
+        if hasattr(self.inventory_tab, "ui_preview_canvas") and hasattr(self, "inventory_tab") and self.inventory_tab.inventory_ui_region:
             self.inventory_tab.update_ui_preview()
 
-        if hasattr(self.monitor_tab, 'interface_ui_preview_canvas') and self.interface_ui_region:
+        if hasattr(self.monitor_tab, "interface_ui_preview_canvas") and self.interface_ui_region:
             self.inventory_tab.update_interface_ui_preview()
 
-        if hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_region:
+        if hasattr(self, "inventory_tab") and self.inventory_tab.inventory_region:
             self.inventory_tab.update_inventory_preview_from_current()
 
     def setup_mouse_interrupt(self):
@@ -596,7 +597,7 @@ class HealthMonitor:
         """將窗口置中於螢幕，如果沒有儲存的位置"""
         try:
             # 檢查是否已經有儲存的窗口位置
-            if hasattr(self, 'config') and 'window_geometry' in self.config:
+            if hasattr(self, "config") and "window_geometry" in self.config:
                 print(self.get_text("skip_center_window"))
                 return
 
@@ -696,10 +697,10 @@ class HealthMonitor:
             "血魔監控": (1000, 700),  # 血魔監控：左右分欄+設定區域，需要適中空間
             "一鍵清包": (1200, 800),  # 一鍵清包：左側控制+右側預覽，需要較大空間
             "技能連段": (1100, 650),  # 技能連段：3個連段區域橫向排列，需要寬度
-            "執行狀態": (800, 600),   # 執行狀態：主要是文字顯示區域，較緊湊
-            "使用說明": (900, 650),   # 使用說明：卡片式佈局，中等空間
-            "版本檢查": (750, 550),   # 版本檢查：簡單的版本資訊顯示，較小空間
-            "🚀 關於作者": (650, 500)       # 關於：卡片式按鈕佈局，緊湊空間
+            "執行狀態": (800, 600),  # 執行狀態：主要是文字顯示區域，較緊湊
+            "使用說明": (900, 650),  # 使用說明：卡片式佈局，中等空間
+            "版本檢查": (750, 550),  # 版本檢查：簡單的版本資訊顯示，較小空間
+            "🚀 關於作者": (650, 500),  # 關於：卡片式按鈕佈局，緊湊空間
         }
 
         # 創建各分頁內容
@@ -730,13 +731,13 @@ class HealthMonitor:
             self.adjust_window_for_tab(current_tab)
 
             # 保存當前分頁到配置中
-            self.config['last_selected_tab'] = current_tab
+            self.config["last_selected_tab"] = current_tab
 
             try:
                 tab_index = self.notebook.index(self.notebook.select())
                 if tab_index == 1:
                     self.window_key_sender._focus_watcher_interval = 200
-                    if self.window_key_sender._is_game_window_visible() and hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_region:
+                    if self.window_key_sender._is_game_window_visible() and hasattr(self, "inventory_tab") and self.inventory_tab.inventory_region:
                         self.root.after(0, self.inventory_tab.update_inventory_preview_from_current)
                 else:
                     self.window_key_sender._focus_watcher_interval = 1000
@@ -749,11 +750,11 @@ class HealthMonitor:
     def adjust_window_for_tab(self, tab_name):
         """根據分頁名稱調整視窗大小 - 支持智能縮放"""
         # 啟動階段且有已儲存的視窗幾何，只做最小尺寸保底，不覆蓋使用者設定
-        if self._startup_phase and 'window_geometry' in self.config:
+        if self._startup_phase and "window_geometry" in self.config:
             if tab_name in self.tab_min_sizes:
                 min_w, min_h = self.tab_min_sizes[tab_name]
                 try:
-                    geo = self.root.geometry().split('+')[0].split('x')
+                    geo = self.root.geometry().split("+")[0].split("x")
                     cur_w, cur_h = int(geo[0]), int(geo[1])
                     if cur_w < min_w or cur_h < min_h:
                         self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
@@ -776,8 +777,8 @@ class HealthMonitor:
 
             # 獲取當前視窗大小和位置
             current_geometry = self.root.geometry()
-            current_parts = current_geometry.split('+')
-            current_size = current_parts[0].split('x')
+            current_parts = current_geometry.split("+")
+            current_size = current_parts[0].split("x")
             current_width = int(current_size[0])
             current_height = int(current_size[1])
 
@@ -837,7 +838,7 @@ class HealthMonitor:
                 "技能連段": self.combo_frame,
                 "使用說明": self.help_frame,
                 "版本檢查": self.version_frame,
-                "🚀 關於作者": self.about_frame
+                "🚀 關於作者": self.about_frame,
             }
 
             if tab_name not in frame_map:
@@ -873,8 +874,8 @@ class HealthMonitor:
     def restore_last_selected_tab(self):
         """恢復上次選擇的分頁"""
         try:
-            if 'last_selected_tab' in self.config:
-                last_tab = self.config['last_selected_tab']
+            if "last_selected_tab" in self.config:
+                last_tab = self.config["last_selected_tab"]
 
                 # 尋找對應的分頁索引
                 for i in range(self.notebook.index("end")):
@@ -884,7 +885,7 @@ class HealthMonitor:
                         self.adjust_window_for_tab(last_tab)
                         print(self.get_text("restored_last_tab").format(last_tab=last_tab))
                         # 同步更新 focus watcher 間隔
-                        if hasattr(self, 'window_key_sender'):
+                        if hasattr(self, "window_key_sender"):
                             if i == 1:
                                 self.window_key_sender._focus_watcher_interval = 200
                             else:
@@ -902,7 +903,7 @@ class HealthMonitor:
 
             # 自動保存設定
             try:
-                self.config['always_on_top'] = is_topmost
+                self.config["always_on_top"] = is_topmost
                 self.config_manager.save_config(self.config)
                 print("GUI最上方設定已自動保存")
             except Exception as save_error:
@@ -998,8 +999,8 @@ class HealthMonitor:
 
         # 儲存可滾動組件的引用
         self.scrollable_widgets = {}
-        if hasattr(self, 'settings_tree'):
-            self.scrollable_widgets['settings_tree'] = self.monitor_tab.settings_tree
+        if hasattr(self, "settings_tree"):
+            self.scrollable_widgets["settings_tree"] = self.monitor_tab.settings_tree
 
     def on_tab_changed(self, event):
         """分頁切換時的處理"""
@@ -1016,23 +1017,23 @@ class HealthMonitor:
         # 根據不同的分頁處理滾輪事件
         if current_tab_index == 0:  # 血量監控分頁
             # 血量監控分頁：滾動Treeview
-            self.monitor_tab.settings_tree.yview_scroll(int(-1*(event.delta/120)), "units")
+            self.monitor_tab.settings_tree.yview_scroll(int(-1 * (event.delta / 120)), "units")
             return "break"
 
         elif current_tab_index == 2:  # 技能組合分頁
-            if hasattr(self, 'combo_tab') and self.combo_tab.combo_canvas:
-                self.combo_tab.combo_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            if hasattr(self, "combo_tab") and self.combo_tab.combo_canvas:
+                self.combo_tab.combo_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
                 return "break"
 
         elif current_tab_index == 4:  # 使用說明分頁
-            help_canvas = self.help_tab.help_canvas if hasattr(self, 'help_tab') else None
+            help_canvas = self.help_tab.help_canvas if hasattr(self, "help_tab") else None
             if help_canvas:
-                help_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                help_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
                 return "break"
 
         elif current_tab_index == 6:  # 關於作者分頁
-            if hasattr(self, 'about_tab') and self.about_tab.about_canvas:
-                self.about_tab.about_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            if hasattr(self, "about_tab") and self.about_tab.about_canvas:
+                self.about_tab.about_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
                 return "break"
 
         return "break"  # 阻止事件繼續傳播
@@ -1040,8 +1041,8 @@ class HealthMonitor:
     def setup_global_esc_listener_for_inventory(self):
         """設置背包UI選擇的全局ESC鍵監聽"""
         try:
-            if not hasattr(self, 'global_esc_active_inventory') or not self.global_esc_active_inventory:
-                keyboard.add_hotkey('esc', self.global_esc_handler_for_inventory)
+            if not hasattr(self, "global_esc_active_inventory") or not self.global_esc_active_inventory:
+                keyboard.add_hotkey("esc", self.global_esc_handler_for_inventory)
                 self.global_esc_active_inventory = True
                 print("已設置背包UI選擇的全局ESC監聽")
         except Exception as e:
@@ -1050,14 +1051,14 @@ class HealthMonitor:
     def remove_global_esc_listener_for_inventory(self):
         """移除背包相關選擇的全局ESC鍵監聽"""
         try:
-            if hasattr(self, 'global_esc_active_inventory') and self.global_esc_active_inventory:
+            if hasattr(self, "global_esc_active_inventory") and self.global_esc_active_inventory:
                 # 檢查是否還有其他背包相關的選擇在進行中
-                inventory_ui_active = getattr(self, 'inventory_ui_selection_active', False)
-                inventory_active = getattr(self, 'inventory_selection_active', False)
+                inventory_ui_active = getattr(self, "inventory_ui_selection_active", False)
+                inventory_active = getattr(self, "inventory_selection_active", False)
 
                 # 只有在沒有任何背包相關選擇活動時才移除監聽
                 if not inventory_ui_active and not inventory_active:
-                    keyboard.remove_hotkey('esc')
+                    keyboard.remove_hotkey("esc")
                     self.global_esc_active_inventory = False
                     print("已移除背包相關選擇的全局ESC監聽")
                 else:
@@ -1069,14 +1070,14 @@ class HealthMonitor:
         """背包相關選擇的全局ESC鍵處理函數"""
         try:
             # 檢查背包UI選擇
-            if hasattr(self, 'inventory_ui_selection_active') and self.inventory_ui_selection_active:
+            if hasattr(self, "inventory_ui_selection_active") and self.inventory_ui_selection_active:
                 # 使用tkinter的after方法來確保在主線程中執行
                 self.root.after(0, lambda: self.inventory_tab.cancel_inventory_ui_selection(None))
                 print("檢測到ESC鍵，取消背包UI選擇")
                 return
 
             # 檢查背包區域選擇
-            if hasattr(self, 'inventory_selection_active') and self.inventory_selection_active:
+            if hasattr(self, "inventory_selection_active") and self.inventory_selection_active:
                 # 使用tkinter的after方法來確保在主線程中執行
                 self.root.after(0, lambda: self.inventory_tab.cancel_inventory_selection(None))
                 print("檢測到ESC鍵，取消背包區域選擇")
@@ -1093,10 +1094,7 @@ class HealthMonitor:
 
             game_window = windows[0]
             if game_window.isMinimized:
-                messagebox.showwarning(
-                    self.get_text("warning"),
-                    self.get_text("game_window_minimized_warning")
-                )
+                messagebox.showwarning(self.get_text("warning"), self.get_text("game_window_minimized_warning"))
                 return True  # 已顯示提醒
             return False  # 未最小化
         except Exception as e:
@@ -1175,11 +1173,11 @@ class HealthMonitor:
         if self.check_game_window_minimized(self.monitor_tab.window_var.get()):
             return
 
-        if not self.config.get('region'):
+        if not self.config.get("region"):
             messagebox.showerror(self.get_text("error"), self.get_text("select_health_bar_region_first"))
             return
 
-        if not self.config.get('settings'):
+        if not self.config.get("settings"):
             messagebox.showerror(self.get_text("error"), self.get_text("set_at_least_one_trigger"))
             return
 
@@ -1250,10 +1248,10 @@ class HealthMonitor:
         if not self.monitor_tab.window_var.get():
             raise Exception("未選擇遊戲視窗")
 
-        if not self.config.get('region'):
+        if not self.config.get("region"):
             raise Exception("未設定血量條區域")
 
-        if not self.config.get('settings'):
+        if not self.config.get("settings"):
             raise Exception("未設定觸發條件")
 
         # 激活遊戲視窗（靜默）
@@ -1271,9 +1269,9 @@ class HealthMonitor:
 
         # 更新UI（如果元件存在）
         try:
-            if hasattr(self.monitor_tab, 'start_btn') and self.monitor_tab.start_btn:
+            if hasattr(self.monitor_tab, "start_btn") and self.monitor_tab.start_btn:
                 self.monitor_tab.start_btn.config(state=tk.DISABLED)
-            if hasattr(self.monitor_tab, 'stop_btn') and self.monitor_tab.stop_btn:
+            if hasattr(self.monitor_tab, "stop_btn") and self.monitor_tab.stop_btn:
                 self.monitor_tab.stop_btn.config(state=tk.NORMAL)
         except Exception:
             pass  # UI 更新失敗不影響功能
@@ -1323,7 +1321,7 @@ class HealthMonitor:
                         self.status_tab.add_status_message(self.get_text("game_window_regained_focus"), "success")
 
                     # 計算區域在螢幕上的絕對位置
-                    x, y, w, h = self.config['region']
+                    x, y, w, h = self.config["region"]
                     abs_x = window.left + x
                     abs_y = window.top + y
 
@@ -1333,7 +1331,9 @@ class HealthMonitor:
                     # 分析血量
                     health_percent = analyze_health(
                         img,
-                        lambda seg: is_health_color(seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min, self.health_threshold),
+                        lambda seg: is_health_color(
+                            seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min, self.health_threshold
+                        ),
                         lambda seg: get_health_color_ratio(seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min),
                         self.health_threshold,
                     )
@@ -1341,10 +1341,10 @@ class HealthMonitor:
 
                     # 分析魔力（如果有設定魔力區域）
                     mana_percent = "--"
-                    if self.config.get('mana_region'):
+                    if self.config.get("mana_region"):
                         try:
                             # 計算魔力區域在螢幕上的絕對位置
-                            mx, my, mw, mh = self.config['mana_region']
+                            mx, my, mw, mh = self.config["mana_region"]
                             mana_abs_x = window.left + mx
                             mana_abs_y = window.top + my
 
@@ -1367,12 +1367,15 @@ class HealthMonitor:
                         f"{mana_percent}%",
                         main_color,
                         check_triggers(
-                            health_percent, mana_value,
-                            self.config, self.state.last_trigger_times,
-                            self.get_text, self.inventory_tab.is_interface_ui_visible,
+                            health_percent,
+                            mana_value,
+                            self.config,
+                            self.state.last_trigger_times,
+                            self.get_text,
+                            self.inventory_tab.is_interface_ui_visible,
                             self.monitor_tab.window_var.get(),
-                            getattr(self, 'interface_ui_region', None),
-                            getattr(self.inventory_tab, 'interface_ui_screenshot', None),
+                            getattr(self, "interface_ui_region", None),
+                            getattr(self.inventory_tab, "interface_ui_screenshot", None),
                         ),
                     )
 
@@ -1381,14 +1384,18 @@ class HealthMonitor:
 
                     # 觸發相應的動作
                     trigger_actions(
-                        health_percent, mana_value,
-                        self.config, self.state.last_trigger_times,
+                        health_percent,
+                        mana_value,
+                        self.config,
+                        self.state.last_trigger_times,
                         self.monitor_tab.multi_trigger_var.get(),
-                        self.add_status_message, self.get_text,
-                        self.inventory_tab.is_interface_ui_visible, self.press_key_sequence,
+                        self.add_status_message,
+                        self.get_text,
+                        self.inventory_tab.is_interface_ui_visible,
+                        self.press_key_sequence,
                         self.monitor_tab.window_var.get(),
-                        getattr(self, 'interface_ui_region', None),
-                        getattr(self.inventory_tab, 'interface_ui_screenshot', None),
+                        getattr(self, "interface_ui_region", None),
+                        getattr(self.inventory_tab, "interface_ui_screenshot", None),
                     )
 
                     # 使用選擇的檢查頻率
@@ -1408,7 +1415,7 @@ class HealthMonitor:
         print(f" 血魔監控開始執行按鍵序列: {key_sequence}")
 
         # 解析鍵序列（用 - 分隔）
-        keys = [key.strip() for key in key_sequence.split('-')]
+        keys = [key.strip() for key in key_sequence.split("-")]
         print(f" 血魔監控解析後的按鍵列表: {keys}")
 
         # 獲取遊戲窗口句柄
@@ -1419,10 +1426,10 @@ class HealthMonitor:
             for i, key in enumerate(keys):
                 vk_code = self.window_key_sender.map_key_to_vk_code(key)
                 if vk_code:
-                    print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> VK_{vk_code}")
+                    print(f" 血魔按鍵 {i + 1}/{len(keys)}: {key} -> VK_{vk_code}")
                     self.window_key_sender.send_key_to_window(game_hwnd, vk_code)  # 使用修復版本
                 else:
-                    print(f" 血魔按鍵 {i+1}/{len(keys)}: {key} -> 無法映射鍵碼")
+                    print(f" 血魔按鍵 {i + 1}/{len(keys)}: {key} -> 無法映射鍵碼")
 
                 # 如果不是最後一個鍵，添加延遲
                 if i < len(keys) - 1:
@@ -1434,7 +1441,7 @@ class HealthMonitor:
             for i, key in enumerate(keys):
                 # 處理特殊鍵名映射
                 mapped_key = self.window_key_sender.map_key_name(key)
-                print(f"按鍵 {i+1}/{len(keys)}: {key} -> {mapped_key}")
+                print(f"按鍵 {i + 1}/{len(keys)}: {key} -> {mapped_key}")
                 # 按下並釋放鍵
                 keyboard.press_and_release(mapped_key)
 
@@ -1448,9 +1455,9 @@ class HealthMonitor:
         # 記錄觸發時間（用於冷卻計算）
         if health_percent is not None:
             # 處理魔力設定的特殊鍵
-            if isinstance(health_percent, str) and health_percent.startswith('mana_'):
+            if isinstance(health_percent, str) and health_percent.startswith("mana_"):
                 # 對於魔力設定，使用原始百分比作為鍵
-                mana_percent = int(health_percent.split('_')[1])
+                mana_percent = int(health_percent.split("_")[1])
                 self.state.last_trigger_times[f"mana_{mana_percent}"] = time.time()
                 print(f"記錄魔力觸發時間: mana_{mana_percent}")
             else:
@@ -1458,10 +1465,10 @@ class HealthMonitor:
                 self.state.last_trigger_times[health_percent] = time.time()
                 print(f"記錄血量觸發時間: {health_percent}")
 
-
     def open_video_link(self, url):
         """打開影片連結"""
         import webbrowser
+
         try:
             webbrowser.open(url)
         except Exception as e:
@@ -1469,17 +1476,17 @@ class HealthMonitor:
 
     def select_interface_ui_region(self):
         """Delegate to inventory_tab - wrapper for backward compatibility."""
-        if hasattr(self, 'inventory_tab'):
+        if hasattr(self, "inventory_tab"):
             self.inventory_tab.select_interface_ui_region()
 
     def setup_hotkeys(self):
         # 全域熱鍵，不受視窗焦點限制
-        keyboard.add_hotkey('f3', self.inventory_tab.quick_clear_inventory)  # F3: 一鍵清包
-        keyboard.add_hotkey('f5', self.inventory_tab.return_to_hideout)    # F5: 返回藏身
-        keyboard.add_hotkey('f6', self.inventory_tab.f6_pickup_items)      # F6: 一鍵取物
-        keyboard.add_hotkey('f9', self.toggle_global_pause)  # F9: 全域暫停開關
-        keyboard.add_hotkey('f10', self.toggle_monitoring)   # F10: 監控開關
-        keyboard.add_hotkey('f12', global_f12_handler)       # F12: 緊急關閉（使用全局處理器）
+        keyboard.add_hotkey("f3", self.inventory_tab.quick_clear_inventory)  # F3: 一鍵清包
+        keyboard.add_hotkey("f5", self.inventory_tab.return_to_hideout)  # F5: 返回藏身
+        keyboard.add_hotkey("f6", self.inventory_tab.f6_pickup_items)  # F6: 一鍵取物
+        keyboard.add_hotkey("f9", self.toggle_global_pause)  # F9: 全域暫停開關
+        keyboard.add_hotkey("f10", self.toggle_monitoring)  # F10: 監控開關
+        keyboard.add_hotkey("f12", global_f12_handler)  # F12: 緊急關閉（使用全局處理器）
 
         self.status_tab.add_status_message(self.get_text("global_hotkeys_registered"), "success")
 
@@ -1595,17 +1602,9 @@ class HealthMonitor:
         """更新暫停狀態顯示"""
         if self.pause_status_label:
             if self.is_global_pause():
-                self.pause_status_label.config(
-                    text=self.get_text("global_pause_status_active"),
-                    foreground="red",
-                    font=("Microsoft YaHei", 10, "bold")
-                )
+                self.pause_status_label.config(text=self.get_text("global_pause_status_active"), foreground="red", font=("Microsoft YaHei", 10, "bold"))
             else:
-                self.pause_status_label.config(
-                    text=self.get_text("normal_operation"),
-                    foreground="green",
-                    font=("Microsoft YaHei", 10, "normal")
-                )
+                self.pause_status_label.config(text=self.get_text("normal_operation"), foreground="green", font=("Microsoft YaHei", 10, "normal"))
 
     def _get_game_window_rect(self):
         window_title = self.monitor_tab.window_var.get()
@@ -1663,20 +1662,20 @@ class HealthMonitor:
 
         self.state._is_closing = True
 
-        if hasattr(self, 'version_tab') and self.version_tab._silent_version_check_after_id:
+        if hasattr(self, "version_tab") and self.version_tab._silent_version_check_after_id:
             try:
                 self.root.after_cancel(self.version_tab._silent_version_check_after_id)
             except Exception:
                 pass
             self.version_tab._silent_version_check_after_id = None
 
-        if hasattr(self, 'usage_tracker'):
+        if hasattr(self, "usage_tracker"):
             self.usage_tracker.stop()
 
         # 計算並記錄運行時間
         end_time = datetime.now()
         runtime = end_time - self.start_time
-        runtime_str = f"{runtime.days}天 {runtime.seconds//3600}小時 {(runtime.seconds%3600)//60}分鐘 {runtime.seconds%60}秒"
+        runtime_str = f"{runtime.days}天 {runtime.seconds // 3600}小時 {(runtime.seconds % 3600) // 60}分鐘 {runtime.seconds % 60}秒"
         print(f"應用程式運行時間: {runtime_str}")
         self.status_tab.add_status_message(self.get_text("application_runtime").format(runtime=runtime_str), "info")
 
@@ -1693,7 +1692,7 @@ class HealthMonitor:
         # 停止AHK自動點擊
         self.auto_click_manager.stop_auto_click_ahk()
 
-        mouse_interrupt_thread = getattr(self, 'mouse_interrupt_thread', None)
+        mouse_interrupt_thread = getattr(self, "mouse_interrupt_thread", None)
         if mouse_interrupt_thread and mouse_interrupt_thread.is_alive():
             try:
                 mouse_interrupt_thread.join(timeout=0.3)
@@ -1727,14 +1726,13 @@ class HealthMonitor:
         self.save_config()
 
         try:
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 # 如果是打包後的EXE，直接重新啟動EXE
                 exe_path = sys.executable
                 print(f"重新啟動EXE應用程式: {exe_path}")
                 import subprocess
-                subprocess.Popen([exe_path],
-                               cwd=os.path.dirname(exe_path),
-                               creationflags=subprocess.CREATE_NO_WINDOW)
+
+                subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path), creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 # 如果是Python腳本，智能選擇重新啟動方式
                 script_path = os.path.abspath(__file__)
@@ -1747,9 +1745,7 @@ class HealthMonitor:
                     # 計算相對路徑
                     relative_path = os.path.relpath(script_path, current_dir)
                     # 如果相對路徑太複雜、包含太多..或包含空格，就使用絕對路徑
-                    if (relative_path.count('..') > 2 or
-                        len(relative_path) > len(script_path) * 0.7 or
-                        ' ' in relative_path):
+                    if relative_path.count("..") > 2 or len(relative_path) > len(script_path) * 0.7 or " " in relative_path:
                         relative_path = script_path
                 except ValueError:
                     # 如果無法計算相對路徑，使用絕對路徑
@@ -1758,9 +1754,8 @@ class HealthMonitor:
                 print(f"重新啟動Python腳本: {sys.executable} {relative_path}")
                 # 使用subprocess正確處理包含空格的路徑
                 import subprocess
-                subprocess.Popen([sys.executable, relative_path],
-                               cwd=current_dir,
-                               creationflags=subprocess.CREATE_NO_WINDOW)
+
+                subprocess.Popen([sys.executable, relative_path], cwd=current_dir, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
             print(f"重啟失敗: {e}")
             messagebox.showerror(self.get_text("error"), self.get_text("restart_failed").format(error=e))
@@ -1783,86 +1778,86 @@ class HealthMonitor:
             else:
                 self.status_tab.add_status_message(self.get_text("config_file_not_found"), "info")
 
-            self.monitor_tab.selected_region = self.config.get('region')
-            self.monitor_tab.selected_mana_region = self.config.get('mana_region')
-            self.inventory_tab.inventory_region = self.config.get('inventory_region')
-            self.inventory_tab.empty_inventory_colors = self.config.get('empty_inventory_colors', [])
-            self.inventory_tab.inventory_grid_positions = [tuple(pos) for pos in self.config.get('inventory_grid_positions', [])]
-            self.inventory_tab.grid_offset_x = self.config.get('grid_offset_x', 0)
-            self.inventory_tab.grid_offset_y = self.config.get('grid_offset_y', 0)
-            self.inventory_tab.excluded_inventory_slots = set(self.config.get('excluded_inventory_slots', []))
+            self.monitor_tab.selected_region = self.config.get("region")
+            self.monitor_tab.selected_mana_region = self.config.get("mana_region")
+            self.inventory_tab.inventory_region = self.config.get("inventory_region")
+            self.inventory_tab.empty_inventory_colors = self.config.get("empty_inventory_colors", [])
+            self.inventory_tab.inventory_grid_positions = [tuple(pos) for pos in self.config.get("inventory_grid_positions", [])]
+            self.inventory_tab.grid_offset_x = self.config.get("grid_offset_x", 0)
+            self.inventory_tab.grid_offset_y = self.config.get("grid_offset_y", 0)
+            self.inventory_tab.excluded_inventory_slots = set(self.config.get("excluded_inventory_slots", []))
 
-            click_mode = self.config.get('inventory_clear_click_mode', 'left')
-            if hasattr(self.inventory_tab, 'inventory_clear_click_mode'):
+            click_mode = self.config.get("inventory_clear_click_mode", "left")
+            if hasattr(self.inventory_tab, "inventory_clear_click_mode"):
                 self.inventory_tab.inventory_clear_click_mode.set(click_mode)
 
-            self.inventory_tab.inventory_ui_region = self.config.get('inventory_ui_region')
+            self.inventory_tab.inventory_ui_region = self.config.get("inventory_ui_region")
             if self.inventory_tab.inventory_ui_region:
                 self.inventory_tab.load_ui_screenshot_from_file()
 
-            self.interface_ui_region = self.config.get('interface_ui_region')
+            self.interface_ui_region = self.config.get("interface_ui_region")
             if self.interface_ui_region:
                 self.inventory_tab.load_interface_ui_screenshot_from_file()
 
-            if hasattr(self.inventory_tab, 'empty_color_label') and self.inventory_tab.empty_inventory_colors:
+            if hasattr(self.inventory_tab, "empty_color_label") and self.inventory_tab.empty_inventory_colors:
                 recorded_count = len([c for c in self.inventory_tab.empty_inventory_colors if c != (0, 0, 0)])
                 self.inventory_tab.empty_color_label.config(
                     text=self.get_text("recorded_colors_template").format(count=recorded_count),
                     background="lightgreen",
                 )
 
-            if hasattr(self, 'inventory_tab') and hasattr(self.inventory_tab, 'inventory_ui_label') and self.inventory_tab.inventory_ui_region:
+            if hasattr(self, "inventory_tab") and hasattr(self.inventory_tab, "inventory_ui_label") and self.inventory_tab.inventory_ui_region:
                 self.inventory_tab.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), background="lightgreen")
-                if hasattr(self.inventory_tab, 'ui_preview_canvas'):
+                if hasattr(self.inventory_tab, "ui_preview_canvas"):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
                     else:
                         self.inventory_tab.update_ui_preview()
 
-            if hasattr(self.monitor_tab, 'interface_ui_label') and self.interface_ui_region:
+            if hasattr(self.monitor_tab, "interface_ui_label") and self.interface_ui_region:
                 self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region), background="lightgreen")
-                if hasattr(self.monitor_tab, 'interface_ui_preview_canvas'):
+                if hasattr(self.monitor_tab, "interface_ui_preview_canvas"):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
                     else:
                         self.inventory_tab.update_interface_ui_preview()
 
-            if 'inventory_window_title' in self.config:
-                self.inventory_tab.inventory_window_var.set(self.config['inventory_window_title'])
-            elif 'window_title' in self.config:
-                self.inventory_tab.inventory_window_var.set(self.config['window_title'])
+            if "inventory_window_title" in self.config:
+                self.inventory_tab.inventory_window_var.set(self.config["inventory_window_title"])
+            elif "window_title" in self.config:
+                self.inventory_tab.inventory_window_var.set(self.config["window_title"])
 
-            if hasattr(self.monitor_tab, 'window_var') and 'window_title' in self.config:
-                self.monitor_tab.window_var.set(self.config['window_title'])
+            if hasattr(self.monitor_tab, "window_var") and "window_title" in self.config:
+                self.monitor_tab.window_var.set(self.config["window_title"])
 
-            self.blood_magic_enabled = self.config.get('blood_magic_enabled', False)
-            self.blood_magic_region = self.config.get('blood_magic_region', None)
-            self.blood_magic_threshold = self.config.get('blood_magic_threshold', 50)
-            self.blood_magic_window_title = self.config.get('blood_magic_window_title', '')
+            self.blood_magic_enabled = self.config.get("blood_magic_enabled", False)
+            self.blood_magic_region = self.config.get("blood_magic_region", None)
+            self.blood_magic_threshold = self.config.get("blood_magic_threshold", 50)
+            self.blood_magic_window_title = self.config.get("blood_magic_window_title", "")
 
-            self.state.monitor_interval = self.config.get('monitor_interval', 0.1)
-            self.auto_clear_enabled = self.config.get('auto_clear_enabled', False)
-            self.clear_interval = self.config.get('clear_interval', 30)
+            self.state.monitor_interval = self.config.get("monitor_interval", 0.1)
+            self.auto_clear_enabled = self.config.get("auto_clear_enabled", False)
+            self.clear_interval = self.config.get("clear_interval", 30)
 
-            if hasattr(self.monitor_tab, 'monitor_interval_var'):
+            if hasattr(self.monitor_tab, "monitor_interval_var"):
                 interval_ms = int(self.state.monitor_interval * 1000)
                 self.monitor_tab.monitor_interval_var.set(str(interval_ms))
 
-            if hasattr(self, 'preview_enabled'):
-                preview_enabled = self.config.get('preview_enabled', True)
+            if hasattr(self, "preview_enabled"):
+                preview_enabled = self.config.get("preview_enabled", True)
                 self.preview_enabled.set(preview_enabled)
-            if hasattr(self, 'preview_interval_var'):
-                preview_interval = self.config.get('preview_interval', 250)
+            if hasattr(self, "preview_interval_var"):
+                preview_interval = self.config.get("preview_interval", 250)
                 self.preview_interval_var.set(str(preview_interval))
 
-            if 'settings' in self.config:
+            if "settings" in self.config:
                 print(f"設定檔 settings 數量: {len(self.config['settings'])}")
                 migrated = False
-                for setting in self.config['settings']:
-                    old_type = setting.get('type', 'HP')
-                    if old_type in ['health', 'mana']:
-                        new_type = 'HP' if old_type == 'health' else 'MP'
-                        setting['type'] = new_type
+                for setting in self.config["settings"]:
+                    old_type = setting.get("type", "HP")
+                    if old_type in ["health", "mana"]:
+                        new_type = "HP" if old_type == "health" else "MP"
+                        setting["type"] = new_type
                         migrated = True
                         print(f"  : {old_type} -> {new_type}")
 
@@ -1870,76 +1865,78 @@ class HealthMonitor:
                     self.save_config(show_message=False)
                     print("")
 
-                for setting in self.config['settings']:
+                for setting in self.config["settings"]:
                     print(f"  - {setting.get('type', 'HP')} {setting.get('percent', 0)}%: {setting.get('key', '')}")
             else:
                 print("")
 
-            self.health_threshold = self.config.get('health_threshold', 0.8)
-            self.red_h_range = self.config.get('red_h_range', 5)
-            self.green_h_range = self.config.get('green_h_range', 40)
-            self.red_saturation_min = self.config.get('red_saturation_min', 50)
-            self.red_value_min = self.config.get('red_value_min', 50)
-            self.green_saturation_min = self.config.get('green_saturation_min', 50)
-            self.green_value_min = self.config.get('green_value_min', 50)
+            self.health_threshold = self.config.get("health_threshold", 0.8)
+            self.red_h_range = self.config.get("red_h_range", 5)
+            self.green_h_range = self.config.get("green_h_range", 40)
+            self.red_saturation_min = self.config.get("red_saturation_min", 50)
+            self.red_value_min = self.config.get("red_value_min", 50)
+            self.green_saturation_min = self.config.get("green_saturation_min", 50)
+            self.green_value_min = self.config.get("green_value_min", 50)
 
-            self.interface_ui_mse_threshold = int(self.config.get('interface_ui_mse_threshold', 800))
-            self.interface_ui_ssim_threshold = float(self.config.get('interface_ui_ssim_threshold', 0.6))
-            self.interface_ui_hist_threshold = float(self.config.get('interface_ui_hist_threshold', 0.7))
-            self.interface_ui_color_threshold = int(self.config.get('interface_ui_color_threshold', 35))
+            self.interface_ui_mse_threshold = int(self.config.get("interface_ui_mse_threshold", 800))
+            self.interface_ui_ssim_threshold = float(self.config.get("interface_ui_ssim_threshold", 0.6))
+            self.interface_ui_hist_threshold = float(self.config.get("interface_ui_hist_threshold", 0.7))
+            self.interface_ui_color_threshold = int(self.config.get("interface_ui_color_threshold", 35))
 
-            self.monitor_tab.multi_trigger_var.set(self.config.get('multi_trigger', False))
+            self.monitor_tab.multi_trigger_var.set(self.config.get("multi_trigger", False))
 
-            always_on_top = self.config.get('always_on_top', False)
+            always_on_top = self.config.get("always_on_top", False)
             self.always_on_top_var.set(always_on_top)
 
-            if 'always_on_top' not in self.config:
-                self.config['always_on_top'] = always_on_top
+            if "always_on_top" not in self.config:
+                self.config["always_on_top"] = always_on_top
                 try:
-                    with open(self.config_file, 'w', encoding='utf-8') as f:
+                    with open(self.config_file, "w", encoding="utf-8") as f:
                         json.dump(self.config, f, indent=2, ensure_ascii=False)
                     print("GUI 最上方設定已保存至設定檔")
                 except Exception as save_error:
                     print(f"保存 GUI 最上方設定失敗: {save_error}")
 
-            if 'window_geometry' in self.config:
+            if "window_geometry" in self.config:
                 try:
-                    saved_geometry = self.config['window_geometry']
+                    saved_geometry = self.config["window_geometry"]
                     self.root.geometry(saved_geometry)
                     print(f"已還原視窗幾何: {saved_geometry}")
                 except Exception as e:
                     print(f"還原視窗幾何失敗: {e}")
 
-            self.pickup_coordinates = self.config.get('pickup_coordinates', [])
+            self.pickup_coordinates = self.config.get("pickup_coordinates", [])
             print(f"F6: {len(self.pickup_coordinates)} ")
             while len(self.pickup_coordinates) < 5:
                 self.pickup_coordinates.append([0, 0])
-            if hasattr(self, 'inventory_tab'):
+            if hasattr(self, "inventory_tab"):
                 self.inventory_tab.pickup_coordinates = self.pickup_coordinates
-            if hasattr(self.inventory_tab, 'pickup_coords_label'):
+            if hasattr(self.inventory_tab, "pickup_coords_label"):
                 self.inventory_tab.update_pickup_status()
 
-            if 'combo_sets' in self.config:
-                self.state.combo_sets = self.config['combo_sets']
+            if "combo_sets" in self.config:
+                self.state.combo_sets = self.config["combo_sets"]
                 for combo_set in self.state.combo_sets:
-                    if 'trigger_delay' not in combo_set:
-                        combo_set['trigger_delay'] = ''
-                    if 'stationary_attacks' not in combo_set:
-                        combo_set['stationary_attacks'] = [False, False, False, False, False]
+                    if "trigger_delay" not in combo_set:
+                        combo_set["trigger_delay"] = ""
+                    if "stationary_attacks" not in combo_set:
+                        combo_set["stationary_attacks"] = [False, False, False, False, False]
 
                 while len(self.state.combo_sets) < 3:
-                    self.state.combo_sets.append({
-                        'trigger_key': 'Q' if len(self.state.combo_sets) == 0 else 'W' if len(self.state.combo_sets) == 1 else 'E',
-                        'trigger_delay': '',
-                        'combo_keys': ['', '', '', '', ''],
-                        'delays': ['', '', '', '', ''],
-                        'stationary_attacks': [False, False, False, False, False],
-                    })
+                    self.state.combo_sets.append(
+                        {
+                            "trigger_key": "Q" if len(self.state.combo_sets) == 0 else "W" if len(self.state.combo_sets) == 1 else "E",
+                            "trigger_delay": "",
+                            "combo_keys": ["", "", "", "", ""],
+                            "delays": ["", "", "", "", ""],
+                            "stationary_attacks": [False, False, False, False, False],
+                        }
+                    )
                 self.state.combo_sets = self.state.combo_sets[:3]
                 print(f"combo_sets 數量: {len(self.state.combo_sets)}")
 
-            if 'combo_enabled' in self.config:
-                self.state.combo_enabled = self.config['combo_enabled']
+            if "combo_enabled" in self.config:
+                self.state.combo_enabled = self.config["combo_enabled"]
                 while len(self.state.combo_enabled) < 3:
                     self.state.combo_enabled.append(False)
                 self.state.combo_enabled = self.state.combo_enabled[:3]
@@ -1954,27 +1951,27 @@ class HealthMonitor:
             else:
                 self.inventory_tab.update_inventory_preview_from_current()
 
-            if hasattr(self.monitor_tab, 'region_label'):
+            if hasattr(self.monitor_tab, "region_label"):
                 self.monitor_tab.region_label.config(
                     text=get_region_text(self.config),
-                    background="lightgreen" if self.config.get('region') else "lightgray",
+                    background="lightgreen" if self.config.get("region") else "lightgray",
                 )
-            if hasattr(self.monitor_tab, 'mana_region_label'):
+            if hasattr(self.monitor_tab, "mana_region_label"):
                 self.monitor_tab.mana_region_label.config(
                     text=get_mana_region_text(self.config),
-                    background="lightgreen" if self.config.get('mana_region') else "lightgray",
+                    background="lightgreen" if self.config.get("mana_region") else "lightgray",
                 )
 
-            if hasattr(self.monitor_tab, 'load_settings_to_tree'):
+            if hasattr(self.monitor_tab, "load_settings_to_tree"):
                 self.monitor_tab.load_settings_to_tree()
 
-            if hasattr(self.inventory_tab, 'ui_preview_canvas'):
+            if hasattr(self.inventory_tab, "ui_preview_canvas"):
                 self.inventory_tab.update_ui_preview()
 
-            if hasattr(self.inventory_tab, 'pickup_coords_label'):
+            if hasattr(self.inventory_tab, "pickup_coords_label"):
                 self.inventory_tab.update_pickup_status()
 
-            loaded_language = self.config.get('language', 'zh-tw')
+            loaded_language = self.config.get("language", "zh-tw")
             # print(f"[DEBUG] load_config : {loaded_language}")
             # print(f"[DEBUG] load_config : {self.language_manager.current_language}")
 
@@ -1985,7 +1982,7 @@ class HealthMonitor:
             else:
                 pass
 
-            display_name = self.language_reverse_map.get(self.current_language, '????')
+            display_name = self.language_reverse_map.get(self.current_language, "????")
             self.language_var.set(display_name)
 
             self.update_ui_language()
@@ -2000,128 +1997,123 @@ class HealthMonitor:
         """儲存血魔監控設定"""
         try:
             # 儲存遊戲視窗設定
-            self.config['window_title'] = self.monitor_tab.window_var.get()
+            self.config["window_title"] = self.monitor_tab.window_var.get()
 
             # 儲存區域設定
-            if hasattr(self.monitor_tab, 'selected_region') and self.monitor_tab.selected_region:
-                self.config['region'] = self.monitor_tab.selected_region
-            if hasattr(self.monitor_tab, 'selected_mana_region') and self.monitor_tab.selected_mana_region:
-                self.config['mana_region'] = self.monitor_tab.selected_mana_region
+            if hasattr(self.monitor_tab, "selected_region") and self.monitor_tab.selected_region:
+                self.config["region"] = self.monitor_tab.selected_region
+            if hasattr(self.monitor_tab, "selected_mana_region") and self.monitor_tab.selected_mana_region:
+                self.config["mana_region"] = self.monitor_tab.selected_mana_region
 
             # 儲存背包相關設定
-            if hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_region:
-                self.config['inventory_region'] = self.inventory_tab.inventory_region
-            if hasattr(self, 'inventory_tab') and self.inventory_tab.inventory_ui_region:
-                self.config['inventory_ui_region'] = self.inventory_tab.inventory_ui_region
+            if hasattr(self, "inventory_tab") and self.inventory_tab.inventory_region:
+                self.config["inventory_region"] = self.inventory_tab.inventory_region
+            if hasattr(self, "inventory_tab") and self.inventory_tab.inventory_ui_region:
+                self.config["inventory_ui_region"] = self.inventory_tab.inventory_ui_region
             if self.interface_ui_region:
-                self.config['interface_ui_region'] = self.interface_ui_region
-            if hasattr(self, 'inventory_tab') and self.inventory_tab.empty_inventory_colors:
-                self.config['empty_inventory_colors'] = self.inventory_tab.empty_inventory_colors
-            if hasattr(self.inventory_tab, 'inventory_grid_positions') and self.inventory_tab.inventory_grid_positions:
-                self.config['inventory_grid_positions'] = [list(pos) for pos in self.inventory_tab.inventory_grid_positions]
-            if hasattr(self, 'inventory_tab'):
-                self.config['grid_offset_x'] = self.inventory_tab.grid_offset_x
-                self.config['grid_offset_y'] = self.inventory_tab.grid_offset_y
-                self.config['excluded_inventory_slots'] = sorted(self.inventory_tab.excluded_inventory_slots)
+                self.config["interface_ui_region"] = self.interface_ui_region
+            if hasattr(self, "inventory_tab") and self.inventory_tab.empty_inventory_colors:
+                self.config["empty_inventory_colors"] = self.inventory_tab.empty_inventory_colors
+            if hasattr(self.inventory_tab, "inventory_grid_positions") and self.inventory_tab.inventory_grid_positions:
+                self.config["inventory_grid_positions"] = [list(pos) for pos in self.inventory_tab.inventory_grid_positions]
+            if hasattr(self, "inventory_tab"):
+                self.config["grid_offset_x"] = self.inventory_tab.grid_offset_x
+                self.config["grid_offset_y"] = self.inventory_tab.grid_offset_y
+                self.config["excluded_inventory_slots"] = sorted(self.inventory_tab.excluded_inventory_slots)
 
             # 儲存觸發設定
             settings = []
-            if hasattr(self.monitor_tab, 'settings_tree'):
+            if hasattr(self.monitor_tab, "settings_tree"):
                 for item in self.monitor_tab.settings_tree.get_children():
-                    values = self.monitor_tab.settings_tree.item(item, 'values')
+                    values = self.monitor_tab.settings_tree.item(item, "values")
                     if len(values) >= 4:
                         setting_type = "HP" if values[0] == "HP" else "MP"
-                        settings.append({
-                            'type': setting_type,
-                            'percent': int(values[1]),
-                            'key': values[2],
-                            'cooldown': int(values[3])
-                        })
+                        settings.append({"type": setting_type, "percent": int(values[1]), "key": values[2], "cooldown": int(values[3])})
             if settings:
-                self.config['settings'] = settings
+                self.config["settings"] = settings
 
             # 儲存預覽設定
-            if hasattr(self, 'preview_enabled'):
-                self.config['preview_enabled'] = self.preview_enabled.get()
-            if hasattr(self, 'preview_interval_var'):
-                self.config['preview_interval'] = int(self.preview_interval_var.get())
+            if hasattr(self, "preview_enabled"):
+                self.config["preview_enabled"] = self.preview_enabled.get()
+            if hasattr(self, "preview_interval_var"):
+                self.config["preview_interval"] = int(self.preview_interval_var.get())
 
             # 儲存顏色檢測參數
-            self.config['health_threshold'] = self.health_threshold
-            self.config['red_h_range'] = self.red_h_range
-            self.config['green_h_range'] = self.green_h_range
+            self.config["health_threshold"] = self.health_threshold
+            self.config["red_h_range"] = self.red_h_range
+            self.config["green_h_range"] = self.green_h_range
 
             # 儲存新增的HSV參數
-            self.config['red_saturation_min'] = self.red_saturation_min
-            self.config['red_value_min'] = self.red_value_min
-            self.config['green_saturation_min'] = self.green_saturation_min
-            self.config['green_value_min'] = self.green_value_min
+            self.config["red_saturation_min"] = self.red_saturation_min
+            self.config["red_value_min"] = self.red_value_min
+            self.config["green_saturation_min"] = self.green_saturation_min
+            self.config["green_value_min"] = self.green_value_min
 
             # 儲存介面UI檢測參數
-            self.config['interface_ui_mse_threshold'] = self.interface_ui_mse_threshold
-            self.config['interface_ui_ssim_threshold'] = self.interface_ui_ssim_threshold
-            self.config['interface_ui_hist_threshold'] = self.interface_ui_hist_threshold
-            self.config['interface_ui_color_threshold'] = self.interface_ui_color_threshold
+            self.config["interface_ui_mse_threshold"] = self.interface_ui_mse_threshold
+            self.config["interface_ui_ssim_threshold"] = self.interface_ui_ssim_threshold
+            self.config["interface_ui_hist_threshold"] = self.interface_ui_hist_threshold
+            self.config["interface_ui_color_threshold"] = self.interface_ui_color_threshold
 
             # 儲存觸發選項
-            self.config['multi_trigger'] = self.monitor_tab.multi_trigger_var.get()
+            self.config["multi_trigger"] = self.monitor_tab.multi_trigger_var.get()
 
             # 儲存GUI最上方設定
-            self.config['always_on_top'] = self.always_on_top_var.get()
+            self.config["always_on_top"] = self.always_on_top_var.get()
 
             # 儲存語言設定
-            self.config['language'] = self.current_language
+            self.config["language"] = self.current_language
 
             # 儲存窗口位置和大小
             try:
                 current_geometry = self.root.geometry()
-                self.config['window_geometry'] = current_geometry
+                self.config["window_geometry"] = current_geometry
                 print(f"已儲存窗口位置: {current_geometry}")
             except Exception as e:
                 print(f"儲存窗口位置失敗: {e}")
 
             # 儲存連段設定
-            if hasattr(self.state, 'combo_sets'):
-                self.config['combo_sets'] = self.state.combo_sets
-            if hasattr(self.state, 'combo_enabled'):
-                self.config['combo_enabled'] = self.state.combo_enabled
+            if hasattr(self.state, "combo_sets"):
+                self.config["combo_sets"] = self.state.combo_sets
+            if hasattr(self.state, "combo_enabled"):
+                self.config["combo_enabled"] = self.state.combo_enabled
 
             # 儲存血魔監控設定
-            if hasattr(self, 'blood_magic_enabled'):
-                self.config['blood_magic_enabled'] = self.blood_magic_enabled
-            if hasattr(self, 'blood_magic_region') and self.blood_magic_region:
-                self.config['blood_magic_region'] = self.blood_magic_region
-            if hasattr(self, 'blood_magic_threshold'):
-                self.config['blood_magic_threshold'] = self.blood_magic_threshold
-            if hasattr(self, 'blood_magic_window_title'):
-                self.config['blood_magic_window_title'] = self.blood_magic_window_title
+            if hasattr(self, "blood_magic_enabled"):
+                self.config["blood_magic_enabled"] = self.blood_magic_enabled
+            if hasattr(self, "blood_magic_region") and self.blood_magic_region:
+                self.config["blood_magic_region"] = self.blood_magic_region
+            if hasattr(self, "blood_magic_threshold"):
+                self.config["blood_magic_threshold"] = self.blood_magic_threshold
+            if hasattr(self, "blood_magic_window_title"):
+                self.config["blood_magic_window_title"] = self.blood_magic_window_title
 
             # 儲存自動清包設定
-            if hasattr(self, 'auto_clear_enabled'):
-                self.config['auto_clear_enabled'] = self.auto_clear_enabled
-            if hasattr(self, 'clear_interval'):
-                self.config['clear_interval'] = self.clear_interval
-            if hasattr(self.inventory_tab, 'inventory_clear_click_mode'):
-                self.config['inventory_clear_click_mode'] = self.inventory_tab.inventory_clear_click_mode.get()
+            if hasattr(self, "auto_clear_enabled"):
+                self.config["auto_clear_enabled"] = self.auto_clear_enabled
+            if hasattr(self, "clear_interval"):
+                self.config["clear_interval"] = self.clear_interval
+            if hasattr(self.inventory_tab, "inventory_clear_click_mode"):
+                self.config["inventory_clear_click_mode"] = self.inventory_tab.inventory_clear_click_mode.get()
 
             # 儲存取物座標設定
-            if hasattr(self.inventory_tab, 'pickup_coordinates') and self.inventory_tab.pickup_coordinates:
-                self.config['pickup_coordinates'] = self.inventory_tab.pickup_coordinates
+            if hasattr(self.inventory_tab, "pickup_coordinates") and self.inventory_tab.pickup_coordinates:
+                self.config["pickup_coordinates"] = self.inventory_tab.pickup_coordinates
 
             # 儲存背包視窗標題（區分於血魔監控視窗）
-            if hasattr(self.inventory_tab, 'inventory_window_var'):
-                self.config['inventory_window_title'] = self.inventory_tab.inventory_window_var.get()
+            if hasattr(self.inventory_tab, "inventory_window_var"):
+                self.config["inventory_window_title"] = self.inventory_tab.inventory_window_var.get()
 
             # 儲存監控間隔
-            if hasattr(self.state, 'monitor_interval'):
-                self.config['monitor_interval'] = self.state.monitor_interval
+            if hasattr(self.state, "monitor_interval"):
+                self.config["monitor_interval"] = self.state.monitor_interval
             # 儲存檢查頻率設定
-            if hasattr(self.monitor_tab, 'monitor_interval_var'):
+            if hasattr(self.monitor_tab, "monitor_interval_var"):
                 try:
                     interval_ms = int(self.monitor_tab.monitor_interval_var.get())
-                    self.config['monitor_interval'] = interval_ms / 1000.0  # 轉換為秒儲存
+                    self.config["monitor_interval"] = interval_ms / 1000.0  # 轉換為秒儲存
                 except (ValueError, AttributeError):
-                    self.config['monitor_interval'] = 0.1  # 預設100ms
+                    self.config["monitor_interval"] = 0.1  # 預設100ms
 
             # 儲存到檔案
             self.config_manager.save_config(self.config)
@@ -2135,7 +2127,7 @@ class HealthMonitor:
 
     def on_closing(self):
         """應用程式關閉時的處理函數"""
-        if not self.config.get('confirm_close', True):
+        if not self.config.get("confirm_close", True):
             self._do_close()
             return
 
@@ -2148,20 +2140,18 @@ class HealthMonitor:
         frame = ttk.Frame(dialog, padding=(20, 15))
         frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(frame, text=self.get_text("confirm_close_app"),
-                  font=("", 12)).pack(pady=(0, 12))
+        ttk.Label(frame, text=self.get_text("confirm_close_app"), font=("", 12)).pack(pady=(0, 12))
 
         dont_ask_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(frame, text=self.get_text("dont_ask_again"),
-                        variable=dont_ask_var).pack(pady=(0, 15))
+        ttk.Checkbutton(frame, text=self.get_text("dont_ask_again"), variable=dont_ask_var).pack(pady=(0, 15))
 
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill=tk.X)
 
         def on_confirm():
-            self.config['confirm_close'] = not dont_ask_var.get()
+            self.config["confirm_close"] = not dont_ask_var.get()
             try:
-                with open(self.config_file, 'w', encoding='utf-8') as f:
+                with open(self.config_file, "w", encoding="utf-8") as f:
                     json.dump(self.config, f, indent=2, ensure_ascii=False)
             except Exception:
                 pass
@@ -2171,20 +2161,18 @@ class HealthMonitor:
         def on_cancel():
             dialog.destroy()
 
-        ttk.Button(btn_frame, text=self.get_text("cancel"),
-                   command=on_cancel, width=12).pack(side=tk.RIGHT, padx=(8, 0))
-        ttk.Button(btn_frame, text=self.get_text("confirm"),
-                   command=on_confirm, width=12).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(btn_frame, text=self.get_text("cancel"), command=on_cancel, width=12).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(btn_frame, text=self.get_text("confirm"), command=on_confirm, width=12).pack(side=tk.RIGHT, padx=(8, 0))
 
-        dialog.bind('<Return>', lambda e: on_confirm())
-        dialog.bind('<Escape>', lambda e: on_cancel())
-        dialog.protocol('WM_DELETE_WINDOW', on_cancel)
+        dialog.bind("<Return>", lambda e: on_confirm())
+        dialog.bind("<Escape>", lambda e: on_cancel())
+        dialog.protocol("WM_DELETE_WINDOW", on_cancel)
 
         dialog.update_idletasks()
         dw, dh = dialog.winfo_reqwidth() + 20, dialog.winfo_reqheight() + 10
         px = self.root.winfo_rootx() + max(0, (self.root.winfo_width() - dw) // 2)
         py = self.root.winfo_rooty() + max(0, (self.root.winfo_height() - dh) // 2)
-        dialog.geometry(f'{dw}x{dh}+{px}+{py}')
+        dialog.geometry(f"{dw}x{dh}+{px}+{py}")
         dialog.focus_set()
 
     def _do_close(self):
@@ -2240,7 +2228,7 @@ class HealthMonitor:
 
             # 進度條
             self.progress_var = tk.DoubleVar()
-            progress_bar = ttk.Progressbar(frame, variable=self.progress_var, maximum=100, mode='indeterminate')
+            progress_bar = ttk.Progressbar(frame, variable=self.progress_var, maximum=100, mode="indeterminate")
             progress_bar.pack(fill=tk.X, pady=(0, 10))
             progress_bar.start(10)  # 開始動畫
 
@@ -2257,7 +2245,7 @@ class HealthMonitor:
     def close_loading_window(self):
         """關閉載入提示視窗"""
         try:
-            if hasattr(self, 'loading_window') and self.loading_window:
+            if hasattr(self, "loading_window") and self.loading_window:
                 self.loading_window.destroy()
                 self.loading_window = None
                 self.root.deiconify()  # 所有啟動排程完成後才顯示主視窗
@@ -2268,8 +2256,7 @@ class HealthMonitor:
     def update_loading_status(self, status_text):
         """更新載入狀態文字"""
         try:
-            if (hasattr(self, 'loading_status_label') and self.loading_status_label
-                    and hasattr(self, 'loading_window') and self.loading_window):
+            if hasattr(self, "loading_status_label") and self.loading_status_label and hasattr(self, "loading_window") and self.loading_window:
                 self.loading_status_label.config(text=status_text)
                 self.loading_window.update()
         except Exception as e:
@@ -2278,15 +2265,17 @@ class HealthMonitor:
     def add_status_message(self, message, msg_type="info"):
         self.status_tab.add_status_message(message, msg_type)
 
+
 if __name__ == "__main__":
+
     def emergency_exit_handler(signum=None, frame=None):
         """緊急退出處理器 - 確保在任何異常情況下都能關閉應用程序"""
         print("\n[STOP] 收到緊急退出信號，正在強制關閉應用程序...")
         try:
             # 嘗試正常關閉
-            if 'app' in globals() and hasattr(app, 'close_app'):
+            if "app" in globals() and hasattr(app, "close_app"):
                 app.close_app()
-            elif 'root' in globals() and root:
+            elif "root" in globals() and root:
                 root.quit()
                 root.destroy()
         except Exception:
@@ -2297,6 +2286,7 @@ if __name__ == "__main__":
     # 設置信號處理器（適用於Unix-like系統）
     try:
         import signal
+
         signal.signal(signal.SIGTERM, emergency_exit_handler)
         signal.signal(signal.SIGINT, emergency_exit_handler)
     except (ImportError, AttributeError):
@@ -2307,6 +2297,7 @@ if __name__ == "__main__":
     def global_exception_handler(exc_type, exc_value, exc_traceback):
         """全局異常處理器 - 捕獲所有未處理的異常"""
         import traceback
+
         print(f"\n[ERROR] 發生未捕獲的異常: {exc_type.__name__}: {exc_value}")
         print("[TRACEBACK]")
         traceback.print_exception(exc_type, exc_value, exc_traceback)
@@ -2319,6 +2310,7 @@ if __name__ == "__main__":
 
     # 安裝全局異常處理器
     import sys
+
     sys.excepthook = global_exception_handler
 
     try:
@@ -2331,5 +2323,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[FATAL] 主程序發生異常: {e}")
         import traceback
+
         traceback.print_exc()
         emergency_exit_handler()

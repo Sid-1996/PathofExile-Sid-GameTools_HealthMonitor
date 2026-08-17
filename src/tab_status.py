@@ -40,15 +40,7 @@ class StatusTab:
         text_frame = ttk.Frame(main_frame)
         text_frame.pack(fill="both", expand=True, pady=(10, 0))
 
-        self.status_text_widget = tk.Text(
-            text_frame,
-            wrap=tk.WORD,
-            font=("Consolas", 10),
-            bg="#1e1e1e",
-            fg="#ffffff",
-            insertbackground="#ffffff",
-            selectbackground="#264f78"
-        )
+        self.status_text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10), bg="#1e1e1e", fg="#ffffff", insertbackground="#ffffff", selectbackground="#264f78")
 
         status_scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.status_text_widget.yview)
         self.status_text_widget.configure(yscrollcommand=status_scrollbar.set)
@@ -85,7 +77,7 @@ class StatusTab:
         self.status_log.append((current_time, message, msg_type))
 
         if len(self.status_log) > self.status_log_max_lines:
-            self.status_log = self.status_log[-self.status_log_max_lines:]
+            self.status_log = self.status_log[-self.status_log_max_lines :]
             try:
                 if self.status_text_widget and self.status_text_widget.winfo_exists():
                     self.refresh_status_display()
@@ -184,20 +176,20 @@ class StatusTab:
 
     def update_language(self):
         try:
-            if hasattr(self, 'status_count_label'):
-                count = len(getattr(self, 'status_log', []))
+            if hasattr(self, "status_count_label"):
+                count = len(getattr(self, "status_log", []))
                 self.status_count_label.config(text=self._app.get_text("total_records").format(count=count))
 
-            if hasattr(self, 'title_label'):
+            if hasattr(self, "title_label"):
                 self.title_label.config(text=self._app.get_text("tool_execution_status"))
 
-            if hasattr(self, 'clear_btn'):
+            if hasattr(self, "clear_btn"):
                 self.clear_btn.config(text=self._app.get_text("clear_records"))
 
-            if hasattr(self, 'auto_scroll_cb'):
+            if hasattr(self, "auto_scroll_cb"):
                 self.auto_scroll_cb.config(text=self._app.get_text("auto_scroll_to_latest"))
 
-            if hasattr(self, 'tip_clear_btn'):
+            if hasattr(self, "tip_clear_btn"):
                 self.tip_clear_btn.update_text(self._app.get_text("clear_records_tip"))
         except Exception as e:
             print(f"更新狀態分頁語言時發生錯誤: {e}")

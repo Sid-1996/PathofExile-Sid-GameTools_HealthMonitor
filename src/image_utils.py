@@ -18,7 +18,7 @@ def draw_scale_lines(img):
         img: PIL Image or numpy array (the image is modified in-place).
     """
     # Handle both PIL Image and numpy array
-    if hasattr(img, 'shape'):  # numpy array
+    if hasattr(img, "shape"):  # numpy array
         width, height = img.shape[1], img.shape[0]
     else:  # PIL Image
         width, height = img.width, img.height
@@ -84,8 +84,7 @@ def draw_health_indicator(img, health_percent):
 
     draw = ImageDraw.Draw(img)
     # Red thick indicator line at the health level
-    draw.line([(0, health_height), (width, health_height)],
-              fill=(255, 0, 0), width=3)
+    draw.line([(0, health_height), (width, health_height)], fill=(255, 0, 0), width=3)
 
     # Draw percentage text below the indicator line
     text = f"{health_percent:.1f}%"
@@ -101,8 +100,7 @@ def draw_health_indicator(img, health_percent):
         text_y = health_height - text_height - 5
 
     # Semi-transparent black background for text
-    draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2],
-                   fill=(0, 0, 0, 128))
+    draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2], fill=(0, 0, 0, 128))
 
     # White text with black outline for readability
     draw.text((text_x, text_y), text, fill=(255, 255, 255), font=None)
@@ -126,8 +124,7 @@ def draw_mana_indicator(img, mana_percent):
 
     draw = ImageDraw.Draw(img)
     # Blue thick indicator line at the mana level
-    draw.line([(0, mana_height), (width, mana_height)],
-              fill=(0, 0, 255), width=3)
+    draw.line([(0, mana_height), (width, mana_height)], fill=(0, 0, 255), width=3)
 
     # Draw percentage text below the indicator line
     text = f"{mana_percent:.1f}%"
@@ -143,8 +140,7 @@ def draw_mana_indicator(img, mana_percent):
         text_y = mana_height - text_height - 5
 
     # Semi-transparent black background for text
-    draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2],
-                   fill=(0, 0, 0, 128))
+    draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2], fill=(0, 0, 0, 128))
 
     # White text with black outline for readability
     draw.text((text_x, text_y), text, fill=(255, 255, 255), font=None)
@@ -163,8 +159,8 @@ def get_region_text(config):
     Returns:
         Formatted string or unset placeholder.
     """
-    if config and config.get('region'):
-        x, y, w, h = config['region']
+    if config and config.get("region"):
+        x, y, w, h = config["region"]
         return f"x={x}, y={y}, w={w}, h={h}"
     return "未設定"
 
@@ -178,8 +174,8 @@ def get_mana_region_text(config):
     Returns:
         Formatted string or unset placeholder.
     """
-    if config and config.get('mana_region'):
-        x, y, w, h = config['mana_region']
+    if config and config.get("mana_region"):
+        x, y, w, h = config["mana_region"]
         return f"x={x}, y={y}, w={w}, h={h}"
     return "未設定"
 
@@ -194,10 +190,9 @@ def get_interface_ui_region_text(interface_ui_region):
         Formatted string or not-recorded placeholder.
     """
     if interface_ui_region:
-        x = interface_ui_region['x']
-        y = interface_ui_region['y']
-        w = interface_ui_region['width']
-        h = interface_ui_region['height']
+        x = interface_ui_region["x"]
+        y = interface_ui_region["y"]
+        w = interface_ui_region["width"]
+        h = interface_ui_region["height"]
         return f"x={x}, y={y}, w={w}, h={h}"
     return "尚未記錄"
-

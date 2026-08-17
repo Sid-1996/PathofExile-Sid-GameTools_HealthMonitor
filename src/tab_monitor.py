@@ -10,13 +10,20 @@ import pygetwindow as gw
 import keyboard
 
 from image_utils import (
-    draw_health_indicator, draw_mana_indicator, draw_scale_lines,
-    resize_and_center_image, get_region_text, get_mana_region_text,
+    draw_health_indicator,
+    draw_mana_indicator,
+    draw_scale_lines,
+    resize_and_center_image,
+    get_region_text,
+    get_mana_region_text,
     get_interface_ui_region_text,
 )
 from capture_utils import (
-    build_game_window_monitor, capture_region_to_pil, capture_region_to_cv2,
-    save_screenshot, _mss_singleton,
+    build_game_window_monitor,
+    capture_region_to_pil,
+    capture_region_to_cv2,
+    save_screenshot,
+    _mss_singleton,
 )
 from utils import Tooltip, get_app_dir
 from custom_dialogs import CustomMessageBox
@@ -160,7 +167,7 @@ class MonitorTab:
 
         self.game_window_label = ttk.Label(self.window_frame, text=self._app.get_text("game_window"))
         self.game_window_label.grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.window_var = tk.StringVar(value='')
+        self.window_var = tk.StringVar(value="")
         self.window_combo = ttk.Combobox(self.window_frame, textvariable=self.window_var, width=35)
         self.window_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
         self.refresh_windows_btn = ttk.Button(self.window_frame, text=self._app.get_text("refresh"), command=self.refresh_windows)
@@ -202,8 +209,7 @@ class MonitorTab:
         self.type_label = ttk.Label(add_frame, text=self._app.get_text("type"))
         self.type_label.grid(row=0, column=0, sticky=tk.W)
         self.type_var = tk.StringVar(value="HP")
-        type_combo = ttk.Combobox(add_frame, textvariable=self.type_var,
-                                 values=["HP", "MP"], state="readonly", width=8)
+        type_combo = ttk.Combobox(add_frame, textvariable=self.type_var, values=["HP", "MP"], state="readonly", width=8)
         type_combo.grid(row=0, column=1, padx=(5, 0))
         type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
 
@@ -240,8 +246,7 @@ class MonitorTab:
         self.tip_adjust_interface_ui = Tooltip(self.adjust_interface_ui_btn, self._app.get_text("adjust_interface_ui_tip"))
 
         self.multi_trigger_var = tk.BooleanVar(value=True)
-        self.multi_trigger_check = ttk.Checkbutton(options_frame, text=self._app.get_text("multiple_triggers"),
-                             variable=self.multi_trigger_var)
+        self.multi_trigger_check = ttk.Checkbutton(options_frame, text=self._app.get_text("multiple_triggers"), variable=self.multi_trigger_var)
         self.multi_trigger_check.grid(row=0, column=3, columnspan=2, sticky=tk.W, pady=(0, 0), padx=(20, 0))
         self.tip_multi_trigger = Tooltip(self.multi_trigger_check, self._app.get_text("multiple_triggers_tip"))
 
@@ -295,8 +300,7 @@ class MonitorTab:
         self.check_freq_label = ttk.Label(self.control_frame, text=self._app.get_text("check_frequency"))
         self.check_freq_label.grid(row=1, column=0, sticky=tk.W, pady=(15, 0))
         self.monitor_interval_var = tk.StringVar(value=str(int(self._state.monitor_interval * 1000)))
-        interval_combo = ttk.Combobox(self.control_frame, textvariable=self.monitor_interval_var,
-                                     values=["25", "50", "100"], state="readonly", width=8)
+        interval_combo = ttk.Combobox(self.control_frame, textvariable=self.monitor_interval_var, values=["25", "50", "100"], state="readonly", width=8)
         interval_combo.grid(row=1, column=1, sticky=tk.W, padx=(5, 0), pady=(15, 0))
         self.ms_label = ttk.Label(self.control_frame, text=self._app.get_text("ms"))
         self.ms_label.grid(row=1, column=2, sticky=tk.W, pady=(15, 0))
@@ -306,27 +310,21 @@ class MonitorTab:
 
         reminder_text = self._app.get_text("reminder_text")
 
-        self.reminder_label = ttk.Label(self.reminder_frame, text=reminder_text,
-                                  font=("Arial", 9), foreground="red",
-                                  justify=tk.LEFT, wraplength=400)
+        self.reminder_label = ttk.Label(self.reminder_frame, text=reminder_text, font=("Arial", 9), foreground="red", justify=tk.LEFT, wraplength=400)
         self.reminder_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         language_text = self._app.get_text("language")
         self.language_label = ttk.Label(self.control_frame, text=language_text)
         self.language_label.grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
 
-        self.language_display_map = {
-            "\u7e41\u9ad4\u4e2d\u6587": "zh-tw",
-            "English": "en"
-        }
+        self.language_display_map = {"\u7e41\u9ad4\u4e2d\u6587": "zh-tw", "English": "en"}
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
 
         display_values = list(self.language_display_map.keys())
         current_display = self.language_reverse_map.get(self._app.current_language, "\u7e41\u9ad4\u4e2d\u6587")
         self._app.language_var.set(current_display)
 
-        language_combo = ttk.Combobox(self.control_frame, textvariable=self._app.language_var,
-                                     values=display_values, state="readonly", width=12)
+        language_combo = ttk.Combobox(self.control_frame, textvariable=self._app.language_var, values=display_values, state="readonly", width=12)
         language_combo.grid(row=4, column=1, sticky=tk.W, padx=(5, 0), pady=(10, 0))
         language_combo.bind("<<ComboboxSelected>>", lambda e: self._app.change_language_display(self._app.language_var.get()))
 
@@ -335,8 +333,7 @@ class MonitorTab:
 
         self.gui_settings_label = ttk.Label(gui_control_frame, text=self._app.get_text("gui_settings"))
         self.gui_settings_label.grid(row=0, column=0, sticky=tk.W)
-        self.always_on_top_check = ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var,
-                       command=self._app.toggle_always_on_top)
+        self.always_on_top_check = ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var, command=self._app.toggle_always_on_top)
         self.always_on_top_check.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=(5, 0))
 
         self.preview_control_frame = ttk.Frame(self.control_frame)
@@ -403,11 +400,10 @@ class MonitorTab:
         interface_ui_preview_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
         self.interface_ui_preview_frame = interface_ui_preview_frame
-        self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg='lightgray', relief='sunken')
+        self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg="lightgray", relief="sunken")
         self.interface_ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
-        self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"),
-                 font=("", 7), foreground="gray")
+        self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"), font=("", 7), foreground="gray")
         self.interface_ui_preview_hint.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
 
         right_frame.rowconfigure(1, weight=1)
@@ -431,15 +427,11 @@ class MonitorTab:
         canvas = tk.Canvas(parent, highlightthickness=0)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.bind('<Enter>', lambda e: canvas.bind_all("<MouseWheel>",
-            lambda ev: canvas.yview_scroll(int(-1*(ev.delta/120)), "units")))
-        canvas.bind('<Leave>', lambda e: canvas.unbind_all("<MouseWheel>"))
+        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", lambda ev: canvas.yview_scroll(int(-1 * (ev.delta / 120)), "units")))
+        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         return canvas, scrollable_frame
@@ -478,14 +470,14 @@ class MonitorTab:
                     window.activate()
                     time.sleep(0.2)
 
-                    if self._app.config.get('region'):
+                    if self._app.config.get("region"):
                         try:
                             self.capture_preview_async()
                             success_count += 1
                         except Exception as e:
                             error_messages.append(f"{self._app.get_text('health_preview_test_failed')} {e}")
 
-                    if self._app.config.get('mana_region'):
+                    if self._app.config.get("mana_region"):
                         try:
                             self.capture_mana_preview_async()
                             success_count += 1
@@ -516,11 +508,11 @@ class MonitorTab:
             CustomMessageBox.show_error(self._app.get_text("error"), self._app.get_text("preview_test_failed").format(error=str(e)), self._app.root)
 
     def auto_load_preview(self):
-        if self._app.config.get('region') and self._app.config.get('window_title'):
+        if self._app.config.get("region") and self._app.config.get("window_title"):
             try:
-                windows = gw.getWindowsWithTitle(self._app.config['window_title'])
+                windows = gw.getWindowsWithTitle(self._app.config["window_title"])
                 if windows:
-                    self.window_var.set(self._app.config['window_title'])
+                    self.window_var.set(self._app.config["window_title"])
 
                     health_loaded = self.load_preview_image()
                     mana_loaded = self.load_mana_preview_image()
@@ -531,28 +523,28 @@ class MonitorTab:
                         print("\u8a2d\u5b9a\u5df2\u8f09\u5165\uff0c\u4f46\u9810\u89bd\u5716\u7247\u9700\u8981\u66f4\u65b0")
                 else:
                     print(f"\u904a\u6232\u8996\u7a97 '{self._app.config['window_title']}' \u672a\u627e\u5230")
-                    self.window_var.set(self._app.config['window_title'])
-                    if hasattr(self, 'preview_label') and self._app.config.get('region'):
-                        self.preview_label.config(text=self._app.get_text("game_window_not_found").format(window_title=self._app.config['window_title']), image="")
-                    if hasattr(self, 'mana_preview_label') and self._app.config.get('mana_region'):
-                        self.mana_preview_label.config(text=self._app.get_text("game_window_not_found").format(window_title=self._app.config['window_title']), image="")
+                    self.window_var.set(self._app.config["window_title"])
+                    if hasattr(self, "preview_label") and self._app.config.get("region"):
+                        self.preview_label.config(text=self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]), image="")
+                    if hasattr(self, "mana_preview_label") and self._app.config.get("mana_region"):
+                        self.mana_preview_label.config(text=self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]), image="")
             except Exception as e:
                 print(f"\u81ea\u52d5\u8f09\u5165\u9810\u89bd\u5931\u6557: {e}")
-                if hasattr(self, 'preview_label'):
+                if hasattr(self, "preview_label"):
                     self.preview_label.config(text=self._app.get_text("settings_load_failed"), image="")
-                if hasattr(self, 'mana_preview_label'):
+                if hasattr(self, "mana_preview_label"):
                     self.mana_preview_label.config(text=self._app.get_text("settings_load_failed"), image="")
         else:
-            if hasattr(self, 'preview_label'):
+            if hasattr(self, "preview_label"):
                 self.preview_label.config(text=self._app.get_text("select_health_bar_first"), image="")
-            if hasattr(self, 'mana_preview_label'):
+            if hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(text=self._app.get_text("select_mana_bar_first"), image="")
             print("\u6c92\u6709\u627e\u5230\u5df2\u5132\u5b58\u7684\u8a2d\u5b9a")
 
     def refresh_windows(self):
         windows = [w.title for w in gw.getAllWindows() if w.title]
-        if hasattr(self, 'window_combo'):
-            self.window_combo['values'] = windows
+        if hasattr(self, "window_combo"):
+            self.window_combo["values"] = windows
         else:
             print("\u8b66\u544a: window_combo \u4e0d\u5b58\u5728")
 
@@ -582,9 +574,9 @@ class MonitorTab:
             self.selection_window.geometry(f"+{window.left}+{window.top}")
             self.selection_window.attributes("-alpha", 0.3)
             self.selection_window.overrideredirect(True)
-            self.selection_window.configure(bg='gray')
+            self.selection_window.configure(bg="gray")
 
-            canvas = tk.Canvas(self.selection_window, bg='gray', highlightthickness=0)
+            canvas = tk.Canvas(self.selection_window, bg="gray", highlightthickness=0)
             canvas.pack(fill=tk.BOTH, expand=True)
             self._selection_canvas = canvas
 
@@ -596,10 +588,7 @@ class MonitorTab:
 
             self.setup_global_esc_listener()
 
-            canvas.create_text(window.width//2, window.height//2,
-                             text=self._app.get_text("select_health_bar_instruction"),
-                             fill="white", font=("Arial", 14, "bold"),
-                             anchor="center")
+            canvas.create_text(window.width // 2, window.height // 2, text=self._app.get_text("select_health_bar_instruction"), fill="white", font=("Arial", 14, "bold"), anchor="center")
 
         except Exception as e:
             CustomMessageBox.show_error(self._app.get_text("error"), self._app.get_text("selection_start_failed").format(error=str(e)), self._app.root)
@@ -631,14 +620,14 @@ class MonitorTab:
 
             self.selected_region = (left, top, width, height)
 
-            self._app.config['region'] = self.selected_region
+            self._app.config["region"] = self.selected_region
             self.region_label.config(text=get_region_text(self._app.config), background="lightgreen")
 
             self._app.root.after(100, self.capture_preview_async)
 
         self.selection_active = False
         self.remove_global_esc_listener()
-        if hasattr(self, 'selection_window') and self.selection_window:
+        if hasattr(self, "selection_window") and self.selection_window:
             self.selection_window.destroy()
             self.selection_window = None
 
@@ -651,7 +640,7 @@ class MonitorTab:
 
         self.remove_global_esc_listener()
 
-        if hasattr(self, 'selection_window') and self.selection_window:
+        if hasattr(self, "selection_window") and self.selection_window:
             self.selection_window.destroy()
 
         self.finalize_selection_restore_gui()
@@ -660,22 +649,22 @@ class MonitorTab:
         try:
             self.remove_global_esc_listener()
 
-            keyboard.add_hotkey('esc', self.global_esc_handler, suppress=False)
+            keyboard.add_hotkey("esc", self.global_esc_handler, suppress=False)
             self.global_esc_active = True
         except Exception as e:
             print(f"\u8a2d\u7f6e\u5168\u5c40ESC\u76e3\u807d\u5931\u6557: {e}")
 
     def remove_global_esc_listener(self):
         try:
-            if hasattr(self, 'global_esc_active') and self.global_esc_active:
-                keyboard.remove_hotkey('esc')
+            if hasattr(self, "global_esc_active") and self.global_esc_active:
+                keyboard.remove_hotkey("esc")
                 self.global_esc_active = False
         except Exception as e:
             print(f"\u79fb\u9664\u5168\u5c40ESC\u76e3\u807d\u5931\u6557: {e}")
 
     def global_esc_handler(self):
         try:
-            if hasattr(self, 'selection_active') and self.selection_active:
+            if hasattr(self, "selection_active") and self.selection_active:
                 self._app.root.after(0, lambda: self.cancel_selection(None))
         except Exception as e:
             print(f"\u5168\u5c40ESC\u8655\u7406\u5931\u6557: {e}")
@@ -718,9 +707,9 @@ class MonitorTab:
             self.selection_window.geometry(f"+{window.left}+{window.top}")
             self.selection_window.attributes("-alpha", 0.3)
             self.selection_window.overrideredirect(True)
-            self.selection_window.configure(bg='blue')
+            self.selection_window.configure(bg="blue")
 
-            canvas = tk.Canvas(self.selection_window, bg='blue', highlightthickness=0)
+            canvas = tk.Canvas(self.selection_window, bg="blue", highlightthickness=0)
             canvas.pack(fill=tk.BOTH, expand=True)
             self._mana_selection_canvas = canvas
 
@@ -735,10 +724,7 @@ class MonitorTab:
 
             self.setup_global_esc_listener()
 
-            canvas.create_text(window.width//2, window.height//2,
-                             text=self._app.get_text("select_mana_bar_instruction"),
-                             fill="white", font=("Arial", 14, "bold"),
-                             anchor="center")
+            canvas.create_text(window.width // 2, window.height // 2, text=self._app.get_text("select_mana_bar_instruction"), fill="white", font=("Arial", 14, "bold"), anchor="center")
 
         except Exception as e:
             CustomMessageBox.show_error(self._app.get_text("error"), self._app.get_text("mana_selection_start_failed").format(error=str(e)), self._app.root)
@@ -770,14 +756,14 @@ class MonitorTab:
 
             self.selected_mana_region = (left, top, width, height)
 
-            self._app.config['mana_region'] = self.selected_mana_region
+            self._app.config["mana_region"] = self.selected_mana_region
             self.mana_region_label.config(text=get_mana_region_text(self._app.config), background="lightgreen")
 
             self._app.root.after(100, self.capture_mana_preview_async)
 
         self.selection_active = False
         self.remove_global_esc_listener()
-        if hasattr(self, 'selection_window') and self.selection_window:
+        if hasattr(self, "selection_window") and self.selection_window:
             self.selection_window.destroy()
             self.selection_window = None
 
@@ -788,7 +774,7 @@ class MonitorTab:
             return
 
         if not self._app.window_key_sender._is_game_window_active():
-            if hasattr(self, 'mana_preview_label'):
+            if hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(text=self._app.get_text("waiting_for_game_window"), image="")
             return
 
@@ -803,11 +789,11 @@ class MonitorTab:
 
             resized_img = resize_and_center_image(img, self.preview_size)
             self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-            if hasattr(self, 'mana_preview_label'):
+            if hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(image=self.mana_preview_image, text="")
         except Exception as e:
             print(f"\u9b54\u529b\u9810\u89bd\u64f7\u53d6\u5931\u6557: {e}")
-            if hasattr(self, 'mana_preview_label'):
+            if hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(text=f"\u9b54\u529b\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{str(e)}", image="")
 
     def capture_preview(self):
@@ -815,7 +801,7 @@ class MonitorTab:
             return
 
         if not self._app.window_key_sender._is_game_window_active():
-            if hasattr(self, 'preview_label'):
+            if hasattr(self, "preview_label"):
                 self.preview_label.config(text=self._app.get_text("waiting_for_game_window"), image="")
             return
 
@@ -830,16 +816,16 @@ class MonitorTab:
 
             resized_img = resize_and_center_image(img, self.preview_size)
             self.preview_image = ImageTk.PhotoImage(resized_img)
-            if hasattr(self, 'preview_label'):
+            if hasattr(self, "preview_label"):
                 self.preview_label.config(image=self.preview_image, text="")
         except Exception as e:
             print(f"\u9810\u89bd\u64f7\u53d6\u5931\u6557: {e}")
-            if hasattr(self, 'preview_label'):
+            if hasattr(self, "preview_label"):
                 self.preview_label.config(text=f"\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{str(e)}", image="")
 
     def capture_preview_async(self):
         if not self._app.window_key_sender._is_game_window_active():
-            self._app.root.after(0, lambda: hasattr(self, 'preview_label') and self.preview_label.config(text=self._app.get_text("waiting_for_game_window"), image=""))
+            self._app.root.after(0, lambda: hasattr(self, "preview_label") and self.preview_label.config(text=self._app.get_text("waiting_for_game_window"), image=""))
             return
 
         def _capture():
@@ -859,20 +845,22 @@ class MonitorTab:
                 def _update_preview():
                     try:
                         self.preview_image = ImageTk.PhotoImage(resized_img)
-                        if hasattr(self, 'preview_label'):
+                        if hasattr(self, "preview_label"):
                             self.preview_label.config(image=self.preview_image, text="")
                     except Exception as e:
                         print(f"\u8840\u91cf\u9810\u89bd\u66f4\u65b0\u5931\u6557: {e}")
-                        if hasattr(self, 'preview_label'):
+                        if hasattr(self, "preview_label"):
                             self.preview_label.config(text=f"\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{str(e)}", image="")
 
                 self._app.root.after(0, _update_preview)
             except Exception as e:
                 print(f"\u9810\u89bd\u64f7\u53d6\u5931\u6557: {e}")
                 _err_msg = str(e)
+
                 def _update_error():
-                    if hasattr(self, 'preview_label'):
+                    if hasattr(self, "preview_label"):
                         self.preview_label.config(text=f"\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{_err_msg}", image="")
+
                 self._app.root.after(0, _update_error)
 
         thread = threading.Thread(target=_capture, daemon=True)
@@ -886,25 +874,25 @@ class MonitorTab:
                 draw_scale_lines(img)
                 resized_img = resize_and_center_image(img, self.preview_size)
                 self.preview_image = ImageTk.PhotoImage(resized_img)
-                if hasattr(self, 'preview_label'):
+                if hasattr(self, "preview_label"):
                     self.preview_label.config(image=self.preview_image, text="")
                 return True
             except Exception as e:
                 print(f"\u8f09\u5165\u9810\u89bd\u5716\u7247\u5931\u6557: {e}")
-                if hasattr(self, 'preview_label'):
+                if hasattr(self, "preview_label"):
                     self.preview_label.config(text=self._app.get_text("ui_preview_failed"), image="")
                 return False
         else:
-            if self.selected_region and hasattr(self, 'preview_label'):
+            if self.selected_region and hasattr(self, "preview_label"):
                 self.preview_label.config(text=self._app.get_text("health_region_set_waiting_preview"), image="")
                 return False
-            elif hasattr(self, 'preview_label'):
+            elif hasattr(self, "preview_label"):
                 self.preview_label.config(text=self._app.get_text("select_health_bar_first"), image="")
                 return False
 
     def capture_mana_preview_async(self):
         if not self._app.window_key_sender._is_game_window_active():
-            self._app.root.after(0, lambda: hasattr(self, 'mana_preview_label') and self.mana_preview_label.config(text=self._app.get_text("waiting_for_game_window"), image=""))
+            self._app.root.after(0, lambda: hasattr(self, "mana_preview_label") and self.mana_preview_label.config(text=self._app.get_text("waiting_for_game_window"), image=""))
             return
 
         def _capture():
@@ -924,20 +912,22 @@ class MonitorTab:
                 def _update_preview():
                     try:
                         self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-                        if hasattr(self, 'mana_preview_label'):
+                        if hasattr(self, "mana_preview_label"):
                             self.mana_preview_label.config(image=self.mana_preview_image, text="")
                     except Exception as e:
                         print(f"\u9b54\u529b\u9810\u89bd\u66f4\u65b0\u5931\u6557: {e}")
-                        if hasattr(self, 'mana_preview_label'):
+                        if hasattr(self, "mana_preview_label"):
                             self.mana_preview_label.config(text=f"\u9b54\u529b\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{str(e)}", image="")
 
                 self._app.root.after(0, _update_preview)
             except Exception as e:
                 print(f"\u9b54\u529b\u9810\u89bd\u64f7\u53d6\u5931\u6557: {e}")
                 _err_msg = str(e)
+
                 def _update_error():
-                    if hasattr(self, 'mana_preview_label'):
+                    if hasattr(self, "mana_preview_label"):
                         self.mana_preview_label.config(text=f"\u9b54\u529b\u9810\u89bd\u64f7\u53d6\u5931\u6557\n{_err_msg}", image="")
+
                 self._app.root.after(0, _update_error)
 
         thread = threading.Thread(target=_capture, daemon=True)
@@ -951,23 +941,23 @@ class MonitorTab:
                 draw_scale_lines(img)
                 resized_img = resize_and_center_image(img, self.preview_size)
                 self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-                if hasattr(self, 'mana_preview_label'):
+                if hasattr(self, "mana_preview_label"):
                     self.mana_preview_label.config(image=self.mana_preview_image, text="")
                 return True
             except Exception as e:
                 print(f"\u8f09\u5165\u9b54\u529b\u9810\u89bd\u5716\u7247\u5931\u6557: {e}")
-                if hasattr(self, 'mana_preview_label'):
+                if hasattr(self, "mana_preview_label"):
                     self.mana_preview_label.config(text=self._app.get_text("mana_preview_load_failed"), image="")
                 return False
         else:
-            if self.selected_mana_region and hasattr(self, 'mana_preview_label'):
+            if self.selected_mana_region and hasattr(self, "mana_preview_label"):
                 try:
                     self.capture_mana_preview_async()
                     return True
                 except Exception:
                     self.mana_preview_label.config(text=self._app.get_text("mana_region_set_waiting_preview"), image="")
                     return False
-            elif hasattr(self, 'mana_preview_label'):
+            elif hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(text=self._app.get_text("select_mana_bar_first"), image="")
                 return False
 
@@ -988,16 +978,13 @@ class MonitorTab:
                 raise ValueError("\u51b7\u5374\u6642\u9593\u4e0d\u80fd\u70ba\u8ca0\u6578")
 
             if not self.validate_key_sequence(key):
-                raise ValueError("\u7121\u6548\u7684\u5feb\u6377\u9375\u683c\u5f0f\u3002\u652f\u63f4\u683c\u5f0f\uff1a\u55ae\u9375\uff08\u5982 '5'\uff09\u6216\u591a\u9375\u5e8f\u5217\uff08\u5982 '1-5-esc'\uff09")
+                raise ValueError(
+                    "\u7121\u6548\u7684\u5feb\u6377\u9375\u683c\u5f0f\u3002\u652f\u63f4\u683c\u5f0f\uff1a\u55ae\u9375\uff08\u5982 '5'\uff09\u6216\u591a\u9375\u5e8f\u5217\uff08\u5982 '1-5-esc'\uff09"
+                )
 
-            if 'settings' not in self._app.config:
-                self._app.config['settings'] = []
-            self._app.config['settings'].append({
-                'type': setting_type,
-                'percent': percent,
-                'key': key,
-                'cooldown': cooldown
-            })
+            if "settings" not in self._app.config:
+                self._app.config["settings"] = []
+            self._app.config["settings"].append({"type": setting_type, "percent": percent, "key": key, "cooldown": cooldown})
 
             type_display = "HP" if setting_type == "HP" else "MP"
             self.settings_tree.insert("", tk.END, values=(type_display, percent, key, cooldown))
@@ -1013,17 +1000,81 @@ class MonitorTab:
         if not key_sequence:
             return False
 
-        keys = [key.strip() for key in key_sequence.split('-')]
+        keys = [key.strip() for key in key_sequence.split("-")]
 
         valid_keys = [
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-            'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f12',
-            'esc', 'escape', 'enter', 'return', 'space', 'tab', 'backspace',
-            'delete', 'home', 'end', 'pageup', 'pagedown',
-            'up', 'down', 'left', 'right', 'uparrow', 'downarrow', 'leftarrow', 'rightarrow',
-            'ctrl', 'alt', 'shift', 'win', 'cmd', 'windows'
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "p",
+            "q",
+            "r",
+            "s",
+            "t",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "z",
+            "f2",
+            "f3",
+            "f4",
+            "f5",
+            "f6",
+            "f7",
+            "f8",
+            "f9",
+            "f10",
+            "f12",
+            "esc",
+            "escape",
+            "enter",
+            "return",
+            "space",
+            "tab",
+            "backspace",
+            "delete",
+            "home",
+            "end",
+            "pageup",
+            "pagedown",
+            "up",
+            "down",
+            "left",
+            "right",
+            "uparrow",
+            "downarrow",
+            "leftarrow",
+            "rightarrow",
+            "ctrl",
+            "alt",
+            "shift",
+            "win",
+            "cmd",
+            "windows",
         ]
 
         for key in keys:
@@ -1041,27 +1092,26 @@ class MonitorTab:
         if not CustomMessageBox.ask_yes_no(self._app.get_text("confirm"), self._app.get_text("confirm_remove_setting"), self._app.root):
             return
 
-        item_values = self.settings_tree.item(selected_item[0], 'values')
+        item_values = self.settings_tree.item(selected_item[0], "values")
         self.settings_tree.delete(selected_item[0])
 
-        if 'settings' in self._app.config:
+        if "settings" in self._app.config:
             setting_type = item_values[0]
-            self._app.config['settings'] = [
-                setting for setting in self._app.config['settings']
-                if not (setting.get('type', 'HP') == setting_type and
-                       setting['percent'] == int(item_values[1]) and
-                       setting['key'] == item_values[2])
+            self._app.config["settings"] = [
+                setting
+                for setting in self._app.config["settings"]
+                if not (setting.get("type", "HP") == setting_type and setting["percent"] == int(item_values[1]) and setting["key"] == item_values[2])
             ]
 
     def load_settings_to_tree(self):
         for item in self.settings_tree.get_children():
             self.settings_tree.delete(item)
 
-        for setting in self._app.config.get('settings', []):
-            cooldown = setting.get('cooldown', 1000)
-            setting_type = setting.get('type', 'HP')
+        for setting in self._app.config.get("settings", []):
+            cooldown = setting.get("cooldown", 1000)
+            setting_type = setting.get("type", "HP")
             type_display = "HP" if setting_type == "HP" else "MP"
-            self.settings_tree.insert("", tk.END, values=(type_display, setting['percent'], setting['key'], cooldown))
+            self.settings_tree.insert("", tk.END, values=(type_display, setting["percent"], setting["key"], cooldown))
 
     def update_live_preview(self, img, health_percent):
         if not self._app.preview_enabled.get():
@@ -1074,10 +1124,7 @@ class MonitorTab:
         except ValueError:
             update_interval = 250
 
-        should_update = (
-            abs(health_percent - self.last_health_percent) >= 5 or
-            (current_time - self.last_preview_update) >= update_interval
-        )
+        should_update = abs(health_percent - self.last_health_percent) >= 5 or (current_time - self.last_preview_update) >= update_interval
 
         if not should_update:
             return
@@ -1102,7 +1149,7 @@ class MonitorTab:
             resized_img = resize_and_center_image(pil_img, self.preview_size)
 
             self.preview_image = ImageTk.PhotoImage(resized_img)
-            if hasattr(self, 'preview_label'):
+            if hasattr(self, "preview_label"):
                 self.preview_label.config(image=self.preview_image)
 
         except Exception as e:
@@ -1119,10 +1166,7 @@ class MonitorTab:
         except ValueError:
             update_interval = 250
 
-        should_update = (
-            abs(mana_percent - self.last_mana_percent) >= 5 or
-            (current_time - self.last_mana_preview_update) >= update_interval
-        )
+        should_update = abs(mana_percent - self.last_mana_percent) >= 5 or (current_time - self.last_mana_preview_update) >= update_interval
 
         if not should_update:
             return
@@ -1147,7 +1191,7 @@ class MonitorTab:
             resized_img = resize_and_center_image(pil_img, self.preview_size)
 
             self.mana_preview_image = ImageTk.PhotoImage(resized_img)
-            if hasattr(self, 'mana_preview_label'):
+            if hasattr(self, "mana_preview_label"):
                 self.mana_preview_label.config(image=self.mana_preview_image)
 
         except Exception as e:
@@ -1173,11 +1217,11 @@ class MonitorTab:
             print(f"\u66f4\u65b0\u72c0\u614b\u6a19\u7c64\u5931\u6557: {e}")
 
     def _show_health_preview_placeholder(self):
-        if hasattr(self, 'preview_label'):
+        if hasattr(self, "preview_label"):
             self.preview_label.config(text=self._app.get_text("waiting_for_game_window"), image="")
 
     def _show_mana_preview_placeholder(self):
-        if hasattr(self, 'mana_preview_label'):
+        if hasattr(self, "mana_preview_label"):
             self.mana_preview_label.config(text=self._app.get_text("waiting_for_game_window"), image="")
 
     def adjust_colors(self):
@@ -1185,8 +1229,7 @@ class MonitorTab:
         adjust_window.resizable(False, False)
         adjust_window.focus_force()
 
-        title_label = ttk.Label(adjust_window, text=self._app.get_text("adjust_colors_main_title"),
-                               font=("Arial", 12, "bold"))
+        title_label = ttk.Label(adjust_window, text=self._app.get_text("adjust_colors_main_title"), font=("Arial", 12, "bold"))
         title_label.pack(pady=(20, 15))
 
         container = ttk.Frame(adjust_window)
@@ -1204,8 +1247,7 @@ class MonitorTab:
         health_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(health_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_health_label = ttk.Label(health_frame, text=f"{self._app.health_threshold}",
-                                        font=("Arial", 9, "bold"), foreground="blue")
+        current_health_label = ttk.Label(health_frame, text=f"{self._app.health_threshold}", font=("Arial", 9, "bold"), foreground="blue")
         current_health_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(health_frame, text=self._app.get_text("new_value_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1214,15 +1256,13 @@ class MonitorTab:
         health_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         health_explanation = self._app.get_text("health_pixel_ratio_explanation")
-        ttk.Label(health_frame, text=health_explanation, font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(health_frame, text=health_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         color_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("color_range_settings"), padding="10")
         color_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(color_frame, text=self._app.get_text("red_h_range_label")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_red_label = ttk.Label(color_frame, text=f"{self._app.red_h_range}",
-                                     font=("Arial", 9, "bold"), foreground="red")
+        current_red_label = ttk.Label(color_frame, text=f"{self._app.red_h_range}", font=("Arial", 9, "bold"), foreground="red")
         current_red_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_0_20")).grid(row=1, column=0, sticky=tk.W, pady=(5, 2))
@@ -1231,12 +1271,10 @@ class MonitorTab:
         red_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         red_explanation = self._app.get_text("red_h_range_explanation")
-        ttk.Label(color_frame, text=red_explanation, font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=red_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         ttk.Label(color_frame, text=self._app.get_text("green_h_range_label")).grid(row=3, column=0, sticky=tk.W, pady=(15, 2))
-        current_green_label = ttk.Label(color_frame, text=f"{self._app.green_h_range}",
-                                       font=("Arial", 9, "bold"), foreground="green")
+        current_green_label = ttk.Label(color_frame, text=f"{self._app.green_h_range}", font=("Arial", 9, "bold"), foreground="green")
         current_green_label.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(15, 2))
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_30_90")).grid(row=4, column=0, sticky=tk.W, pady=(5, 2))
@@ -1245,15 +1283,13 @@ class MonitorTab:
         green_entry.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         green_explanation = self._app.get_text("green_h_range_explanation")
-        ttk.Label(color_frame, text=green_explanation, font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=green_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         hsv_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("hsv_fine_tuning"), padding="10")
         hsv_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(hsv_frame, text=self._app.get_text("red_min_saturation")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_red_sat_label = ttk.Label(hsv_frame, text=f"{self._app.red_saturation_min}",
-                                         font=("Arial", 9, "bold"), foreground="red")
+        current_red_sat_label = ttk.Label(hsv_frame, text=f"{self._app.red_saturation_min}", font=("Arial", 9, "bold"), foreground="red")
         current_red_sat_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=1, column=0, sticky=tk.W, pady=(5, 2))
@@ -1262,8 +1298,7 @@ class MonitorTab:
         red_sat_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("red_min_brightness")).grid(row=2, column=0, sticky=tk.W, pady=(10, 2))
-        current_red_val_label = ttk.Label(hsv_frame, text=f"{self._app.red_value_min}",
-                                         font=("Arial", 9, "bold"), foreground="red")
+        current_red_val_label = ttk.Label(hsv_frame, text=f"{self._app.red_value_min}", font=("Arial", 9, "bold"), foreground="red")
         current_red_val_label.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=3, column=0, sticky=tk.W, pady=(5, 2))
@@ -1271,12 +1306,12 @@ class MonitorTab:
         red_val_entry = ttk.Entry(hsv_frame, textvariable=red_val_var, width=12)
         red_val_entry.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
-        ttk.Label(hsv_frame, text=self._app.get_text("red_hsv_explanation"), font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(hsv_frame, text=self._app.get_text("red_hsv_explanation"), font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(
+            row=4, column=0, columnspan=2, sticky=tk.W, pady=(5, 0)
+        )
 
         ttk.Label(hsv_frame, text=self._app.get_text("green_min_saturation")).grid(row=0, column=2, sticky=tk.W, padx=(30, 0), pady=2)
-        current_green_sat_label = ttk.Label(hsv_frame, text=f"{self._app.green_saturation_min}",
-                                           font=("Arial", 9, "bold"), foreground="green")
+        current_green_sat_label = ttk.Label(hsv_frame, text=f"{self._app.green_saturation_min}", font=("Arial", 9, "bold"), foreground="green")
         current_green_sat_label.grid(row=0, column=3, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=1, column=2, sticky=tk.W, padx=(30, 0), pady=(5, 2))
@@ -1285,8 +1320,7 @@ class MonitorTab:
         green_sat_entry.grid(row=1, column=3, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("green_min_brightness")).grid(row=2, column=2, sticky=tk.W, padx=(30, 0), pady=(10, 2))
-        current_green_val_label = ttk.Label(hsv_frame, text=f"{self._app.green_value_min}",
-                                           font=("Arial", 9, "bold"), foreground="green")
+        current_green_val_label = ttk.Label(hsv_frame, text=f"{self._app.green_value_min}", font=("Arial", 9, "bold"), foreground="green")
         current_green_val_label.grid(row=2, column=3, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=3, column=2, sticky=tk.W, padx=(30, 0), pady=(5, 2))
@@ -1294,19 +1328,20 @@ class MonitorTab:
         green_val_entry = ttk.Entry(hsv_frame, textvariable=green_val_var, width=12)
         green_val_entry.grid(row=3, column=3, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
-        ttk.Label(hsv_frame, text=self._app.get_text("green_hsv_explanation"), font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=4, column=2, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(hsv_frame, text=self._app.get_text("green_hsv_explanation"), font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(
+            row=4, column=2, columnspan=2, sticky=tk.W, pady=(5, 0)
+        )
 
-        vcmd_float = (adjust_window.register(_validate_float_input), '%P')
-        vcmd_int = (adjust_window.register(_validate_int_input), '%P')
+        vcmd_float = (adjust_window.register(_validate_float_input), "%P")
+        vcmd_int = (adjust_window.register(_validate_int_input), "%P")
 
-        health_entry.config(validate='key', validatecommand=vcmd_float)
-        red_entry.config(validate='key', validatecommand=vcmd_int)
-        green_entry.config(validate='key', validatecommand=vcmd_int)
-        red_sat_entry.config(validate='key', validatecommand=vcmd_int)
-        red_val_entry.config(validate='key', validatecommand=vcmd_int)
-        green_sat_entry.config(validate='key', validatecommand=vcmd_int)
-        green_val_entry.config(validate='key', validatecommand=vcmd_int)
+        health_entry.config(validate="key", validatecommand=vcmd_float)
+        red_entry.config(validate="key", validatecommand=vcmd_int)
+        green_entry.config(validate="key", validatecommand=vcmd_int)
+        red_sat_entry.config(validate="key", validatecommand=vcmd_int)
+        red_val_entry.config(validate="key", validatecommand=vcmd_int)
+        green_sat_entry.config(validate="key", validatecommand=vcmd_int)
+        green_val_entry.config(validate="key", validatecommand=vcmd_int)
 
         def apply_settings():
             try:
@@ -1354,13 +1389,13 @@ class MonitorTab:
                 self._app.green_saturation_min = new_green_sat_min
                 self._app.green_value_min = new_green_val_min
 
-                self._app.config['health_threshold'] = self._app.health_threshold
-                self._app.config['red_h_range'] = self._app.red_h_range
-                self._app.config['green_h_range'] = self._app.green_h_range
-                self._app.config['red_saturation_min'] = self._app.red_saturation_min
-                self._app.config['red_value_min'] = self._app.red_value_min
-                self._app.config['green_saturation_min'] = self._app.green_saturation_min
-                self._app.config['green_value_min'] = self._app.green_value_min
+                self._app.config["health_threshold"] = self._app.health_threshold
+                self._app.config["red_h_range"] = self._app.red_h_range
+                self._app.config["green_h_range"] = self._app.green_h_range
+                self._app.config["red_saturation_min"] = self._app.red_saturation_min
+                self._app.config["red_value_min"] = self._app.red_value_min
+                self._app.config["green_saturation_min"] = self._app.green_saturation_min
+                self._app.config["green_value_min"] = self._app.green_value_min
                 self._app.save_config()
 
                 current_health_label.config(text=f"{self._app.health_threshold}")
@@ -1371,15 +1406,18 @@ class MonitorTab:
                 current_green_sat_label.config(text=f"{self._app.green_saturation_min}")
                 current_green_val_label.config(text=f"{self._app.green_value_min}")
 
-                messagebox.showinfo(self._app.get_text("settings_applied"),
-                                  self._app.get_text("color_settings_updated").format(
-                                      health_threshold=self._app.health_threshold,
-                                      red_h_range=self._app.red_h_range,
-                                      green_h_range=self._app.green_h_range,
-                                      red_saturation_min=self._app.red_saturation_min,
-                                      red_value_min=self._app.red_value_min,
-                                      green_saturation_min=self._app.green_saturation_min,
-                                      green_value_min=self._app.green_value_min))
+                messagebox.showinfo(
+                    self._app.get_text("settings_applied"),
+                    self._app.get_text("color_settings_updated").format(
+                        health_threshold=self._app.health_threshold,
+                        red_h_range=self._app.red_h_range,
+                        green_h_range=self._app.green_h_range,
+                        red_saturation_min=self._app.red_saturation_min,
+                        red_value_min=self._app.red_value_min,
+                        green_saturation_min=self._app.green_saturation_min,
+                        green_value_min=self._app.green_value_min,
+                    ),
+                )
 
                 adjust_window.destroy()
 
@@ -1399,8 +1437,7 @@ class MonitorTab:
             adjust_window.focus_force()
             adjust_window.attributes("-topmost", True)
 
-        ttk.Button(button_frame, text=self._app.get_text("apply_settings"), command=apply_settings,
-                  style="Accent.TButton", width=15).grid(row=0, column=0, padx=(0, 10))
+        ttk.Button(button_frame, text=self._app.get_text("apply_settings"), command=apply_settings, style="Accent.TButton", width=15).grid(row=0, column=0, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("reset_to_defaults"), command=reset_to_defaults, width=18).grid(row=0, column=1, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("cancel"), command=adjust_window.destroy, width=10).grid(row=0, column=2)
 
@@ -1409,8 +1446,7 @@ class MonitorTab:
         adjust_window.resizable(False, False)
         adjust_window.focus_force()
 
-        title_label = ttk.Label(adjust_window, text=self._app.get_text("adjust_interface_ui_main_title"),
-                               font=("Arial", 12, "bold"))
+        title_label = ttk.Label(adjust_window, text=self._app.get_text("adjust_interface_ui_main_title"), font=("Arial", 12, "bold"))
         title_label.pack(pady=(20, 15))
 
         container = ttk.Frame(adjust_window)
@@ -1428,8 +1464,7 @@ class MonitorTab:
         mse_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(mse_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_mse_label = ttk.Label(mse_frame, text=f"{self._app.interface_ui_mse_threshold}",
-                                     font=("Arial", 9, "bold"), foreground="blue")
+        current_mse_label = ttk.Label(mse_frame, text=f"{self._app.interface_ui_mse_threshold}", font=("Arial", 9, "bold"), foreground="blue")
         current_mse_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(mse_frame, text=self._app.get_text("new_value_mse_suggested")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1438,15 +1473,13 @@ class MonitorTab:
         mse_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         mse_explanation = self._app.get_text("mse_explanation")
-        ttk.Label(mse_frame, text=mse_explanation, font=("", 9),
-                 foreground="gray", justify=tk.LEFT, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(mse_frame, text=mse_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         ssim_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("ssim_threshold_title"), padding="10")
         ssim_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(ssim_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_ssim_label = ttk.Label(ssim_frame, text=f"{self._app.interface_ui_ssim_threshold}",
-                                      font=("Arial", 9, "bold"), foreground="green")
+        current_ssim_label = ttk.Label(ssim_frame, text=f"{self._app.interface_ui_ssim_threshold}", font=("Arial", 9, "bold"), foreground="green")
         current_ssim_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(ssim_frame, text=self._app.get_text("new_value_range_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1454,15 +1487,13 @@ class MonitorTab:
         ssim_entry = ttk.Entry(ssim_frame, textvariable=ssim_var, width=12)
         ssim_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(ssim_frame, text=self._app.get_text("ssim_explanation"),
-                 font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(ssim_frame, text=self._app.get_text("ssim_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         hist_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("histogram_threshold_title"), padding="10")
         hist_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(hist_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_hist_label = ttk.Label(hist_frame, text=f"{self._app.interface_ui_hist_threshold}",
-                                      font=("Arial", 9, "bold"), foreground="orange")
+        current_hist_label = ttk.Label(hist_frame, text=f"{self._app.interface_ui_hist_threshold}", font=("Arial", 9, "bold"), foreground="orange")
         current_hist_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hist_frame, text=self._app.get_text("new_value_range_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1470,15 +1501,13 @@ class MonitorTab:
         hist_entry = ttk.Entry(hist_frame, textvariable=hist_var, width=12)
         hist_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(hist_frame, text=self._app.get_text("histogram_explanation"),
-                 font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(hist_frame, text=self._app.get_text("histogram_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         color_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("color_diff_threshold_title"), padding="10")
         color_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(color_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_color_label = ttk.Label(color_frame, text=f"{self._app.interface_ui_color_threshold}",
-                                       font=("Arial", 9, "bold"), foreground="red")
+        current_color_label = ttk.Label(color_frame, text=f"{self._app.interface_ui_color_threshold}", font=("Arial", 9, "bold"), foreground="red")
         current_color_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_suggested")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1486,8 +1515,7 @@ class MonitorTab:
         color_entry = ttk.Entry(color_frame, textvariable=color_var, width=12)
         color_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(color_frame, text=self._app.get_text("color_diff_explanation"),
-                 font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=self._app.get_text("color_diff_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         def apply_settings():
             try:
@@ -1554,10 +1582,10 @@ class MonitorTab:
                 self._app.interface_ui_hist_threshold = new_hist
                 self._app.interface_ui_color_threshold = new_color
 
-                self._app.config['interface_ui_mse_threshold'] = self._app.interface_ui_mse_threshold
-                self._app.config['interface_ui_ssim_threshold'] = self._app.interface_ui_ssim_threshold
-                self._app.config['interface_ui_hist_threshold'] = self._app.interface_ui_hist_threshold
-                self._app.config['interface_ui_color_threshold'] = self._app.interface_ui_color_threshold
+                self._app.config["interface_ui_mse_threshold"] = self._app.interface_ui_mse_threshold
+                self._app.config["interface_ui_ssim_threshold"] = self._app.interface_ui_ssim_threshold
+                self._app.config["interface_ui_hist_threshold"] = self._app.interface_ui_hist_threshold
+                self._app.config["interface_ui_color_threshold"] = self._app.interface_ui_color_threshold
                 self._app.save_config()
 
                 current_mse_label.config(text=f"{self._app.interface_ui_mse_threshold}")
@@ -1565,12 +1593,15 @@ class MonitorTab:
                 current_hist_label.config(text=f"{self._app.interface_ui_hist_threshold}")
                 current_color_label.config(text=f"{self._app.interface_ui_color_threshold}")
 
-                messagebox.showinfo(self._app.get_text("settings_applied"),
-                                  self._app.get_text("interface_ui_settings_updated").format(
-                                      mse_threshold=self._app.interface_ui_mse_threshold,
-                                      ssim_threshold=self._app.interface_ui_ssim_threshold,
-                                      hist_threshold=self._app.interface_ui_hist_threshold,
-                                      color_threshold=self._app.interface_ui_color_threshold))
+                messagebox.showinfo(
+                    self._app.get_text("settings_applied"),
+                    self._app.get_text("interface_ui_settings_updated").format(
+                        mse_threshold=self._app.interface_ui_mse_threshold,
+                        ssim_threshold=self._app.interface_ui_ssim_threshold,
+                        hist_threshold=self._app.interface_ui_hist_threshold,
+                        color_threshold=self._app.interface_ui_color_threshold,
+                    ),
+                )
 
                 adjust_window.destroy()
 
@@ -1587,59 +1618,58 @@ class MonitorTab:
             adjust_window.focus_force()
             adjust_window.attributes("-topmost", True)
 
-        vcmd_float = (adjust_window.register(_validate_float_input), '%P')
-        vcmd_int = (adjust_window.register(_validate_int_input), '%P')
+        vcmd_float = (adjust_window.register(_validate_float_input), "%P")
+        vcmd_int = (adjust_window.register(_validate_int_input), "%P")
 
-        mse_entry.config(validate='key', validatecommand=vcmd_int)
-        ssim_entry.config(validate='key', validatecommand=vcmd_float)
-        hist_entry.config(validate='key', validatecommand=vcmd_float)
-        color_entry.config(validate='key', validatecommand=vcmd_int)
+        mse_entry.config(validate="key", validatecommand=vcmd_int)
+        ssim_entry.config(validate="key", validatecommand=vcmd_float)
+        hist_entry.config(validate="key", validatecommand=vcmd_float)
+        color_entry.config(validate="key", validatecommand=vcmd_int)
 
-        ttk.Button(button_frame, text=self._app.get_text("apply_settings"), command=apply_settings,
-                  style="Accent.TButton", width=15).grid(row=0, column=0, padx=(0, 10))
+        ttk.Button(button_frame, text=self._app.get_text("apply_settings"), command=apply_settings, style="Accent.TButton", width=15).grid(row=0, column=0, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("reset_to_defaults"), command=reset_to_defaults, width=18).grid(row=0, column=1, padx=(0, 10))
         ttk.Button(button_frame, text=self._app.get_text("cancel"), command=adjust_window.destroy, width=10).grid(row=0, column=2)
 
     def update_monitor_tab_language(self):  # noqa: C901 -- intentionally linear widget refresh
-        if hasattr(self, 'window_frame'):
+        if hasattr(self, "window_frame"):
             self.window_frame.config(text=self._app.get_text("game_window_settings"))
-        if hasattr(self, 'game_window_label'):
+        if hasattr(self, "game_window_label"):
             self.game_window_label.config(text=self._app.get_text("game_window"))
-        if hasattr(self, 'refresh_windows_btn'):
+        if hasattr(self, "refresh_windows_btn"):
             self.refresh_windows_btn.config(text=self._app.get_text("refresh"))
-        if hasattr(self, 'health_bar_region_label'):
+        if hasattr(self, "health_bar_region_label"):
             self.health_bar_region_label.config(text=self._app.get_text("health_bar_region"))
-        if hasattr(self, 'mana_bar_region_label'):
+        if hasattr(self, "mana_bar_region_label"):
             self.mana_bar_region_label.config(text=self._app.get_text("mana_bar_region"))
-        if hasattr(self, 'interface_ui_region_label'):
+        if hasattr(self, "interface_ui_region_label"):
             self.interface_ui_region_label.config(text=self._app.get_text("interface_ui_region"))
-        if hasattr(self, 'select_health_region_btn'):
+        if hasattr(self, "select_health_region_btn"):
             self.select_health_region_btn.config(text=self._app.get_text("select_health_region"))
-        if hasattr(self, 'select_mana_region_btn'):
+        if hasattr(self, "select_mana_region_btn"):
             self.select_mana_region_btn.config(text=self._app.get_text("select_mana_region"))
-        if hasattr(self, 'select_interface_ui_btn'):
+        if hasattr(self, "select_interface_ui_btn"):
             self.select_interface_ui_btn.config(text=self._app.get_text("select_interface_ui"))
-        if hasattr(self, 'trigger_settings_frame'):
+        if hasattr(self, "trigger_settings_frame"):
             self.trigger_settings_frame.config(text=self._app.get_text("trigger_settings"))
-        if hasattr(self, 'type_label'):
+        if hasattr(self, "type_label"):
             self.type_label.config(text=self._app.get_text("type"))
-        if hasattr(self, 'percentage_label'):
+        if hasattr(self, "percentage_label"):
             self.percentage_label.config(text=self._app.get_text("percentage"))
-        if hasattr(self, 'hotkey_label'):
+        if hasattr(self, "hotkey_label"):
             self.hotkey_label.config(text=self._app.get_text("hotkey"))
-        if hasattr(self, 'cooldown_label'):
+        if hasattr(self, "cooldown_label"):
             self.cooldown_label.config(text=self._app.get_text("cooldown_ms"))
-        if hasattr(self, 'add_trigger_btn'):
+        if hasattr(self, "add_trigger_btn"):
             self.add_trigger_btn.config(text=self._app.get_text("add_trigger"))
-        if hasattr(self, 'remove_selected_btn'):
+        if hasattr(self, "remove_selected_btn"):
             self.remove_selected_btn.config(text=self._app.get_text("remove_selected"))
-        if hasattr(self, 'adjust_colors_btn'):
+        if hasattr(self, "adjust_colors_btn"):
             self.adjust_colors_btn.config(text=self._app.get_text("adjust_colors"))
-        if hasattr(self, 'adjust_interface_ui_btn'):
+        if hasattr(self, "adjust_interface_ui_btn"):
             self.adjust_interface_ui_btn.config(text=self._app.get_text("adjust_interface_ui"))
-        if hasattr(self, 'multi_trigger_check'):
+        if hasattr(self, "multi_trigger_check"):
             self.multi_trigger_check.config(text=self._app.get_text("multiple_triggers"))
-        if hasattr(self, 'settings_tree'):
+        if hasattr(self, "settings_tree"):
             self.settings_tree.heading("type", text=self._app.get_text("type"))
             self.settings_tree.heading("percent", text=self._app.get_text("percentage"))
             self.settings_tree.heading("key", text=self._app.get_text("hotkey"))
@@ -1673,9 +1703,9 @@ class MonitorTab:
         self.mana_preview_frame.config(text=self._app.get_text("mana_preview"))
         self.preview_label.config(text=self._app.get_text("select_health_region_first"))
         self.mana_preview_label.config(text=self._app.get_text("select_mana_region_first"))
-        if hasattr(self, 'interface_ui_preview_frame'):
+        if hasattr(self, "interface_ui_preview_frame"):
             self.interface_ui_preview_frame.config(text=self._app.get_text("interface_ui_preview"))
-        if hasattr(self, 'interface_ui_preview_hint'):
+        if hasattr(self, "interface_ui_preview_hint"):
             self.interface_ui_preview_hint.config(text=self._app.get_text("interface_ui_preview_hint"))
 
         for tip_attr, key in [

@@ -12,9 +12,7 @@ class UsageTracker:
 
     def load_usage_time_from_registry(self):
         try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                                 r"Software\SidGameTools\HealthMonitor",
-                                 0, winreg.KEY_READ)
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\SidGameTools\HealthMonitor", 0, winreg.KEY_READ)
             value, _ = winreg.QueryValueEx(key, "TotalUsageTime")
             winreg.CloseKey(key)
             return int(value)
@@ -26,8 +24,7 @@ class UsageTracker:
 
     def save_usage_time_to_registry(self, total_seconds):
         try:
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER,
-                                   r"Software\SidGameTools\HealthMonitor")
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\SidGameTools\HealthMonitor")
             winreg.SetValueEx(key, "TotalUsageTime", 0, winreg.REG_DWORD, total_seconds)
             winreg.CloseKey(key)
             print(f"已保存總使用時間: {format_usage_time(total_seconds)}")
@@ -47,11 +44,9 @@ class UsageTracker:
 
     def update_usage_time_display(self):
         try:
-            if hasattr(self._app, 'usage_time_label'):
+            if hasattr(self._app, "usage_time_label"):
                 usage_time_text = format_usage_time(self._app.total_usage_time, lang=self._app.current_language)
-                self._app.usage_time_label.config(
-                    text=self._app.get_text("total_usage_time").format(time=usage_time_text)
-                )
+                self._app.usage_time_label.config(text=self._app.get_text("total_usage_time").format(time=usage_time_text))
         except Exception as e:
             print(f"更新使用時間顯示時發生錯誤: {e}")
 

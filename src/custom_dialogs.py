@@ -42,7 +42,7 @@ class CustomMessageBox:
         try:
             if not candidate.winfo_exists():
                 return None
-            if candidate.state() == 'withdrawn':
+            if candidate.state() == "withdrawn":
                 return None
         except Exception:
             return None
@@ -56,7 +56,7 @@ class CustomMessageBox:
         parent = CustomMessageBox._resolve_parent(parent)
 
         window = tk.Toplevel(parent)
-        window.title(title or 'Message')
+        window.title(title or "Message")
         window.resizable(False, False)
         window.minsize(CustomMessageBox.MIN_WIDTH, CustomMessageBox.MIN_HEIGHT)
 
@@ -67,15 +67,15 @@ class CustomMessageBox:
         container = ttk.Frame(window, padding=(20, 18, 20, 14))
         container.pack(fill=tk.BOTH, expand=True)
 
-        message_font = tkfont.nametofont('TkDefaultFont')
+        message_font = tkfont.nametofont("TkDefaultFont")
         message_widget = tk.Message(
             container,
-            text=message or '',
+            text=message or "",
             width=CustomMessageBox.MESSAGE_WRAP,
             justify=tk.LEFT,
-            anchor='w',
+            anchor="w",
             font=message_font,
-            foreground=accent or 'black',
+            foreground=accent or "black",
             padx=0,
             pady=0,
         )
@@ -88,23 +88,23 @@ class CustomMessageBox:
         for button in reversed(buttons):
             btn = ttk.Button(
                 button_frame,
-                text=button['text'],
-                command=lambda value=button['result']: CustomMessageBox._close(window, value),
-                width=max(12, len(button['text']) + 2),
+                text=button["text"],
+                command=lambda value=button["result"]: CustomMessageBox._close(window, value),
+                width=max(12, len(button["text"]) + 2),
             )
             btn.pack(side=tk.RIGHT, padx=(8, 0))
-            if button.get('default') and focus_button is None:
+            if button.get("default") and focus_button is None:
                 btn.configure(default=tk.ACTIVE)
                 focus_button = btn
 
         if focus_button is not None:
             focus_button.focus_set()
 
-        default_result = next((button['result'] for button in buttons if button.get('default')), True)
-        window.bind('<Return>', lambda e: CustomMessageBox._close(window, default_result))
-        window.bind('<KP_Enter>', lambda e: CustomMessageBox._close(window, default_result))
-        window.bind('<Escape>', lambda e: CustomMessageBox._close(window, close_result))
-        window.protocol('WM_DELETE_WINDOW', lambda: CustomMessageBox._close(window, close_result))
+        default_result = next((button["result"] for button in buttons if button.get("default")), True)
+        window.bind("<Return>", lambda e: CustomMessageBox._close(window, default_result))
+        window.bind("<KP_Enter>", lambda e: CustomMessageBox._close(window, default_result))
+        window.bind("<Escape>", lambda e: CustomMessageBox._close(window, close_result))
+        window.protocol("WM_DELETE_WINDOW", lambda: CustomMessageBox._close(window, close_result))
 
         window.update_idletasks()
 
@@ -129,7 +129,7 @@ class CustomMessageBox:
             x = max(0, (screen_width - width) // 2)
             y = max(0, (screen_height - height) // 2)
 
-        window.geometry(f'{width}x{height}+{x}+{y}')
+        window.geometry(f"{width}x{height}+{x}+{y}")
         window.wait_window()
         return CustomMessageBox.result
 
@@ -139,7 +139,7 @@ class CustomMessageBox:
         CustomMessageBox._build_dialog(
             title,
             message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            buttons=[{"text": "OK (Enter)", "result": True, "default": True}],
             parent=parent,
             close_result=True,
         )
@@ -151,9 +151,9 @@ class CustomMessageBox:
         CustomMessageBox._build_dialog(
             title,
             message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            buttons=[{"text": "OK (Enter)", "result": True, "default": True}],
             parent=parent,
-            accent='#8a6d00',
+            accent="#8a6d00",
             close_result=True,
         )
         return True
@@ -164,9 +164,9 @@ class CustomMessageBox:
         CustomMessageBox._build_dialog(
             title,
             message,
-            buttons=[{'text': 'OK (Enter)', 'result': True, 'default': True}],
+            buttons=[{"text": "OK (Enter)", "result": True, "default": True}],
             parent=parent,
-            accent='#b00020',
+            accent="#b00020",
             close_result=True,
         )
         return True
@@ -178,8 +178,8 @@ class CustomMessageBox:
             title,
             message,
             buttons=[
-                {'text': 'No (Esc)', 'result': False},
-                {'text': 'Yes (Enter)', 'result': True, 'default': True},
+                {"text": "No (Esc)", "result": False},
+                {"text": "Yes (Enter)", "result": True, "default": True},
             ],
             parent=parent,
             close_result=False,
@@ -197,16 +197,16 @@ def setup_custom_messagebox():
     from tkinter import messagebox
 
     def _custom_messagebox_info(title=None, message=None, **options):
-        return CustomMessageBox.show_info(title or 'Info', message or '', parent=options.get('parent'))
+        return CustomMessageBox.show_info(title or "Info", message or "", parent=options.get("parent"))
 
     def _custom_messagebox_warning(title=None, message=None, **options):
-        return CustomMessageBox.show_warning(title or 'Warning', message or '', parent=options.get('parent'))
+        return CustomMessageBox.show_warning(title or "Warning", message or "", parent=options.get("parent"))
 
     def _custom_messagebox_error(title=None, message=None, **options):
-        return CustomMessageBox.show_error(title or 'Error', message or '', parent=options.get('parent'))
+        return CustomMessageBox.show_error(title or "Error", message or "", parent=options.get("parent"))
 
     def _custom_messagebox_askyesno(title=None, message=None, **options):
-        return CustomMessageBox.ask_yes_no(title or 'Confirm', message or '', parent=options.get('parent'))
+        return CustomMessageBox.ask_yes_no(title or "Confirm", message or "", parent=options.get("parent"))
 
     # 替換預設 messagebox 函數
     messagebox.showinfo = _custom_messagebox_info

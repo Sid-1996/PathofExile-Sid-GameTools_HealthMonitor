@@ -42,6 +42,7 @@ from tkinter import ttk, messagebox
 
 try:
     import pyautogui
+
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
     _PYAUTOGUI_OK = True
@@ -49,11 +50,11 @@ except ImportError:
     _PYAUTOGUI_OK = False
 
 # ── 常數 ──────────────────────────────────────────────────
-_MIN_MS      = 50                          # 最低間隔 ms
-_MAX_SLOTS   = 8                           # 最多技能槽
-_MODIFIERS   = ["none", "ctrl", "shift", "alt"]
-_COLOR_ON    = "#2ecc71"                   # 執行中（綠）
-_COLOR_OFF   = "#e74c3c"                   # 停止（紅）
+_MIN_MS = 50  # 最低間隔 ms
+_MAX_SLOTS = 8  # 最多技能槽
+_MODIFIERS = ["none", "ctrl", "shift", "alt"]
+_COLOR_ON = "#2ecc71"  # 執行中（綠）
+_COLOR_OFF = "#e74c3c"  # 停止（紅）
 
 
 # ══════════════════════════════════════════════════════════
@@ -69,14 +70,14 @@ class SkillSlot:
         """
         root：任何 tk widget，讓 StringVar/IntVar 正確綁到主 Tcl 解釋器。
         """
-        self.key         = tk.StringVar(root, value="")
-        self.modifier    = tk.StringVar(root, value="none")
+        self.key = tk.StringVar(root, value="")
+        self.modifier = tk.StringVar(root, value="none")
         self.interval_ms = tk.IntVar(root, value=1000)
-        self.enabled     = tk.BooleanVar(root, value=False)
+        self.enabled = tk.BooleanVar(root, value=False)
 
         self._running = False
         self._timer: threading.Timer | None = None
-        self._lock   = threading.Lock()
+        self._lock = threading.Lock()
 
     # ── 送鍵（在 lock 外部執行，避免死鎖）──
 
@@ -126,7 +127,7 @@ class SkillSlot:
 
         with self._lock:
             if self._running:
-                return True                    # 已在跑，視為成功
+                return True  # 已在跑，視為成功
             self._running = True
 
         # 第一次延遲一個間隔再送鍵，避免立刻誤觸
@@ -158,22 +159,21 @@ class SkillTimerModule:
     可直接 pack / grid 進任何父容器。
     """
 
-    def __init__(self, parent: tk.Misc, max_slots: int = 4,
-                 on_log=None, get_text=None):
+    def __init__(self, parent: tk.Misc, max_slots: int = 4, on_log=None, get_text=None):
         """
         parent    : 父容器
         max_slots : 最多幾個技能槽（上限 _MAX_SLOTS）
         on_log    : 可選 callback(message, type)，接 add_status_message
         get_text  : 可選 callback(key) -> str，接語言系統
         """
-        self._on_log   = on_log
+        self._on_log = on_log
         self._get_text = get_text  # 語言函數
-        self._n        = min(max_slots, _MAX_SLOTS)
-        self.slots     = [SkillSlot(parent) for _ in range(self._n)]
+        self._n = min(max_slots, _MAX_SLOTS)
+        self.slots = [SkillSlot(parent) for _ in range(self._n)]
 
         # 儲存 UI 元件引用，供 _set_status 更新
-        self._status_labels: list[tk.Label]  = []
-        self._toggle_btns:   list[ttk.Button] = []
+        self._status_labels: list[tk.Label] = []
+        self._toggle_btns: list[ttk.Button] = []
 
         # ── 根容器 ──
         title = self._t("skill_timer_title", "⏱ 技能計時器(Beta)")
@@ -190,7 +190,7 @@ class SkillTimerModule:
             try:
                 result = self._get_text(key)
                 # 避免語言系統回傳 [key] 樣式的未定義字串
-                if result and not result.startswith('['):
+                if result and not result.startswith("["):
                     return result
             except Exception:
                 pass
@@ -205,95 +205,68 @@ class SkillTimerModule:
 
         # 表頭
         headers = [
-            self._t("skill_timer_enable",   "啟用"),
-            self._t("skill_timer_slot",     "技能槽"),
+            self._t("skill_timer_enable", "啟用"),
+            self._t("skill_timer_slot", "技能槽"),
             self._t("skill_timer_modifier", "修飾鍵"),
-            self._t("skill_timer_key",      "按鍵"),
+            self._t("skill_timer_key", "按鍵"),
             self._t("skill_timer_interval", "間隔 (ms)"),
-            self._t("skill_timer_status",   "狀態"),
+            self._t("skill_timer_status", "狀態"),
             "",
         ]
-        widths  = [4,      7,       9,       8,     10,        10,   5]
+        widths = [4, 7, 9, 8, 10, 10, 5]
         for col, (h, w) in enumerate(zip(headers, widths)):
-            ttk.Label(f, text=h, width=w, anchor="center",
-                      foreground="#555555"
-                      ).grid(row=0, column=col, padx=3, pady=(6, 2), sticky="ew")
+            ttk.Label(f, text=h, width=w, anchor="center", foreground="#555555").grid(row=0, column=col, padx=3, pady=(6, 2), sticky="ew")
 
         # 分隔線（用空 Frame 模擬）
-        ttk.Separator(f, orient="horizontal").grid(
-            row=1, column=0, columnspan=len(headers),
-            sticky="ew", padx=3, pady=2
-        )
+        ttk.Separator(f, orient="horizontal").grid(row=1, column=0, columnspan=len(headers), sticky="ew", padx=3, pady=2)
 
         # 每個技能槽列
         for i, slot in enumerate(self.slots):
             row = i + 2
 
             # 啟用 Checkbutton
-            ttk.Checkbutton(f, variable=slot.enabled
-                            ).grid(row=row, column=0, padx=4, pady=3)
+            ttk.Checkbutton(f, variable=slot.enabled).grid(row=row, column=0, padx=4, pady=3)
 
             # 槽標籤
-            ttk.Label(f, text=f"Skill {i + 1}", width=7, anchor="center"
-                      ).grid(row=row, column=1, padx=3)
+            ttk.Label(f, text=f"Skill {i + 1}", width=7, anchor="center").grid(row=row, column=1, padx=3)
 
             # 修飾鍵
-            ttk.Combobox(f, textvariable=slot.modifier,
-                         values=_MODIFIERS, state="readonly", width=8
-                         ).grid(row=row, column=2, padx=3)
+            ttk.Combobox(f, textvariable=slot.modifier, values=_MODIFIERS, state="readonly", width=8).grid(row=row, column=2, padx=3)
 
             # 按鍵輸入
-            ttk.Entry(f, textvariable=slot.key, width=8
-                      ).grid(row=row, column=3, padx=3)
+            ttk.Entry(f, textvariable=slot.key, width=8).grid(row=row, column=3, padx=3)
 
             # 間隔 ms
-            ttk.Entry(f, textvariable=slot.interval_ms, width=10
-                      ).grid(row=row, column=4, padx=3)
+            ttk.Entry(f, textvariable=slot.interval_ms, width=10).grid(row=row, column=4, padx=3)
 
             # 狀態燈（用 tk.Label 才能改背景色）
             stopped_text = self._t("skill_timer_stopped", "● 停止")
-            lbl = tk.Label(f, text=stopped_text, width=10,
-                           fg=_COLOR_OFF,
-                           font=("Consolas", 9))
+            lbl = tk.Label(f, text=stopped_text, width=10, fg=_COLOR_OFF, font=("Consolas", 9))
             lbl.grid(row=row, column=5, padx=3)
             self._status_labels.append(lbl)
 
             # 獨立啟停按鈕
-            btn = ttk.Button(
-                f, text="▶", width=4,
-                command=lambda s=slot, idx=i: self._toggle(s, idx)
-            )
+            btn = ttk.Button(f, text="▶", width=4, command=lambda s=slot, idx=i: self._toggle(s, idx))
             btn.grid(row=row, column=6, padx=3)
             self._toggle_btns.append(btn)
 
         # 底部控制列
         ctrl_row = self._n + 2
-        ttk.Separator(f, orient="horizontal").grid(
-            row=ctrl_row, column=0, columnspan=7,
-            sticky="ew", padx=3, pady=(6, 3)
-        )
+        ttk.Separator(f, orient="horizontal").grid(row=ctrl_row, column=0, columnspan=7, sticky="ew", padx=3, pady=(6, 3))
 
         btn_frame = ttk.Frame(f)
-        btn_frame.grid(row=ctrl_row + 1, column=0, columnspan=7,
-                       sticky="w", padx=6, pady=(0, 8))
+        btn_frame.grid(row=ctrl_row + 1, column=0, columnspan=7, sticky="w", padx=6, pady=(0, 8))
 
-        self._btn_start_all = ttk.Button(btn_frame, text=self._t("skill_timer_start_all", "▶▶ 全部啟動"),
-                                          command=self.start_all)
+        self._btn_start_all = ttk.Button(btn_frame, text=self._t("skill_timer_start_all", "▶▶ 全部啟動"), command=self.start_all)
         self._btn_start_all.pack(side="left", padx=(0, 8))
 
-        self._btn_stop_all = ttk.Button(btn_frame, text=self._t("skill_timer_stop_all", "■ 全部停止"),
-                                        command=self.stop_all)
+        self._btn_stop_all = ttk.Button(btn_frame, text=self._t("skill_timer_stop_all", "■ 全部停止"), command=self.stop_all)
         self._btn_stop_all.pack(side="left")
 
         # pyautogui 缺失警告
         if not _PYAUTOGUI_OK:
-            warn = tk.Label(
-                f,
-                text=self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"),
-                fg="#e67e22", font=("Consolas", 8)
-            )
-            warn.grid(row=ctrl_row + 2, column=0, columnspan=7,
-                      sticky="w", padx=6, pady=(0, 4))
+            warn = tk.Label(f, text=self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"), fg="#e67e22", font=("Consolas", 8))
+            warn.grid(row=ctrl_row + 2, column=0, columnspan=7, sticky="w", padx=6, pady=(0, 4))
 
     # ────────────────────────────────────────────────────
     #  控制邏輯
@@ -331,17 +304,17 @@ class SkillTimerModule:
             btn.config(text="▶")
 
         if self._on_log:
-            slot  = self.slots[idx]
-            mod   = slot.modifier.get()
-            key   = slot.key.get()
-            ms    = slot.interval_ms.get()
+            slot = self.slots[idx]
+            mod = slot.modifier.get()
+            key = slot.key.get()
+            ms = slot.interval_ms.get()
             combo = f"{mod}+{key}" if mod != "none" else key
             if running:
                 msg = self._t("skill_timer_log_start", "[SkillTimer] Skill {slot} 啟動 | 按鍵={key} | 間隔={ms}ms")
-                msg = msg.format(slot=idx+1, key=combo, ms=ms)
+                msg = msg.format(slot=idx + 1, key=combo, ms=ms)
             else:
                 msg = self._t("skill_timer_log_stop", "[SkillTimer] Skill {slot} 停止")
-                msg = msg.format(slot=idx+1)
+                msg = msg.format(slot=idx + 1)
             self._on_log(msg, "info")
 
     def start_all(self):
@@ -410,9 +383,9 @@ class SkillTimerModule:
     def get_config(self) -> list[dict]:
         return [
             {
-                "enabled":     slot.enabled.get(),
-                "key":         slot.key.get(),
-                "modifier":    slot.modifier.get(),
+                "enabled": slot.enabled.get(),
+                "key": slot.key.get(),
+                "modifier": slot.modifier.get(),
                 "interval_ms": slot.interval_ms.get(),
             }
             for slot in self.slots
@@ -435,8 +408,7 @@ class SkillTimerModule:
 if __name__ == "__main__":
     root = tk.Tk()
 
-    log_text = tk.Text(root, height=6, width=60, state="disabled",
-                       font=("Consolas", 9))
+    log_text = tk.Text(root, height=6, width=60, state="disabled", font=("Consolas", 9))
     log_text.pack(padx=10, pady=(0, 4), fill="x")
 
     def on_log(msg, typ="info"):

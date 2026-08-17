@@ -1,0 +1,40 @@
+# Build artifacts
+dist/
+build/
+*.spec
+*.exe
+*.exe_*
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Logs & diagnostics
+logs/
+*.log
+stderr.txt
+_diag_*
+
+# Test artifacts
+test_*.png
+_test_tmp_*
+
+# Runtime-generated (user data, NOT source)
+src/health_monitor_config.json
+src/health_monitor_config.json.backup
+src/screenshots/
+src/llm_report.txt
+src/skeleton.txt
+
+# License / hardware data
+license_data.json
+hardware_info.json
+
+# IDE config
+.vscode/
+.idea/
+
+# Opencode internal (plans, session scratch)
+.opencode/

@@ -74,14 +74,28 @@ class WindowKeySender:
         if len(key) == 1 and key.isalpha():
             return ord(key.upper())
         key_mapping = {
-            'esc': VK_ESCAPE, 'escape': VK_ESCAPE,
-            'enter': VK_RETURN, 'return': VK_RETURN,
-            'space': VK_SPACE, 'tab': VK_TAB,
-            'backspace': VK_BACK, 'delete': VK_DELETE,
-            'home': VK_HOME, 'end': VK_END,
-            'left': VK_LEFT, 'up': VK_UP, 'right': VK_RIGHT, 'down': VK_DOWN,
-            'f3': VK_F3, 'f5': VK_F5, 'f6': VK_F6, 'f7': VK_F7,
-            'f8': VK_F8, 'f9': VK_F9, 'f10': VK_F10, 'f12': VK_F12,
+            "esc": VK_ESCAPE,
+            "escape": VK_ESCAPE,
+            "enter": VK_RETURN,
+            "return": VK_RETURN,
+            "space": VK_SPACE,
+            "tab": VK_TAB,
+            "backspace": VK_BACK,
+            "delete": VK_DELETE,
+            "home": VK_HOME,
+            "end": VK_END,
+            "left": VK_LEFT,
+            "up": VK_UP,
+            "right": VK_RIGHT,
+            "down": VK_DOWN,
+            "f3": VK_F3,
+            "f5": VK_F5,
+            "f6": VK_F6,
+            "f7": VK_F7,
+            "f8": VK_F8,
+            "f9": VK_F9,
+            "f10": VK_F10,
+            "f12": VK_F12,
         }
         return key_mapping.get(key)
 
@@ -91,12 +105,13 @@ class WindowKeySender:
             key_id = f"{hwnd}_{vk_code}"
             last_send_time = self._last_key_send_times.get(key_id, 0)
             if current_time - last_send_time < 0.2:
-                print(f" 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time)*1000:.1f}ms)")
+                print(f" 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time) * 1000:.1f}ms)")
                 return
             self._last_key_send_times[key_id] = current_time
             print(f" 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
             try:
                 import keyboard
+
                 windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
                 if windows:
                     windows[0].activate()
@@ -130,6 +145,7 @@ class WindowKeySender:
     def _send_with_postmessage(self, hwnd, vk_code):
         try:
             from ctypes import windll
+
             PostMessageW_local = windll.user32.PostMessageW
             print(f" 使用PostMessage備用方法: VK_{vk_code}")
             result1 = PostMessageW_local(hwnd, WM_KEYDOWN, vk_code, 0)
@@ -141,35 +157,85 @@ class WindowKeySender:
 
     def vk_to_key_name(self, vk_code):
         vk_mapping = {
-            0x1B: 'esc',
-            0x31: '1', 0x32: '2', 0x33: '3', 0x34: '4', 0x35: '5',
-            0x36: '6', 0x37: '7', 0x38: '8', 0x39: '9', 0x30: '0',
-            0x41: 'a', 0x42: 'b', 0x43: 'c', 0x44: 'd', 0x45: 'e',
-            0x46: 'f', 0x47: 'g', 0x48: 'h', 0x49: 'i', 0x4A: 'j',
-            0x4B: 'k', 0x4C: 'l', 0x4D: 'm', 0x4E: 'n', 0x4F: 'o',
-            0x50: 'p', 0x51: 'q', 0x52: 'r', 0x53: 's', 0x54: 't',
-            0x55: 'u', 0x56: 'v', 0x57: 'w', 0x58: 'x', 0x59: 'y',
-            0x5A: 'z',
-            0x70: 'f1', 0x71: 'f2', 0x72: 'f3', 0x73: 'f4', 0x74: 'f5',
-            0x75: 'f6', 0x76: 'f7', 0x77: 'f8', 0x78: 'f9', 0x79: 'f10',
-            0x7A: 'f11', 0x7B: 'f12',
-            0x20: 'space', 0x0D: 'enter', 0x09: 'tab',
+            0x1B: "esc",
+            0x31: "1",
+            0x32: "2",
+            0x33: "3",
+            0x34: "4",
+            0x35: "5",
+            0x36: "6",
+            0x37: "7",
+            0x38: "8",
+            0x39: "9",
+            0x30: "0",
+            0x41: "a",
+            0x42: "b",
+            0x43: "c",
+            0x44: "d",
+            0x45: "e",
+            0x46: "f",
+            0x47: "g",
+            0x48: "h",
+            0x49: "i",
+            0x4A: "j",
+            0x4B: "k",
+            0x4C: "l",
+            0x4D: "m",
+            0x4E: "n",
+            0x4F: "o",
+            0x50: "p",
+            0x51: "q",
+            0x52: "r",
+            0x53: "s",
+            0x54: "t",
+            0x55: "u",
+            0x56: "v",
+            0x57: "w",
+            0x58: "x",
+            0x59: "y",
+            0x5A: "z",
+            0x70: "f1",
+            0x71: "f2",
+            0x72: "f3",
+            0x73: "f4",
+            0x74: "f5",
+            0x75: "f6",
+            0x76: "f7",
+            0x77: "f8",
+            0x78: "f9",
+            0x79: "f10",
+            0x7A: "f11",
+            0x7B: "f12",
+            0x20: "space",
+            0x0D: "enter",
+            0x09: "tab",
         }
         return vk_mapping.get(vk_code, None)
 
     def map_key_name(self, key: str) -> str:
         key = key.lower()
         key_mapping = {
-            'esc': 'esc', 'escape': 'esc',
-            'enter': 'enter', 'return': 'enter',
-            'space': 'space', 'tab': 'tab',
-            'backspace': 'backspace', 'delete': 'delete',
-            'home': 'home', 'end': 'end',
-            'pageup': 'page up', 'pagedown': 'page down',
-            'uparrow': 'up', 'downarrow': 'down',
-            'leftarrow': 'left', 'rightarrow': 'right',
-            'ctrl': 'ctrl', 'alt': 'alt', 'shift': 'shift',
-            'win': 'windows', 'cmd': 'windows',
+            "esc": "esc",
+            "escape": "esc",
+            "enter": "enter",
+            "return": "enter",
+            "space": "space",
+            "tab": "tab",
+            "backspace": "backspace",
+            "delete": "delete",
+            "home": "home",
+            "end": "end",
+            "pageup": "page up",
+            "pagedown": "page down",
+            "uparrow": "up",
+            "downarrow": "down",
+            "leftarrow": "left",
+            "rightarrow": "right",
+            "ctrl": "ctrl",
+            "alt": "alt",
+            "shift": "shift",
+            "win": "windows",
+            "cmd": "windows",
         }
         return key_mapping.get(key, key)
 
@@ -230,16 +296,13 @@ class WindowKeySender:
         if self._app.state._is_closing:
             return
         try:
-            interval = getattr(self, '_focus_watcher_interval', 1000)
+            interval = getattr(self, "_focus_watcher_interval", 1000)
             if interval <= 200:
                 if self._app.inventory_region:
                     self._app.update_inventory_preview_from_current()
         except Exception:
             pass
-        self._app.root.after(
-            getattr(self, '_focus_watcher_interval', 1000),
-            self._focus_watcher_tick
-        )
+        self._app.root.after(getattr(self, "_focus_watcher_interval", 1000), self._focus_watcher_tick)
 
     def _is_game_window_active(self):
         try:

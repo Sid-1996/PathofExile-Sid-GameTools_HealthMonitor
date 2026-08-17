@@ -19,6 +19,13 @@ ignore = [
 [tool.ruff.lint.mccabe]
 max-complexity = 20
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --cov --cov-report=term-missing"
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 version = "1.2.1"

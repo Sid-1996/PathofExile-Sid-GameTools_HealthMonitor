@@ -40,7 +40,7 @@ class InventoryTab:
         self.continuous_setup_running = False
         self.occupied_slots_cache = set()
         self.original_min_size = (800, 600)
-        self.inventory_window_var = tk.StringVar(value='')
+        self.inventory_window_var = tk.StringVar(value="")
         self.inventory_clear_click_mode = tk.StringVar(value="left")
         self.inventory_frame = inventory_frame
         self.inventory_clear_btn = None
@@ -64,67 +64,67 @@ class InventoryTab:
         """更新一鍵清包分頁的語言"""
         try:
             # 更新LabelFrame標題
-            if getattr(self, 'inventory_settings_frame', None):
+            if getattr(self, "inventory_settings_frame", None):
                 self.inventory_settings_frame.config(text=self._app.get_text("inventory_settings"))
-            if getattr(self, 'control_frame', None):
+            if getattr(self, "control_frame", None):
                 self.control_frame.config(text=self._app.get_text("control_panel"))
-            if getattr(self, 'status_frame', None):
+            if getattr(self, "status_frame", None):
                 self.status_frame.config(text=self._app.get_text("status"))
-            if getattr(self, 'pickup_frame', None):
+            if getattr(self, "pickup_frame", None):
                 self.pickup_frame.config(text=self._app.get_text("pickup_coordinates"))
-            if getattr(self, 'ui_preview_frame', None):
+            if getattr(self, "ui_preview_frame", None):
                 self.ui_preview_frame.config(text=self._app.get_text("inventory_ui_screenshot"))
-            if getattr(self, 'preview_frame', None):
+            if getattr(self, "preview_frame", None):
                 self.preview_frame.config(text=self._app.get_text("inventory_preview"))
 
             # 更新按鈕文字
-            if hasattr(self, 'select_inventory_region_btn'):
+            if hasattr(self, "select_inventory_region_btn"):
                 self.select_inventory_region_btn.config(text=self._app.get_text("select_inventory_region"))
-            if hasattr(self, 'record_empty_color_btn'):
+            if hasattr(self, "record_empty_color_btn"):
                 self.record_empty_color_btn.config(text=self._app.get_text("record_empty_color"))
-            if hasattr(self, 'select_inventory_ui_btn'):
+            if hasattr(self, "select_inventory_ui_btn"):
                 self.select_inventory_ui_btn.config(text=self._app.get_text("select_inventory_ui"))
-            if hasattr(self, 'test_clear_inventory_btn'):
+            if hasattr(self, "test_clear_inventory_btn"):
                 self.test_clear_inventory_btn.config(text=self._app.get_text("test_clear_inventory"))
-            if hasattr(self, 'save_inventory_settings_btn'):
+            if hasattr(self, "save_inventory_settings_btn"):
                 self.save_inventory_settings_btn.config(text=self._app.get_text("save_inventory_settings"))
-            if hasattr(self, 'setup_pickup_coordinates_btn'):
+            if hasattr(self, "setup_pickup_coordinates_btn"):
                 self.setup_pickup_coordinates_btn.config(text=self._app.get_text("setup_pickup_coordinates"))
-            if hasattr(self, 'save_pickup_coordinates_btn'):
+            if hasattr(self, "save_pickup_coordinates_btn"):
                 self.save_pickup_coordinates_btn.config(text=self._app.get_text("save_coordinates"))
 
             # 更新標籤文字
-            if hasattr(self, 'record_status_label'):
+            if hasattr(self, "record_status_label"):
                 self.record_status_label.config(text=self._app.get_text("record_status"))
-            if hasattr(self, 'inventory_ui_status_label'):
+            if hasattr(self, "inventory_ui_status_label"):
                 self.inventory_ui_status_label.config(text=self._app.get_text("inventory_ui_status"))
-            if hasattr(self, 'inventory_status_label'):
+            if hasattr(self, "inventory_status_label"):
                 self.inventory_status_label.config(text=self._app.get_text("ready"), foreground="green")
-            if hasattr(self, 'inventory_f3_label'):
+            if hasattr(self, "inventory_f3_label"):
                 self.inventory_f3_label.config(text=self._app.get_text("f3_hotkey"))
-            if hasattr(self, 'pause_status_label_title'):
+            if hasattr(self, "pause_status_label_title"):
                 self.pause_status_label_title.config(text=self._app.get_text("global_pause"))
-            if hasattr(self, 'pause_status_label'):
+            if hasattr(self, "pause_status_label"):
                 self.pause_status_label.config(text=self._app.get_text("normal_operation"), foreground="green")
-            if hasattr(self, 'coordinates_set_label'):
+            if hasattr(self, "coordinates_set_label"):
                 self.coordinates_set_label.config(text=self._app.get_text("coordinates_set"))
-            if hasattr(self, 'pickup_coords_label'):
+            if hasattr(self, "pickup_coords_label"):
                 valid_coords = sum(1 for x, y in (self.pickup_coordinates or []) if x != 0 or y != 0)
                 self.pickup_coords_label.config(text=self._app.get_text("coordinates_count").format(count=valid_coords))
-            if hasattr(self, 'pickup_f6_label'):
+            if hasattr(self, "pickup_f6_label"):
                 self.pickup_f6_label.config(text=self._app.get_text("f6_hotkey"))
-            if hasattr(self, 'pickup_status_label'):
+            if hasattr(self, "pickup_status_label"):
                 self.pickup_status_label.config(text=self._app.get_text("ready"), foreground="green")
-            if hasattr(self, 'occupied_label_title'):
+            if hasattr(self, "occupied_label_title"):
                 self.occupied_label_title.config(text=self._app.get_text("occupied_slots"))
-            if hasattr(self, 'grid_adjustment_label'):
+            if hasattr(self, "grid_adjustment_label"):
                 self.grid_adjustment_label.config(text=self._app.get_text("grid_alignment_adjustment"))
-            if hasattr(self, 'horizontal_label'):
+            if hasattr(self, "horizontal_label"):
                 self.horizontal_label.config(text=self._app.get_text("horizontal"))
-            if hasattr(self, 'vertical_label'):
+            if hasattr(self, "vertical_label"):
                 self.vertical_label.config(text=self._app.get_text("vertical"))
 
-            if hasattr(self, 'empty_color_label'):
+            if hasattr(self, "empty_color_label"):
                 if self.empty_inventory_colors:
                     recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
                     self.empty_color_label.config(
@@ -136,7 +136,7 @@ class InventoryTab:
                         text=self._app.get_text("not_recorded"),
                         background="lightgray",
                     )
-            if hasattr(self, 'inventory_ui_label'):
+            if hasattr(self, "inventory_ui_label"):
                 if self.inventory_ui_region and self.inventory_ui_screenshot is not None:
                     self.inventory_ui_label.config(
                         text=self._app.get_text("inventory_ui_recorded"),
@@ -149,34 +149,34 @@ class InventoryTab:
                     )
 
             # 更新重置按鈕
-            if hasattr(self, 'reset_offset_btn'):
+            if hasattr(self, "reset_offset_btn"):
                 self.reset_offset_btn.config(text=self._app.get_text("reset"))
 
             # 更新說明文字
-            if hasattr(self, 'ui_preview_hint_label'):
+            if hasattr(self, "ui_preview_hint_label"):
                 self.ui_preview_hint_label.config(text=self._app.get_text("inventory_ui_screenshot_hint"))
-            if hasattr(self, 'inventory_exclude_hint'):
+            if hasattr(self, "inventory_exclude_hint"):
                 self.inventory_exclude_hint.config(text=self._app.get_text("inventory_exclude_hint"))
 
-            if hasattr(self, 'clear_click_mode_label'):
+            if hasattr(self, "clear_click_mode_label"):
                 self.clear_click_mode_label.config(text=self._app.get_text("clear_click_mode"))
-            if hasattr(self, 'clear_click_left_radio'):
+            if hasattr(self, "clear_click_left_radio"):
                 self.clear_click_left_radio.config(text=self._app.get_text("clear_click_left"))
-            if hasattr(self, 'clear_click_right_radio'):
+            if hasattr(self, "clear_click_right_radio"):
                 self.clear_click_right_radio.config(text=self._app.get_text("clear_click_right"))
-            if hasattr(self, 'gui_settings_label'):
+            if hasattr(self, "gui_settings_label"):
                 self.gui_settings_label.config(text=self._app.get_text("gui_settings"))
-            if hasattr(self, 'always_on_top_check'):
+            if hasattr(self, "always_on_top_check"):
                 self.always_on_top_check.config(text=self._app.get_text("always_on_top"))
 
             # 更新預覽標籤的初始文字
-            if hasattr(self, 'inventory_preview_label') and not getattr(self, '_preview_has_image', False):
+            if hasattr(self, "inventory_preview_label") and not getattr(self, "_preview_has_image", False):
                 self.inventory_preview_label.itemconfig(self._preview_placeholder, text=self._app.get_text("select_inventory_region_first"))
 
             # 更新舊的按鈕引用（向後相容）
-            if getattr(self, 'inventory_clear_btn', None):
+            if getattr(self, "inventory_clear_btn", None):
                 self.inventory_clear_btn.config(text=self._app.get_text("clear_inventory"))
-            if getattr(self, 'pickup_items_btn', None):
+            if getattr(self, "pickup_items_btn", None):
                 self.pickup_items_btn.config(text=self._app.get_text("pickup_items"))
 
             # 重繪 Canvas placeholder 文字
@@ -202,8 +202,8 @@ class InventoryTab:
     def setup_global_esc_listener_for_inventory(self):
         """設置背包UI選擇的全局ESC鍵監聽"""
         try:
-            if not hasattr(self._app, 'global_esc_active_inventory') or not self._app.global_esc_active_inventory:
-                keyboard.add_hotkey('esc', self.global_esc_handler_for_inventory)
+            if not hasattr(self._app, "global_esc_active_inventory") or not self._app.global_esc_active_inventory:
+                keyboard.add_hotkey("esc", self.global_esc_handler_for_inventory)
                 self._app.global_esc_active_inventory = True
                 print("已設置背包UI選擇的全局ESC監聽")
         except Exception as e:
@@ -212,14 +212,14 @@ class InventoryTab:
     def remove_global_esc_listener_for_inventory(self):
         """移除背包相關選擇的全局ESC鍵監聽"""
         try:
-            if hasattr(self._app, 'global_esc_active_inventory') and self._app.global_esc_active_inventory:
+            if hasattr(self._app, "global_esc_active_inventory") and self._app.global_esc_active_inventory:
                 # 檢查是否還有其他背包相關的選擇在進行中
-                inventory_ui_active = getattr(self, 'inventory_ui_selection_active', False)
-                inventory_active = getattr(self, 'inventory_selection_active', False)
+                inventory_ui_active = getattr(self, "inventory_ui_selection_active", False)
+                inventory_active = getattr(self, "inventory_selection_active", False)
 
                 # 只有在沒有任何背包相關選擇活動時才移除監聽
                 if not inventory_ui_active and not inventory_active:
-                    keyboard.remove_hotkey('esc')
+                    keyboard.remove_hotkey("esc")
                     self._app.global_esc_active_inventory = False
                     print("已移除背包相關選擇的全局ESC監聽")
                 else:
@@ -231,14 +231,14 @@ class InventoryTab:
         """背包相關選擇的全局ESC鍵處理函數"""
         try:
             # 檢查背包UI選擇
-            if hasattr(self, 'inventory_ui_selection_active') and self.inventory_ui_selection_active:
+            if hasattr(self, "inventory_ui_selection_active") and self.inventory_ui_selection_active:
                 # 使用tkinter的after方法來確保在主線程中執行
                 self._app.root.after(0, lambda: self.cancel_inventory_ui_selection(None))
                 print("檢測到ESC鍵，取消背包UI選擇")
                 return
 
             # 檢查背包區域選擇
-            if hasattr(self, 'inventory_selection_active') and self.inventory_selection_active:
+            if hasattr(self, "inventory_selection_active") and self.inventory_selection_active:
                 # 使用tkinter的after方法來確保在主線程中執行
                 self._app.root.after(0, lambda: self.cancel_inventory_selection(None))
                 print("檢測到ESC鍵，取消背包區域選擇")
@@ -249,8 +249,8 @@ class InventoryTab:
     def setup_global_esc_listener_for_interface(self):
         """設置介面UI選擇的全局ESC鍵監聽"""
         try:
-            if not hasattr(self._app, 'global_esc_active_interface') or not self._app.global_esc_active_interface:
-                keyboard.add_hotkey('esc', self.global_esc_handler_for_interface)
+            if not hasattr(self._app, "global_esc_active_interface") or not self._app.global_esc_active_interface:
+                keyboard.add_hotkey("esc", self.global_esc_handler_for_interface)
                 self._app.global_esc_active_interface = True
                 print("已設置介面UI選擇的全局ESC監聽")
         except Exception as e:
@@ -259,8 +259,8 @@ class InventoryTab:
     def remove_global_esc_listener_for_interface(self):
         """移除介面UI選擇的全局ESC鍵監聽"""
         try:
-            if hasattr(self._app, 'global_esc_active_interface') and self._app.global_esc_active_interface:
-                keyboard.remove_hotkey('esc')
+            if hasattr(self._app, "global_esc_active_interface") and self._app.global_esc_active_interface:
+                keyboard.remove_hotkey("esc")
                 self._app.global_esc_active_interface = False
                 print("已移除介面UI選擇的全局ESC監聽")
         except Exception as e:
@@ -269,7 +269,7 @@ class InventoryTab:
     def global_esc_handler_for_interface(self):
         """介面UI選擇的全局ESC鍵處理函數"""
         try:
-            if hasattr(self, 'interface_ui_selection_active') and self.interface_ui_selection_active:
+            if hasattr(self, "interface_ui_selection_active") and self.interface_ui_selection_active:
                 # 使用tkinter的after方法來確保在主線程中執行
                 self._app.root.after(0, lambda: self.cancel_interface_ui_selection(None))
                 print("檢測到ESC鍵，取消介面UI選擇")
@@ -320,27 +320,29 @@ class InventoryTab:
             except Exception:
                 pass
             print(f"F3: 遊戲視窗 '{window_title}' 不在前台，將嘗試激活")
-        gui_was_visible = (self._app.root.state() == 'normal')
+        gui_was_visible = self._app.root.state() == "normal"
         gui_was_foreground = False
         gui_was_topmost = self._app.should_keep_topmost()
         if gui_was_visible:
             try:
                 foreground_hwnd = win32gui.GetForegroundWindow()
                 gui_hwnd = self._app.root.winfo_id()
-                gui_was_foreground = (foreground_hwnd == gui_hwnd)
+                gui_was_foreground = foreground_hwnd == gui_hwnd
             except Exception:
                 gui_was_foreground = False
         print(f"F3: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
         if gui_was_foreground or gui_was_topmost:
+
             def _prepare_gui():
                 try:
                     if gui_was_topmost:
                         self._app.root.attributes("-topmost", False)
                         print("F3: 已取消 GUI 置頂設定")
-                    getattr(self._app.root, 'lower', lambda: None)()
+                    getattr(self._app.root, "lower", lambda: None)()
                     print("F3: 已將 GUI 移到後台")
                 except Exception as e:
                     print(f"F3: 準備 GUI 失敗: {e}")
+
             try:
                 self._app.root.after(0, _prepare_gui)
             except Exception as e:
@@ -353,18 +355,18 @@ class InventoryTab:
             try:
                 for w in self._app.root.winfo_children():
                     try:
-                        if w.winfo_exists() and hasattr(w, 'title'):
+                        if w.winfo_exists() and hasattr(w, "title"):
                             t = str(w.title())
-                            if ('F3' in t or '清包' in t or '設定' in t or 'setup' in t.lower()) and w.winfo_ismapped():
+                            if ("F3" in t or "清包" in t or "設定" in t or "setup" in t.lower()) and w.winfo_ismapped():
                                 try:
                                     try:
-                                        if hasattr(w, 'grab_release'):
+                                        if hasattr(w, "grab_release"):
                                             w.grab_release()
                                             print(f"F3: 已釋放設定視窗的 grab: {t}")
                                     except Exception:
                                         pass
                                     try:
-                                        if hasattr(self._app.root, 'grab_release'):
+                                        if hasattr(self._app.root, "grab_release"):
                                             self._app.root.grab_release()
                                             print("F3: 已釋放 root 的 grab（備援）")
                                     except Exception:
@@ -377,6 +379,7 @@ class InventoryTab:
                         pass
             except Exception as e:
                 print(f"F3: 隱藏設定視窗時發生錯誤: {e}")
+
         try:
             self._app.root.after(0, _hide)
         except Exception:
@@ -388,10 +391,10 @@ class InventoryTab:
         except Exception:
             pass
         monitor = {
-            "top": game_window.top + self.inventory_region['y'],
-            "left": game_window.left + self.inventory_region['x'],
-            "width": self.inventory_region['width'],
-            "height": self.inventory_region['height']
+            "top": game_window.top + self.inventory_region["y"],
+            "left": game_window.left + self.inventory_region["x"],
+            "width": self.inventory_region["width"],
+            "height": self.inventory_region["height"],
         }
         img = capture_region_to_cv2(monitor)
         needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
@@ -437,6 +440,7 @@ class InventoryTab:
                         print(f"F3(worker): 恢復 GUI 失敗: {e}")
             except Exception as e:
                 print(f"F3(worker): Restore callback 例外: {e}")
+
         try:
             self._app.root.after(0, _restore_gui)
         except Exception:
@@ -468,8 +472,7 @@ class InventoryTab:
                 if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
                     print("F3(worker): 警告 - 遊戲視窗可能未在前台")
                     try:
-                        pyautogui.click(game_window.left + game_window.width // 2,
-                                      game_window.top + game_window.height // 2)
+                        pyautogui.click(game_window.left + game_window.width // 2, game_window.top + game_window.height // 2)
                         time.sleep(0.2)
                     except Exception:
                         pass
@@ -516,10 +519,10 @@ class InventoryTab:
                 return False
 
             # 計算背包區域在螢幕上的絕對位置
-            inventory_left = game_window.left + self.inventory_region['x']
-            inventory_top = game_window.top + self.inventory_region['y']
-            inventory_right = inventory_left + self.inventory_region['width']
-            inventory_bottom = inventory_top + self.inventory_region['height']
+            inventory_left = game_window.left + self.inventory_region["x"]
+            inventory_top = game_window.top + self.inventory_region["y"]
+            inventory_right = inventory_left + self.inventory_region["width"]
+            inventory_bottom = inventory_top + self.inventory_region["height"]
 
             # 計算GUI區域
             gui_right = gui_x + gui_width
@@ -531,7 +534,7 @@ class InventoryTab:
 
             # 如果重疊面積超過背包區域的10%，則認為會造成干擾
             overlap_area = overlap_x * overlap_y
-            inventory_area = self.inventory_region['width'] * self.inventory_region['height']
+            inventory_area = self.inventory_region["width"] * self.inventory_region["height"]
 
             overlap_ratio = overlap_area / inventory_area if inventory_area > 0 else 0
 
@@ -544,7 +547,7 @@ class InventoryTab:
     def check_gui_overlap_with_inventory_ui(self, game_window):
         """檢查GUI是否會遮擋背包UI檢測區域"""
         try:
-            if not hasattr(self, 'inventory_ui_region') or not self.inventory_ui_region:
+            if not hasattr(self, "inventory_ui_region") or not self.inventory_ui_region:
                 return False
 
             # 檢查GUI是否已經最小化，如果最小化則不會遮擋
@@ -562,10 +565,10 @@ class InventoryTab:
                 return False
 
             # 計算背包UI檢測區域在螢幕上的絕對位置
-            ui_left = game_window.left + self.inventory_ui_region['x']
-            ui_top = game_window.top + self.inventory_ui_region['y']
-            ui_right = ui_left + self.inventory_ui_region['width']
-            ui_bottom = ui_top + self.inventory_ui_region['height']
+            ui_left = game_window.left + self.inventory_ui_region["x"]
+            ui_top = game_window.top + self.inventory_ui_region["y"]
+            ui_right = ui_left + self.inventory_ui_region["width"]
+            ui_bottom = ui_top + self.inventory_ui_region["height"]
 
             # 計算GUI區域
             gui_right = gui_x + gui_width
@@ -577,7 +580,7 @@ class InventoryTab:
 
             # 如果重疊面積超過背包UI區域的5%，則認為會造成干擾
             overlap_area = overlap_x * overlap_y
-            ui_area = self.inventory_ui_region['width'] * self.inventory_ui_region['height']
+            ui_area = self.inventory_ui_region["width"] * self.inventory_ui_region["height"]
 
             overlap_ratio = overlap_area / ui_area if ui_area > 0 else 0
 
@@ -609,7 +612,7 @@ class InventoryTab:
                 foreground_hwnd = win32gui.GetForegroundWindow()
                 current_process_hwnd = win32gui.FindWindow(None, self._app.root.title())
 
-                self._state.gui_was_foreground_before_minimize = (foreground_hwnd == current_process_hwnd)
+                self._state.gui_was_foreground_before_minimize = foreground_hwnd == current_process_hwnd
                 print(f"GUI縮小前是否在前台: {self._state.gui_was_foreground_before_minimize}")
             except ImportError:
                 # 如果沒有win32gui，假設GUI在前台
@@ -625,16 +628,15 @@ class InventoryTab:
 
             # 計算縮小後的大小 - 確保背包預覽的60格清晰可見
             # 背包預覽需要足夠的空間來顯示10x6的格子佈局
-            preview_min_width = 600   # 確保10列格子有足夠寬度
+            preview_min_width = 600  # 確保10列格子有足夠寬度
             preview_min_height = 400  # 確保6行格子有足夠高度
 
             # 加上GUI其他控件的空間
-            minimized_width = max(preview_min_width, 650)   # 增加寬度確保預覽完整
-            minimized_height = max(preview_min_height, 500) # 增加高度確保預覽和控件都可見
+            minimized_width = max(preview_min_width, 650)  # 增加寬度確保預覽完整
+            minimized_height = max(preview_min_height, 500)  # 增加高度確保預覽和控件都可見
 
             # 智能計算位置，避免覆蓋背包區域，並確保背包預覽區域可見
-            minimized_x, minimized_y = self.calculate_safe_gui_position_with_preview(
-                game_window, minimized_width, minimized_height, screen_width, screen_height)
+            minimized_x, minimized_y = self.calculate_safe_gui_position_with_preview(game_window, minimized_width, minimized_height, screen_width, screen_height)
 
             # 應用新的幾何位置
             new_geometry = f"{minimized_width}x{minimized_height}+{minimized_x}+{minimized_y}"
@@ -659,14 +661,14 @@ class InventoryTab:
         """計算GUI的安全位置，避免覆蓋背包區域"""
         try:
             # 如果沒有遊戲視窗或背包區域資訊，使用預設位置
-            if not game_window or not hasattr(self, 'inventory_region') or not self.inventory_region:
+            if not game_window or not hasattr(self, "inventory_region") or not self.inventory_region:
                 return 10, 10
 
             # 計算背包區域在螢幕上的絕對位置
-            inventory_left = game_window.left + self.inventory_region['x']
-            inventory_top = game_window.top + self.inventory_region['y']
-            inventory_right = inventory_left + self.inventory_region['width']
-            inventory_bottom = inventory_top + self.inventory_region['height']
+            inventory_left = game_window.left + self.inventory_region["x"]
+            inventory_top = game_window.top + self.inventory_region["y"]
+            inventory_right = inventory_left + self.inventory_region["width"]
+            inventory_bottom = inventory_top + self.inventory_region["height"]
 
             # 候選位置：優先順序從高到低
             candidate_positions = [
@@ -687,7 +689,7 @@ class InventoryTab:
 
                 # 如果重疊面積很小（小於5%），則認為這個位置是安全的
                 overlap_area = overlap_x * overlap_y
-                inventory_area = self.inventory_region['width'] * self.inventory_region['height']
+                inventory_area = self.inventory_region["width"] * self.inventory_region["height"]
                 overlap_ratio = overlap_area / inventory_area if inventory_area > 0 else 0
 
                 if overlap_ratio < 0.05:  # 5%重疊閾值
@@ -696,7 +698,7 @@ class InventoryTab:
 
             # 如果所有位置都會嚴重重疊，使用最不重疊的位置
             best_position = (10, 10)
-            min_overlap = float('inf')
+            min_overlap = float("inf")
 
             for x, y in candidate_positions:
                 gui_right = x + gui_width
@@ -721,14 +723,14 @@ class InventoryTab:
         """計算GUI的安全位置，避免覆蓋背包區域，並確保背包預覽區域可見"""
         try:
             # 如果沒有遊戲視窗或背包區域資訊，使用預設位置
-            if not game_window or not hasattr(self, 'inventory_region') or not self.inventory_region:
+            if not game_window or not hasattr(self, "inventory_region") or not self.inventory_region:
                 return 10, 10
 
             # 計算背包區域在螢幕上的絕對位置
-            inventory_left = game_window.left + self.inventory_region['x']
-            inventory_top = game_window.top + self.inventory_region['y']
-            inventory_right = inventory_left + self.inventory_region['width']
-            inventory_bottom = inventory_top + self.inventory_region['height']
+            inventory_left = game_window.left + self.inventory_region["x"]
+            inventory_top = game_window.top + self.inventory_region["y"]
+            inventory_right = inventory_left + self.inventory_region["width"]
+            inventory_bottom = inventory_top + self.inventory_region["height"]
 
             # 嘗試找到一個位置，既不覆蓋背包區域，又能讓背包預覽區域可見
             # 優先考慮左上角，因為用戶要求GUI縮小到左上角
@@ -750,7 +752,7 @@ class InventoryTab:
 
                 # 如果重疊面積很小（小於5%），則認為這個位置是安全的
                 overlap_area = overlap_x * overlap_y
-                inventory_area = self.inventory_region['width'] * self.inventory_region['height']
+                inventory_area = self.inventory_region["width"] * self.inventory_region["height"]
                 overlap_ratio = overlap_area / inventory_area if inventory_area > 0 else 0
 
                 if overlap_ratio < 0.08:  # 放寬到8%重疊閾值，確保左上角優先選擇
@@ -759,7 +761,7 @@ class InventoryTab:
 
             # 如果所有位置都會嚴重重疊，使用最不重疊的位置（優先左上角）
             best_position = (10, 10)  # 預設為左上角
-            min_overlap = float('inf')
+            min_overlap = float("inf")
 
             for x, y in candidate_positions:
                 gui_right = x + gui_width
@@ -793,7 +795,7 @@ class InventoryTab:
                 self._app.root.state(self._state.original_gui_state)
 
             # 恢復原始的最小尺寸限制
-            if hasattr(self, 'original_min_size') and self.original_min_size:
+            if hasattr(self, "original_min_size") and self.original_min_size:
                 self._app.root.minsize(self.original_min_size[0], self.original_min_size[1])
 
             # 只有在用戶啟用了永遠在最上方且GUI縮小前就在前台的情況下，才重新激活GUI
@@ -893,15 +895,15 @@ class InventoryTab:
         self.clear_click_mode_label.grid(row=0, column=0, sticky=tk.W)
         self.inventory_clear_click_mode = tk.StringVar(value="left")
 
-        self.clear_click_left_radio = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_left"),
-                                                       variable=self.inventory_clear_click_mode, value="left",
-                                                       command=self._on_click_mode_changed)
+        self.clear_click_left_radio = ttk.Radiobutton(
+            click_mode_frame, text=self._app.get_text("clear_click_left"), variable=self.inventory_clear_click_mode, value="left", command=self._on_click_mode_changed
+        )
         self.clear_click_left_radio.grid(row=0, column=1, padx=(5, 10))
         self.tip_click_left = Tooltip(self.clear_click_left_radio, self._app.get_text("clear_click_left_tip"))
 
-        self.clear_click_right_radio = ttk.Radiobutton(click_mode_frame, text=self._app.get_text("clear_click_right"),
-                                                        variable=self.inventory_clear_click_mode, value="right",
-                                                        command=self._on_click_mode_changed)
+        self.clear_click_right_radio = ttk.Radiobutton(
+            click_mode_frame, text=self._app.get_text("clear_click_right"), variable=self.inventory_clear_click_mode, value="right", command=self._on_click_mode_changed
+        )
         self.clear_click_right_radio.grid(row=0, column=2, padx=(5, 10))
         self.tip_click_right = Tooltip(self.clear_click_right_radio, self._app.get_text("clear_click_right_tip"))
 
@@ -911,8 +913,7 @@ class InventoryTab:
 
         self.gui_settings_label = ttk.Label(gui_control_frame, text=self._app.get_text("gui_settings"))
         self.gui_settings_label.grid(row=0, column=0, sticky=tk.W)
-        self.always_on_top_check = ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var,
-                       command=self._app.toggle_always_on_top)
+        self.always_on_top_check = ttk.Checkbutton(gui_control_frame, text=self._app.get_text("always_on_top"), variable=self._app.always_on_top_var, command=self._app.toggle_always_on_top)
         self.always_on_top_check.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=(5, 0))
 
         # 狀態顯示
@@ -957,12 +958,11 @@ class InventoryTab:
         self.ui_preview_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
         # 創建一個Canvas來顯示UI截圖
-        self.ui_preview_canvas = tk.Canvas(self.ui_preview_frame, width=200, height=150, bg='lightgray', relief='sunken')
+        self.ui_preview_canvas = tk.Canvas(self.ui_preview_frame, width=200, height=150, bg="lightgray", relief="sunken")
         self.ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         # 添加說明文字
-        self.ui_preview_hint_label = ttk.Label(self.ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"),
-                 font=("", 8), foreground="gray")
+        self.ui_preview_hint_label = ttk.Label(self.ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"), font=("", 8), foreground="gray")
         self.ui_preview_hint_label.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
 
         # === 右側區域：背包預覽 ===
@@ -1007,9 +1007,9 @@ class InventoryTab:
 
         self.inventory_preview_label = tk.Canvas(self.preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
         self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0), sticky=(tk.N, tk.S, tk.W, tk.E))
-        self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("select_inventory_region_first"), anchor='nw', fill='gray')
-        self.inventory_preview_label.bind('<Button-1>', self._on_preview_click)
-        self.inventory_preview_label.bind('<Configure>', self._on_preview_resize)
+        self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("select_inventory_region_first"), anchor="nw", fill="gray")
+        self.inventory_preview_label.bind("<Button-1>", self._on_preview_click)
+        self.inventory_preview_label.bind("<Configure>", self._on_preview_resize)
         self._preview_has_image = False
 
         self.inventory_exclude_hint = ttk.Label(self.preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground="gray")
@@ -1044,7 +1044,7 @@ class InventoryTab:
             self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
         # 如果有預覽圖片，立即更新
-        if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
+        if hasattr(self, "inventory_preview_label") and getattr(self, "_preview_has_image", False):
             # 重新獲取當前背包圖片並更新預覽
             self.update_inventory_preview_from_current()
 
@@ -1062,23 +1062,23 @@ class InventoryTab:
             self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
         # 如果有預覽圖片，立即更新
-        if hasattr(self, 'inventory_preview_label') and getattr(self, '_preview_has_image', False):
+        if hasattr(self, "inventory_preview_label") and getattr(self, "_preview_has_image", False):
             self.update_inventory_preview_from_current()
 
     def update_offset_labels(self):
         """更新偏移標籤顯示"""
-        if hasattr(self, 'offset_x_label'):
+        if hasattr(self, "offset_x_label"):
             self.offset_x_label.config(text=str(self.grid_offset_x))
-        if hasattr(self, 'offset_y_label'):
+        if hasattr(self, "offset_y_label"):
             self.offset_y_label.config(text=str(self.grid_offset_y))
 
     def update_inventory_preview_from_current(self):
         """從當前背包區域重新獲取圖片並更新預覽"""
         try:
-            if not hasattr(self._app, 'window_key_sender') or not self._app.window_key_sender._is_game_window_visible():
-                if hasattr(self, 'inventory_preview_label'):
+            if not hasattr(self._app, "window_key_sender") or not self._app.window_key_sender._is_game_window_visible():
+                if hasattr(self, "inventory_preview_label"):
                     self.inventory_preview_label.delete("all")
-                    self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("waiting_for_game_window"), anchor='nw', fill='gray')
+                    self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("waiting_for_game_window"), anchor="nw", fill="gray")
                     self._preview_has_image = False
                 return
 
@@ -1095,42 +1095,30 @@ class InventoryTab:
             game_window = windows[0]
 
             # 若已設定背包UI參考圖，檢查背包是否已開啟
-            if self.inventory_ui_region and hasattr(self, 'inventory_ui_screenshot') and self.inventory_ui_screenshot is not None:
+            if self.inventory_ui_region and hasattr(self, "inventory_ui_screenshot") and self.inventory_ui_screenshot is not None:
                 if not self.check_inventory_ui_exists(game_window):
-                    if hasattr(self, 'inventory_preview_label'):
+                    if hasattr(self, "inventory_preview_label"):
                         self.inventory_preview_label.delete("all")
                         w = self.inventory_preview_label.winfo_width() or 300
                         h = self.inventory_preview_label.winfo_height() or 200
-                        self.inventory_preview_label.create_text(
-                            w // 2, h // 2,
-                            text=self._app.get_text("waiting_inventory_open"),
-                            anchor='center',
-                            fill='gray',
-                            font=('Microsoft JhengHei', 14)
-                        )
+                        self.inventory_preview_label.create_text(w // 2, h // 2, text=self._app.get_text("waiting_inventory_open"), anchor="center", fill="gray", font=("Microsoft JhengHei", 14))
                         self._preview_has_image = False
                     return
-            elif self.inventory_ui_region and (not hasattr(self, 'inventory_ui_screenshot') or self.inventory_ui_screenshot is None):
+            elif self.inventory_ui_region and (not hasattr(self, "inventory_ui_screenshot") or self.inventory_ui_screenshot is None):
                 # 有設定區域但還沒截參考圖，提示使用者
-                if hasattr(self, 'inventory_preview_label'):
+                if hasattr(self, "inventory_preview_label"):
                     self.inventory_preview_label.delete("all")
                     w = self.inventory_preview_label.winfo_width() or 300
                     h = self.inventory_preview_label.winfo_height() or 200
-                    self.inventory_preview_label.create_text(
-                        w // 2, h // 2,
-                        text=self._app.get_text("inventory_ui_not_recorded"),
-                        anchor='center',
-                        fill='orange',
-                        font=('Microsoft JhengHei', 14)
-                    )
+                    self.inventory_preview_label.create_text(w // 2, h // 2, text=self._app.get_text("inventory_ui_not_recorded"), anchor="center", fill="orange", font=("Microsoft JhengHei", 14))
                     self._preview_has_image = False
                 return
 
             monitor = {
-                "top": game_window.top + self.inventory_region['y'],
-                "left": game_window.left + self.inventory_region['x'],
-                "width": self.inventory_region['width'],
-                "height": self.inventory_region['height']
+                "top": game_window.top + self.inventory_region["y"],
+                "left": game_window.left + self.inventory_region["x"],
+                "width": self.inventory_region["width"],
+                "height": self.inventory_region["height"],
             }
             img = capture_region_to_cv2(monitor)
 
@@ -1194,17 +1182,16 @@ class InventoryTab:
         self.inventory_selection_window.geometry(f"+{game_window.left}+{game_window.top}")
         self.inventory_selection_window.attributes("-alpha", 0.3)
         self.inventory_selection_window.overrideredirect(True)  # 移除視窗邊框
-        self.inventory_selection_window.configure(bg='gray')
+        self.inventory_selection_window.configure(bg="gray")
 
         # 繪製遊戲視窗邊框
-        canvas = tk.Canvas(self.inventory_selection_window, bg='gray', highlightthickness=0)
+        canvas = tk.Canvas(self.inventory_selection_window, bg="gray", highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True)
 
         # 繪製說明文字
-        self.selection_text_id = canvas.create_text(game_window.width//2, game_window.height//2,
-                          text=self._app.get_text("drag_select_inventory_region"),
-                          fill="white", font=("Arial", 14, "bold"),
-                          anchor="center")
+        self.selection_text_id = canvas.create_text(
+            game_window.width // 2, game_window.height // 2, text=self._app.get_text("drag_select_inventory_region"), fill="white", font=("Arial", 14, "bold"), anchor="center"
+        )
 
         # 綁定事件
         canvas.bind("<ButtonPress-1>", self.start_inventory_selection)
@@ -1230,8 +1217,8 @@ class InventoryTab:
         # 清除之前的選擇區域和隱藏說明文字
         canvas = event.widget
         canvas.delete("selection")
-        if hasattr(self, 'selection_text_id'):
-            canvas.itemconfig(self.selection_text_id, state='hidden')
+        if hasattr(self, "selection_text_id"):
+            canvas.itemconfig(self.selection_text_id, state="hidden")
 
     def update_inventory_selection(self, event):
         """更新背包區域選擇"""
@@ -1243,7 +1230,7 @@ class InventoryTab:
                 canvas.delete("selection")
                 x1, y1 = self.inventory_selection_start
                 x2, y2 = self.inventory_selection_end
-                canvas.create_rectangle(x1, y1, x2, y2, outline='yellow', width=2, tags="selection")
+                canvas.create_rectangle(x1, y1, x2, y2, outline="yellow", width=2, tags="selection")
             except Exception as e:
                 print(f"更新選擇區域失敗: {e}")
 
@@ -1269,7 +1256,7 @@ class InventoryTab:
                     self.inventory_selection_end = None
 
                     # 銷毀選擇視窗
-                    if hasattr(self, 'inventory_selection_window'):
+                    if hasattr(self, "inventory_selection_window"):
                         self.inventory_selection_window.destroy()
 
                     # 移除全局ESC監聽
@@ -1295,31 +1282,23 @@ class InventoryTab:
                 rel_x2 = min(rel_x2, game_window.width)
                 rel_y2 = min(rel_y2, game_window.height)
 
-                self.inventory_region = {
-                    'x': min(rel_x1, rel_x2),
-                    'y': min(rel_y1, rel_y2),
-                    'width': abs(rel_x2 - rel_x1),
-                    'height': abs(rel_y2 - rel_y1)
-                }
+                self.inventory_region = {"x": min(rel_x1, rel_x2), "y": min(rel_y1, rel_y2), "width": abs(rel_x2 - rel_x1), "height": abs(rel_y2 - rel_y1)}
 
                 # 銷毀選擇視窗（在顯示對話框之前）
-                if hasattr(self, 'inventory_selection_window'):
+                if hasattr(self, "inventory_selection_window"):
                     self.inventory_selection_window.destroy()
 
                 # 移除全局ESC監聽
                 self.remove_global_esc_listener_for_inventory()
 
                 # 統一的GUI恢復和訊息顯示
-                self._app.monitor_tab.finalize_selection_restore_gui("inventory_region_set", {
-                    'x': self.inventory_region['x'],
-                    'y': self.inventory_region['y'],
-                    'width': self.inventory_region['width'],
-                    'height': self.inventory_region['height']
-                })
+                self._app.monitor_tab.finalize_selection_restore_gui(
+                    "inventory_region_set", {"x": self.inventory_region["x"], "y": self.inventory_region["y"], "width": self.inventory_region["width"], "height": self.inventory_region["height"]}
+                )
 
             else:
                 # 如果沒有找到遊戲視窗，銷毀選擇視窗
-                if hasattr(self, 'inventory_selection_window'):
+                if hasattr(self, "inventory_selection_window"):
                     self.inventory_selection_window.destroy()
                 self.remove_global_esc_listener_for_inventory()
 
@@ -1343,7 +1322,7 @@ class InventoryTab:
         # 移除全局ESC監聽
         self.remove_global_esc_listener_for_inventory()
 
-        if hasattr(self, 'inventory_selection_window'):
+        if hasattr(self, "inventory_selection_window"):
             self.inventory_selection_window.destroy()
 
         # 統一的GUI恢復
@@ -1392,10 +1371,10 @@ class InventoryTab:
             # 擷取整個背包區域
             with _mss_singleton as sct:
                 monitor = {
-                    "top": game_window.top + self.inventory_region['y'],
-                    "left": game_window.left + self.inventory_region['x'],
-                    "width": self.inventory_region['width'],
-                    "height": self.inventory_region['height']
+                    "top": game_window.top + self.inventory_region["y"],
+                    "left": game_window.left + self.inventory_region["x"],
+                    "width": self.inventory_region["width"],
+                    "height": self.inventory_region["height"],
                 }
 
                 screenshot = sct.grab(monitor)
@@ -1406,8 +1385,8 @@ class InventoryTab:
                 self.empty_inventory_colors = []
                 for pos_x, pos_y in self.inventory_grid_positions:
                     # 確保座標在圖片範圍內
-                    img_x = pos_x - self.inventory_region['x']
-                    img_y = pos_y - self.inventory_region['y']
+                    img_x = pos_x - self.inventory_region["x"]
+                    img_y = pos_y - self.inventory_region["y"]
 
                     if 0 <= img_x < img.shape[1] and 0 <= img_y < img.shape[0]:
                         # 獲取20x20區域的平均顏色以獲得更穩定的結果（從5x5增加到20x20）
@@ -1539,17 +1518,16 @@ class InventoryTab:
         self.inventory_ui_selection_window.geometry(f"+{game_window.left}+{game_window.top}")
         self.inventory_ui_selection_window.attributes("-alpha", 0.3)
         self.inventory_ui_selection_window.overrideredirect(True)  # 移除視窗邊框
-        self.inventory_ui_selection_window.configure(bg='gray')
+        self.inventory_ui_selection_window.configure(bg="gray")
 
         # 繪製遊戲視窗邊框
-        canvas = tk.Canvas(self.inventory_ui_selection_window, bg='gray', highlightthickness=0)
+        canvas = tk.Canvas(self.inventory_ui_selection_window, bg="gray", highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True)
 
         # 繪製說明文字
-        self.ui_selection_text_id = canvas.create_text(game_window.width//2, game_window.height//2,
-                          text=self._app.get_text("select_inventory_ui_instruction"),
-                          fill="white", font=("Arial", 14, "bold"),
-                          anchor="center")
+        self.ui_selection_text_id = canvas.create_text(
+            game_window.width // 2, game_window.height // 2, text=self._app.get_text("select_inventory_ui_instruction"), fill="white", font=("Arial", 14, "bold"), anchor="center"
+        )
 
         # 綁定事件
         canvas.bind("<ButtonPress-1>", self.start_inventory_ui_selection)
@@ -1571,17 +1549,16 @@ class InventoryTab:
         self.interface_ui_selection_window.geometry(f"+{game_window.left}+{game_window.top}")
         self.interface_ui_selection_window.attributes("-alpha", 0.3)
         self.interface_ui_selection_window.overrideredirect(True)  # 移除視窗邊框
-        self.interface_ui_selection_window.configure(bg='gray')
+        self.interface_ui_selection_window.configure(bg="gray")
 
         # 繪製遊戲視窗邊框
-        canvas = tk.Canvas(self.interface_ui_selection_window, bg='gray', highlightthickness=0)
+        canvas = tk.Canvas(self.interface_ui_selection_window, bg="gray", highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True)
 
         # 繪製說明文字
-        self.interface_ui_selection_text_id = canvas.create_text(game_window.width//2, game_window.height//2,
-                          text=self._app.get_text("select_interface_ui_instruction"),
-                          fill="white", font=("Arial", 14, "bold"),
-                          anchor="center")
+        self.interface_ui_selection_text_id = canvas.create_text(
+            game_window.width // 2, game_window.height // 2, text=self._app.get_text("select_interface_ui_instruction"), fill="white", font=("Arial", 14, "bold"), anchor="center"
+        )
 
         # 綁定事件
         canvas.bind("<ButtonPress-1>", self.start_interface_ui_selection)
@@ -1605,8 +1582,8 @@ class InventoryTab:
         # 清除之前的選擇區域和隱藏說明文字
         canvas = event.widget
         canvas.delete("selection")
-        if hasattr(self, 'ui_selection_text_id'):
-            canvas.itemconfig(self.ui_selection_text_id, state='hidden')
+        if hasattr(self, "ui_selection_text_id"):
+            canvas.itemconfig(self.ui_selection_text_id, state="hidden")
 
     def update_inventory_ui_selection(self, event):
         """更新背包UI區域選擇"""
@@ -1618,7 +1595,7 @@ class InventoryTab:
                 canvas.delete("selection")
                 x1, y1 = self.inventory_ui_selection_start
                 x2, y2 = self.inventory_ui_selection_end
-                canvas.create_rectangle(x1, y1, x2, y2, outline='yellow', width=2, tags="selection")
+                canvas.create_rectangle(x1, y1, x2, y2, outline="yellow", width=2, tags="selection")
             except Exception as e:
                 print(f"更新選擇區域失敗: {e}")
 
@@ -1644,7 +1621,7 @@ class InventoryTab:
                     self.inventory_ui_selection_end = None
 
                     # 銷毀選擇視窗
-                    if hasattr(self, 'inventory_ui_selection_window'):
+                    if hasattr(self, "inventory_ui_selection_window"):
                         self.inventory_ui_selection_window.destroy()
 
                     # 移除全局ESC監聽
@@ -1670,26 +1647,16 @@ class InventoryTab:
                 rel_x2 = min(rel_x2, game_window.width)
                 rel_y2 = min(rel_y2, game_window.height)
 
-                self.inventory_ui_region = {
-                    'x': min(rel_x1, rel_x2),
-                    'y': min(rel_y1, rel_y2),
-                    'width': abs(rel_x2 - rel_x1),
-                    'height': abs(rel_y2 - rel_y1)
-                }
+                self.inventory_ui_region = {"x": min(rel_x1, rel_x2), "y": min(rel_y1, rel_y2), "width": abs(rel_x2 - rel_x1), "height": abs(rel_y2 - rel_y1)}
 
                 # 截取背包UI區域的圖片 - 使用血魔檢測的方式
                 try:
                     # 計算絕對螢幕座標
-                    abs_x = game_window.left + self.inventory_ui_region['x']
-                    abs_y = game_window.top + self.inventory_ui_region['y']
+                    abs_x = game_window.left + self.inventory_ui_region["x"]
+                    abs_y = game_window.top + self.inventory_ui_region["y"]
 
                     with _mss_singleton as sct:
-                        monitor = {
-                            "top": abs_y,
-                            "left": abs_x,
-                            "width": self.inventory_ui_region['width'],
-                            "height": self.inventory_ui_region['height']
-                        }
+                        monitor = {"top": abs_y, "left": abs_x, "width": self.inventory_ui_region["width"], "height": self.inventory_ui_region["height"]}
 
                         screenshot = sct.grab(monitor)
                         # 使用PIL Image方式，如同血魔檢測
@@ -1717,27 +1684,25 @@ class InventoryTab:
                     messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
                     print(f"詳細錯誤: {e}")
                     import traceback
+
                     traceback.print_exc()
 
                 # 銷毀選擇視窗（在處理完成後）
-                if hasattr(self, 'inventory_ui_selection_window'):
+                if hasattr(self, "inventory_ui_selection_window"):
                     self.inventory_ui_selection_window.destroy()
 
                 # 移除全局ESC監聽
                 self.remove_global_esc_listener_for_inventory()
 
-
                 # 統一的GUI恢復和訊息顯示
-                self._app.monitor_tab.finalize_selection_restore_gui("inventory_ui_region_set", {
-                    'x': self.inventory_ui_region['x'],
-                    'y': self.inventory_ui_region['y'],
-                    'width': self.inventory_ui_region['width'],
-                    'height': self.inventory_ui_region['height']
-                })
+                self._app.monitor_tab.finalize_selection_restore_gui(
+                    "inventory_ui_region_set",
+                    {"x": self.inventory_ui_region["x"], "y": self.inventory_ui_region["y"], "width": self.inventory_ui_region["width"], "height": self.inventory_ui_region["height"]},
+                )
 
             else:
                 # 如果沒有找到遊戲視窗，銷毀選擇視窗
-                if hasattr(self, 'inventory_ui_selection_window'):
+                if hasattr(self, "inventory_ui_selection_window"):
                     self.inventory_ui_selection_window.destroy()
                 self.remove_global_esc_listener_for_inventory()
 
@@ -1761,7 +1726,7 @@ class InventoryTab:
         # 移除全局ESC監聽
         self.remove_global_esc_listener_for_inventory()
 
-        if hasattr(self, 'inventory_ui_selection_window'):
+        if hasattr(self, "inventory_ui_selection_window"):
             self.inventory_ui_selection_window.destroy()
 
         # 統一的GUI恢復
@@ -1776,8 +1741,8 @@ class InventoryTab:
         # 清除之前的選擇區域和隱藏說明文字
         canvas = event.widget
         canvas.delete("selection")
-        if hasattr(self, 'interface_ui_selection_text_id'):
-            canvas.itemconfig(self.interface_ui_selection_text_id, state='hidden')
+        if hasattr(self, "interface_ui_selection_text_id"):
+            canvas.itemconfig(self.interface_ui_selection_text_id, state="hidden")
 
     def update_interface_ui_selection(self, event):
         """更新介面UI區域選擇"""
@@ -1789,7 +1754,7 @@ class InventoryTab:
                 canvas.delete("selection")
                 x1, y1 = self.interface_ui_selection_start
                 x2, y2 = self.interface_ui_selection_end
-                canvas.create_rectangle(x1, y1, x2, y2, outline='yellow', width=2, tags="selection")
+                canvas.create_rectangle(x1, y1, x2, y2, outline="yellow", width=2, tags="selection")
             except Exception as e:
                 print(f"更新選擇區域失敗: {e}")
 
@@ -1815,7 +1780,7 @@ class InventoryTab:
                     self.interface_ui_selection_end = None
 
                     # 銷毀選擇視窗
-                    if hasattr(self, 'interface_ui_selection_window'):
+                    if hasattr(self, "interface_ui_selection_window"):
                         self.interface_ui_selection_window.destroy()
 
                     # 移除全局ESC監聽
@@ -1841,26 +1806,16 @@ class InventoryTab:
                 rel_x2 = min(rel_x2, game_window.width)
                 rel_y2 = min(rel_y2, game_window.height)
 
-                self._app.interface_ui_region = {
-                    'x': min(rel_x1, rel_x2),
-                    'y': min(rel_y1, rel_y2),
-                    'width': abs(rel_x2 - rel_x1),
-                    'height': abs(rel_y2 - rel_y1)
-                }
+                self._app.interface_ui_region = {"x": min(rel_x1, rel_x2), "y": min(rel_y1, rel_y2), "width": abs(rel_x2 - rel_x1), "height": abs(rel_y2 - rel_y1)}
 
                 # 截取介面UI區域的圖片
                 try:
                     # 計算絕對螢幕座標
-                    abs_x = game_window.left + self._app.interface_ui_region['x']
-                    abs_y = game_window.top + self._app.interface_ui_region['y']
+                    abs_x = game_window.left + self._app.interface_ui_region["x"]
+                    abs_y = game_window.top + self._app.interface_ui_region["y"]
 
                     with _mss_singleton as sct:
-                        monitor = {
-                            "top": abs_y,
-                            "left": abs_x,
-                            "width": self._app.interface_ui_region['width'],
-                            "height": self._app.interface_ui_region['height']
-                        }
+                        monitor = {"top": abs_y, "left": abs_x, "width": self._app.interface_ui_region["width"], "height": self._app.interface_ui_region["height"]}
 
                         screenshot = sct.grab(monitor)
                         # 使用PIL Image方式
@@ -1888,26 +1843,30 @@ class InventoryTab:
                     messagebox.showerror(self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
                     print(f"詳細錯誤: {e}")
                     import traceback
+
                     traceback.print_exc()
 
                 # 銷毀選擇視窗（在處理完成後）
-                if hasattr(self, 'interface_ui_selection_window'):
+                if hasattr(self, "interface_ui_selection_window"):
                     self.interface_ui_selection_window.destroy()
 
                 # 移除全局ESC監聽
                 self.remove_global_esc_listener_for_interface()
 
                 # 統一的GUI恢復和訊息顯示
-                self._app.monitor_tab.finalize_selection_restore_gui("interface_ui_region_set", {
-                    'x': self._app.interface_ui_region['x'],
-                    'y': self._app.interface_ui_region['y'],
-                    'width': self._app.interface_ui_region['width'],
-                    'height': self._app.interface_ui_region['height']
-                })
+                self._app.monitor_tab.finalize_selection_restore_gui(
+                    "interface_ui_region_set",
+                    {
+                        "x": self._app.interface_ui_region["x"],
+                        "y": self._app.interface_ui_region["y"],
+                        "width": self._app.interface_ui_region["width"],
+                        "height": self._app.interface_ui_region["height"],
+                    },
+                )
 
             else:
                 # 如果沒有找到遊戲視窗，銷毀選擇視窗
-                if hasattr(self, 'interface_ui_selection_window'):
+                if hasattr(self, "interface_ui_selection_window"):
                     self.interface_ui_selection_window.destroy()
                 self.remove_global_esc_listener_for_interface()
 
@@ -1931,7 +1890,7 @@ class InventoryTab:
         # 移除全局ESC監聽
         self.remove_global_esc_listener_for_interface()
 
-        if hasattr(self, 'interface_ui_selection_window'):
+        if hasattr(self, "interface_ui_selection_window"):
             self.interface_ui_selection_window.destroy()
 
         # 統一的GUI恢復
@@ -1951,11 +1910,11 @@ class InventoryTab:
                 print(f"UI截圖已從檔案載入: {ui_screenshot_path}")
 
                 # 更新UI標籤狀態
-                if hasattr(self, 'inventory_ui_label'):
+                if hasattr(self, "inventory_ui_label"):
                     self.inventory_ui_label.config(text=self._app.get_text("inventory_ui_recorded"), background="lightgreen")
 
                 # 更新UI預覽
-                if hasattr(self, 'ui_preview_canvas'):
+                if hasattr(self, "ui_preview_canvas"):
                     if self._app._startup_phase:
                         self._app._startup_visual_refresh_pending = True
                     else:
@@ -1969,6 +1928,7 @@ class InventoryTab:
         except Exception as e:
             print(f"載入UI截圖時發生錯誤: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -1986,11 +1946,11 @@ class InventoryTab:
                 print(f"介面UI截圖已從檔案載入: {interface_screenshot_path}")
 
                 # 更新UI標籤狀態
-                if hasattr(self._app.monitor_tab, 'interface_ui_label'):
+                if hasattr(self._app.monitor_tab, "interface_ui_label"):
                     self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgreen")
 
                 # 更新介面UI預覽
-                if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
+                if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
                     if self._app._startup_phase:
                         self._app._startup_visual_refresh_pending = True
                     else:
@@ -2004,6 +1964,7 @@ class InventoryTab:
         except Exception as e:
             print(f"載入介面UI截圖時發生錯誤: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -2012,10 +1973,9 @@ class InventoryTab:
         try:
             if self.inventory_ui_screenshot is None:
                 # 如果沒有截圖，顯示預設文字
-                if hasattr(self, 'ui_preview_canvas'):
+                if hasattr(self, "ui_preview_canvas"):
                     self.ui_preview_canvas.delete("all")
-                    self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_empty"),
-                                                     fill="gray", font=("Arial", 10))
+                    self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_empty"), fill="gray", font=("Arial", 10))
                 return
 
             # 將OpenCV BGR格式轉換為PIL RGB格式
@@ -2041,7 +2001,7 @@ class InventoryTab:
             self.ui_preview_image = ImageTk.PhotoImage(pil_image)
 
             # 在Canvas上顯示圖片
-            if hasattr(self, 'ui_preview_canvas'):
+            if hasattr(self, "ui_preview_canvas"):
                 self.ui_preview_canvas.delete("all")
                 # 計算居中位置
                 x = (canvas_width - new_width) // 2
@@ -2050,10 +2010,9 @@ class InventoryTab:
 
         except Exception as e:
             print(f"更新UI預覽失敗: {e}")
-            if hasattr(self, 'ui_preview_canvas'):
+            if hasattr(self, "ui_preview_canvas"):
                 self.ui_preview_canvas.delete("all")
-                self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_failed"),
-                                                 fill="red", font=("Arial", 10))
+                self.ui_preview_canvas.create_text(100, 75, text=self._app.get_text("ui_preview_failed"), fill="red", font=("Arial", 10))
 
     def is_inventory_ui_visible(self, game_window):
         """檢查背包UI是否可見"""
@@ -2065,10 +2024,10 @@ class InventoryTab:
             # 擷取當前背包UI區域
             with _mss_singleton as sct:
                 monitor = {
-                    "top": game_window.top + self.inventory_ui_region['y'],
-                    "left": game_window.left + self.inventory_ui_region['x'],
-                    "width": self.inventory_ui_region['width'],
-                    "height": self.inventory_ui_region['height']
+                    "top": game_window.top + self.inventory_ui_region["y"],
+                    "left": game_window.left + self.inventory_ui_region["x"],
+                    "width": self.inventory_ui_region["width"],
+                    "height": self.inventory_ui_region["height"],
                 }
 
                 screenshot = sct.grab(monitor)
@@ -2115,10 +2074,10 @@ class InventoryTab:
             # 擷取當前介面UI區域
             with _mss_singleton as sct:
                 monitor = {
-                    "top": game_window.top + self._app.interface_ui_region['y'],
-                    "left": game_window.left + self._app.interface_ui_region['x'],
-                    "width": self._app.interface_ui_region['width'],
-                    "height": self._app.interface_ui_region['height']
+                    "top": game_window.top + self._app.interface_ui_region["y"],
+                    "left": game_window.left + self._app.interface_ui_region["x"],
+                    "width": self._app.interface_ui_region["width"],
+                    "height": self._app.interface_ui_region["height"],
                 }
 
                 screenshot = sct.grab(monitor)
@@ -2137,6 +2096,7 @@ class InventoryTab:
                     ssim_score = 0.5  # 預設值
                     try:
                         from skimage.metrics import structural_similarity as ssim
+
                         # 轉換為灰階進行SSIM比較
                         gray_current = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
                         gray_recorded = cv2.cvtColor(self.interface_ui_screenshot, cv2.COLOR_BGR2GRAY)
@@ -2194,6 +2154,7 @@ class InventoryTab:
         except Exception as e:
             print(f"檢查介面UI可見性失敗: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -2202,10 +2163,9 @@ class InventoryTab:
         try:
             if self.interface_ui_screenshot is None:
                 # 如果沒有截圖，顯示預設文字
-                if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
+                if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
                     self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
-                    self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_empty"),
-                                                               fill="gray", font=("Arial", 8))
+                    self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_empty"), fill="gray", font=("Arial", 8))
                 return
 
             # 將OpenCV BGR格式轉換為PIL RGB格式
@@ -2231,7 +2191,7 @@ class InventoryTab:
             self.interface_ui_preview_image = ImageTk.PhotoImage(pil_image)
 
             # 在Canvas上顯示圖片
-            if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
+            if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
                 self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
                 # 計算居中位置
                 x = (canvas_width - new_width) // 2
@@ -2240,10 +2200,9 @@ class InventoryTab:
 
         except Exception as e:
             print(f"更新介面UI預覽失敗: {e}")
-            if hasattr(self._app.monitor_tab, 'interface_ui_preview_canvas'):
+            if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
                 self._app.monitor_tab.interface_ui_preview_canvas.delete("all")
-                self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_failed"),
-                                                                               fill="red", font=("Arial", 8))
+                self._app.monitor_tab.interface_ui_preview_canvas.create_text(75, 50, text=self._app.get_text("interface_ui_preview_failed"), fill="red", font=("Arial", 8))
 
     def _perform_final_retry(self, game_window, monitor, total_processed, max_iterations):
         print("階段3：最終確認和重試邏輯")
@@ -2259,7 +2218,7 @@ class InventoryTab:
             final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
             final_progress_text = f"清包完成: {total_processed} 個道具"
             self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(final_img, final_occupied, final_progress_text))
-            self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
+            self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(final_occupied)}/60") if hasattr(self, "occupied_label") else None)
             print(f"最終確認：清包完成 {total_processed} 個道具，剩餘: {len(final_occupied)} 個")
             if final_should_clear and total_processed < max_iterations:
                 print("檢測到還有剩餘物品，執行最終重試")
@@ -2279,7 +2238,7 @@ class InventoryTab:
                         if slot_index is not None:
                             retry_tasks.append((screen_x, screen_y, slot_index))
                     print(f"重試：已創建重試任務列表，包含 {len(retry_tasks)} 個任務")
-                    pyautogui.keyDown('ctrl')
+                    pyautogui.keyDown("ctrl")
                     time.sleep(0.025)
                     retry_processed = 0
                     for task in retry_tasks[:5]:
@@ -2294,7 +2253,7 @@ class InventoryTab:
                         print(f"已執行右鍵點擊重試第 {retry_processed + 1} 個道具 (包含正確的延遲)")
                         retry_processed += 1
                         total_processed += 1
-                    pyautogui.keyUp('ctrl')
+                    pyautogui.keyUp("ctrl")
                     time.sleep(0.025)
                     print(f"重試完成，已額外處理 {retry_processed} 個剩餘物品")
                     center_x = game_window.left + game_window.width // 2
@@ -2305,10 +2264,12 @@ class InventoryTab:
                         retry_final_screenshot = sct.grab(monitor)
                         retry_final_img = np.frombuffer(retry_final_screenshot.rgb, dtype=np.uint8).reshape(retry_final_screenshot.height, retry_final_screenshot.width, 3)
                         retry_final_img = cv2.cvtColor(retry_final_img, cv2.COLOR_RGB2BGR)
-                    _, retry_final_occupied = should_clear_inventory(retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
+                    _, retry_final_occupied = should_clear_inventory(
+                        retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1
+                    )
                     final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
                     self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
-                    self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(retry_final_occupied)}/60") if hasattr(self, 'occupied_label') else None)
+                    self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(retry_final_occupied)}/60") if hasattr(self, "occupied_label") else None)
                     print(f"重試最終確認：總共處理 {total_processed} 個道具，剩餘: {len(retry_final_occupied)} 個")
         except Exception as e:
             print(f"最終確認過程發生錯誤: {e}")
@@ -2339,10 +2300,10 @@ class InventoryTab:
 
             # 優化：預先計算monitor配置
             monitor = {
-                "top": game_window.top + self.inventory_region['y'],
-                "left": game_window.left + self.inventory_region['x'],
-                "width": self.inventory_region['width'],
-                "height": self.inventory_region['height']
+                "top": game_window.top + self.inventory_region["y"],
+                "left": game_window.left + self.inventory_region["x"],
+                "width": self.inventory_region["width"],
+                "height": self.inventory_region["height"],
             }
 
             total_processed = 0
@@ -2353,7 +2314,7 @@ class InventoryTab:
 
             # 開始動態清包模式：持續按住Ctrl
             print("開始動態清包模式 - 持續按住 Ctrl 鍵")
-            pyautogui.keyDown('ctrl')
+            pyautogui.keyDown("ctrl")
             time.sleep(0.025)  # CTRL按壓後等待25ms
 
             while total_processed < max_iterations:
@@ -2376,7 +2337,9 @@ class InventoryTab:
                         current_img = cv2.cvtColor(current_img, cv2.COLOR_RGB2BGR)
 
                     # 分析當前背包狀態
-                    should_continue, current_occupied = should_clear_inventory(current_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
+                    should_continue, current_occupied = should_clear_inventory(
+                        current_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1
+                    )
 
                     # 更新預覽
                     progress_text = f"動態清包: {total_processed} 個道具已處理"
@@ -2472,7 +2435,7 @@ class InventoryTab:
 
             # 釋放CTRL鍵
             print("釋放 Ctrl 鍵")
-            pyautogui.keyUp('ctrl')
+            pyautogui.keyUp("ctrl")
             time.sleep(0.025)  # CTRL釋放後等待25ms
 
             total_processed = self._perform_final_retry(game_window, monitor, total_processed, max_iterations)
@@ -2482,22 +2445,22 @@ class InventoryTab:
         finally:
             # 確保CTRL鍵被釋放
             try:
-                pyautogui.keyUp('ctrl')
+                pyautogui.keyUp("ctrl")
                 print("確保CTRL鍵已釋放")
             except Exception as e:
                 print(f"釋放CTRL鍵時發生錯誤: {e}")
 
     def _draw_exclusion_overlay(self):
         """在 Canvas 上繪製排除格子的藍色疊加層（獨立於底圖，刷新後仍保留）"""
-        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
+        if not getattr(self, "_preview_has_image", False) or not hasattr(self, "_preview_meta"):
             return
         canvas = self.inventory_preview_label
-        canvas.delete('exclusion')
+        canvas.delete("exclusion")
         meta = self._preview_meta
-        cell_w, cell_h = meta['cell_w'], meta['cell_h']
-        off_x, off_y = meta['offset_x'], meta['offset_y']
-        cx = meta.get('canvas_x', 0)
-        cy = meta.get('canvas_y', 0)
+        cell_w, cell_h = meta["cell_w"], meta["cell_h"]
+        off_x, off_y = meta["offset_x"], meta["offset_y"]
+        cx = meta.get("canvas_x", 0)
+        cy = meta.get("canvas_y", 0)
         for idx in self.excluded_inventory_slots:
             row = idx // 12
             col = idx % 12
@@ -2505,22 +2468,22 @@ class InventoryTab:
             y1 = row * cell_h + cy + off_y
             x2 = x1 + cell_w
             y2 = y1 + cell_h
-            canvas.create_rectangle(x1, y1, x2, y2, outline='blue', width=2, tags='exclusion')
-            canvas.create_line(x1, y1, x2, y2, fill='blue', width=1, tags='exclusion')
-            canvas.create_line(x2, y1, x1, y2, fill='blue', width=1, tags='exclusion')
+            canvas.create_rectangle(x1, y1, x2, y2, outline="blue", width=2, tags="exclusion")
+            canvas.create_line(x1, y1, x2, y2, fill="blue", width=1, tags="exclusion")
+            canvas.create_line(x2, y1, x1, y2, fill="blue", width=1, tags="exclusion")
 
     def _on_preview_click(self, event):
         """點擊背包預覽切換格子的排除狀態"""
-        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_preview_meta'):
+        if not getattr(self, "_preview_has_image", False) or not hasattr(self, "_preview_meta"):
             self._app.status_tab.add_status_message(self._app.get_text("inventory_exclusion_toggle_unavailable"), "warning")
             return
         meta = self._preview_meta
-        click_x = event.x - meta.get('canvas_x', 0) - meta['offset_x']
-        click_y = event.y - meta.get('canvas_y', 0) - meta['offset_y']
-        if click_x < 0 or click_y >= meta['img_h'] or click_y < 0 or click_x >= meta['img_w']:
+        click_x = event.x - meta.get("canvas_x", 0) - meta["offset_x"]
+        click_y = event.y - meta.get("canvas_y", 0) - meta["offset_y"]
+        if click_x < 0 or click_y >= meta["img_h"] or click_y < 0 or click_x >= meta["img_w"]:
             return
-        col = click_x // meta['cell_w']
-        row = click_y // meta['cell_h']
+        col = click_x // meta["cell_w"]
+        row = click_y // meta["cell_h"]
         if col < 0 or col >= 12 or row < 0 or row >= 5:
             return
         idx = row * 12 + col
@@ -2529,12 +2492,15 @@ class InventoryTab:
         else:
             self.excluded_inventory_slots.add(idx)
         self._draw_exclusion_overlay()
-        self._app.status_tab.add_status_message(self._app.get_text("inventory_slot_exclusion_toggled").format(index=idx, state=self._app.get_text("excluded") if idx in self.excluded_inventory_slots else self._app.get_text("included")), "info")
+        self._app.status_tab.add_status_message(
+            self._app.get_text("inventory_slot_exclusion_toggled").format(index=idx, state=self._app.get_text("excluded") if idx in self.excluded_inventory_slots else self._app.get_text("included")),
+            "info",
+        )
         self._app.save_config(show_message=False)
 
     def _on_preview_resize(self, event=None):
         """Canvas 尺寸變更時重新縮放預覽"""
-        if not getattr(self, '_preview_has_image', False) or not hasattr(self, '_last_preview_img'):
+        if not getattr(self, "_preview_has_image", False) or not hasattr(self, "_last_preview_img"):
             return
         self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
 
@@ -2636,24 +2602,27 @@ class InventoryTab:
 
             # 儲存預覽元數據供點擊排除使用
             self._preview_meta = {
-                'img_w': new_width, 'img_h': new_height,
-                'cell_w': new_width // 12, 'cell_h': new_height // 5,
-                'offset_x': int(offset_x * scale) if scale < 1.0 else offset_x,
-                'offset_y': int(offset_y * scale) if scale < 1.0 else offset_y,
-                'canvas_x': cx, 'canvas_y': cy,
+                "img_w": new_width,
+                "img_h": new_height,
+                "cell_w": new_width // 12,
+                "cell_h": new_height // 5,
+                "offset_x": int(offset_x * scale) if scale < 1.0 else offset_x,
+                "offset_y": int(offset_y * scale) if scale < 1.0 else offset_y,
+                "canvas_x": cx,
+                "canvas_y": cy,
             }
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
             # 更新預覽（Canvas 由 layout 管理尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
-            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor='nw')
+            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor="nw")
             self.inventory_preview_label.image = tk_img
             self._preview_has_image = True
             self._draw_exclusion_overlay()
 
             # 更新統計資訊標籤
-            if hasattr(self, 'occupied_label'):
+            if hasattr(self, "occupied_label"):
                 self.occupied_label.config(text=f"{occupied_count}/60")
 
         except Exception as e:
@@ -2662,9 +2631,9 @@ class InventoryTab:
                 display_img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
-                if hasattr(self, 'inventory_preview_label'):
+                if hasattr(self, "inventory_preview_label"):
                     self.inventory_preview_label.delete("all")
-                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor="nw")
                     self.inventory_preview_label.image = tk_img
                     self._preview_has_image = True
                     self._draw_exclusion_overlay()
@@ -2702,8 +2671,8 @@ class InventoryTab:
                 if grid_index < len(self.inventory_grid_positions):
                     abs_x, abs_y = self.inventory_grid_positions[grid_index]
                     # 轉換為相對於背包區域的座標
-                    center_x = abs_x - self.inventory_region['x']
-                    center_y = abs_y - self.inventory_region['y']
+                    center_x = abs_x - self.inventory_region["x"]
+                    center_y = abs_y - self.inventory_region["y"]
 
                     # 確保標記在圖片邊界內
                     if 0 <= center_x < width and 0 <= center_y < height:
@@ -2740,23 +2709,27 @@ class InventoryTab:
 
             # 儲存預覽元數據供點擊排除使用
             self._preview_meta = {
-                'img_w': new_width, 'img_h': new_height,
-                'cell_w': new_width // 12, 'cell_h': new_height // 5,
-                'offset_x': 0, 'offset_y': 0,
-                'canvas_x': cx, 'canvas_y': cy,
+                "img_w": new_width,
+                "img_h": new_height,
+                "cell_w": new_width // 12,
+                "cell_h": new_height // 5,
+                "offset_x": 0,
+                "offset_y": 0,
+                "canvas_x": cx,
+                "canvas_y": cy,
             }
             self._last_preview_img = img
             self._last_occupied_slots = occupied_slots
 
             # 更新預覽（Canvas 由 layout 管理尺寸）+ 排除疊加層
             self.inventory_preview_label.delete("all")
-            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor='nw')
+            self.inventory_preview_label.create_image(cx, cy, image=tk_img, anchor="nw")
             self.inventory_preview_label.image = tk_img
             self._preview_has_image = True
             self._draw_exclusion_overlay()
 
             # 更新統計資訊標籤
-            if hasattr(self, 'occupied_label'):
+            if hasattr(self, "occupied_label"):
                 self.occupied_label.config(text=f"{occupied_count}/60")
 
         except Exception as e:
@@ -2765,9 +2738,9 @@ class InventoryTab:
                 display_img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(display_img_rgb)
                 tk_img = ImageTk.PhotoImage(pil_img)
-                if hasattr(self, 'inventory_preview_label'):
+                if hasattr(self, "inventory_preview_label"):
                     self.inventory_preview_label.delete("all")
-                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor='nw')
+                    self.inventory_preview_label.create_image(0, 0, image=tk_img, anchor="nw")
                     self.inventory_preview_label.image = tk_img
                     self._preview_has_image = True
                     self._draw_exclusion_overlay()
@@ -2785,8 +2758,8 @@ class InventoryTab:
     def _restore_gui_after_test(self, gui_minimized_for_test, original_state, original_geometry, gui_was_topmost, should_clear, occupied_slots, img):
         if gui_minimized_for_test:
             self._app.root.deiconify()
-            if original_state == 'zoomed':
-                self._app.root.state('zoomed')
+            if original_state == "zoomed":
+                self._app.root.state("zoomed")
             else:
                 self._app.root.geometry(original_geometry)
             time.sleep(0.2)
@@ -2821,7 +2794,7 @@ class InventoryTab:
         gui_minimized_for_test = False
         needs_gui_minimize = False
         if self._app.always_on_top_var.get():
-            if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
+            if hasattr(self, "inventory_ui_region") and self.inventory_ui_region:
                 if self.check_gui_overlap_with_inventory_ui(game_window):
                     needs_gui_minimize = True
                     print("檢測到GUI可能遮擋背包UI檢測區域")
@@ -2850,13 +2823,12 @@ class InventoryTab:
                 game_window.activate()
                 time.sleep(0.2)
             except Exception:
-                pyautogui.click(game_window.left + game_window.width // 2,
-                              game_window.top + game_window.height // 2)
+                pyautogui.click(game_window.left + game_window.width // 2, game_window.top + game_window.height // 2)
                 time.sleep(0.2)
-            pyautogui.press('i')
+            pyautogui.press("i")
             time.sleep(0.8)
             print("已發送 I 鍵開啟背包")
-            if hasattr(self, 'inventory_ui_region') and self.inventory_ui_region:
+            if hasattr(self, "inventory_ui_region") and self.inventory_ui_region:
                 inventory_ui_exists = self.check_inventory_ui_exists(game_window)
                 print(f"開啟後背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
                 if not inventory_ui_exists:
@@ -2871,10 +2843,10 @@ class InventoryTab:
         if not self.empty_inventory_colors:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("record_empty_color_first"))
             return
-        if not hasattr(self, 'inventory_ui_region') or not self.inventory_ui_region:
+        if not hasattr(self, "inventory_ui_region") or not self.inventory_ui_region:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("select_inventory_ui_region_first"))
             return
-        if not hasattr(self, 'inventory_grid_positions') or not self.inventory_grid_positions:
+        if not hasattr(self, "inventory_grid_positions") or not self.inventory_grid_positions:
             messagebox.showwarning(self._app.get_text("warning"), self._app.get_text("please_adjust_inventory_region_first"))
             return
         window_title = self._app.monitor_tab.window_var.get()
@@ -2899,8 +2871,7 @@ class InventoryTab:
             except Exception as e:
                 print(f"激活遊戲視窗失敗: {e}")
                 try:
-                    pyautogui.click(game_window.left + game_window.width // 2,
-                                  game_window.top + game_window.height // 2)
+                    pyautogui.click(game_window.left + game_window.width // 2, game_window.top + game_window.height // 2)
                     time.sleep(0.2)
                     print("已嘗試點擊遊戲視窗")
                 except Exception as e2:
@@ -2908,10 +2879,10 @@ class InventoryTab:
             self._open_inventory_if_needed(game_window)
             with _mss_singleton as sct:
                 monitor = {
-                    "top": game_window.top + self.inventory_region['y'],
-                    "left": game_window.left + self.inventory_region['x'],
-                    "width": self.inventory_region['width'],
-                    "height": self.inventory_region['height']
+                    "top": game_window.top + self.inventory_region["y"],
+                    "left": game_window.left + self.inventory_region["x"],
+                    "width": self.inventory_region["width"],
+                    "height": self.inventory_region["height"],
                 }
                 screenshot = sct.grab(monitor)
                 img = np.array(screenshot)
@@ -2928,21 +2899,21 @@ class InventoryTab:
     def save_inventory_config(self, parent_window=None):
         """儲存背包設定"""
         try:
-            self._app.config['inventory_region'] = self.inventory_region
-            self._app.config['empty_inventory_colors'] = self.empty_inventory_colors
-            self._app.config['inventory_grid_positions'] = [list(pos) for pos in self.inventory_grid_positions]  # 保存為list格式
-            self._app.config['grid_offset_x'] = self.grid_offset_x
-            self._app.config['grid_offset_y'] = self.grid_offset_y
-            self._app.config['excluded_inventory_slots'] = sorted(self.excluded_inventory_slots)
+            self._app.config["inventory_region"] = self.inventory_region
+            self._app.config["empty_inventory_colors"] = self.empty_inventory_colors
+            self._app.config["inventory_grid_positions"] = [list(pos) for pos in self.inventory_grid_positions]  # 保存為list格式
+            self._app.config["grid_offset_x"] = self.grid_offset_x
+            self._app.config["grid_offset_y"] = self.grid_offset_y
+            self._app.config["excluded_inventory_slots"] = sorted(self.excluded_inventory_slots)
             # 儲存血魔監控的遊戲視窗標題
-            self._app.config['inventory_window_title'] = self._app.monitor_tab.window_var.get()
+            self._app.config["inventory_window_title"] = self._app.monitor_tab.window_var.get()
 
             # 儲存背包UI設定
-            self._app.config['inventory_ui_region'] = self.inventory_ui_region
+            self._app.config["inventory_ui_region"] = self.inventory_ui_region
             # 注意：inventory_ui_screenshot是numpy array，不能直接序列化為JSON
             # 我們只儲存區域資訊，截圖會在下次啟動時重新截取
 
-            with open(self._app.config_file, 'w', encoding='utf-8') as f:
+            with open(self._app.config_file, "w", encoding="utf-8") as f:
                 json.dump(self._app.config, f, indent=2, ensure_ascii=False)
 
             messagebox.showinfo(self._app.get_text("success"), self._app.get_text("inventory_settings_saved"))
@@ -2989,19 +2960,20 @@ class InventoryTab:
             import time
 
             # 按下 Enter 鍵開啟聊天框
-            pyautogui.press('enter')
+            pyautogui.press("enter")
             time.sleep(0.025)
 
             # 使用 pyperclip 直接設定剪貼簿內容（更高效）
             import pyperclip
+
             pyperclip.copy("/hideout")
 
             # 貼上指令
-            pyautogui.hotkey('ctrl', 'v')
+            pyautogui.hotkey("ctrl", "v")
             time.sleep(0.025)
 
             # 按下 Enter 鍵執行指令
-            pyautogui.press('enter')
+            pyautogui.press("enter")
 
             print("F5: 返回藏身指令已執行")
             self._app.status_tab.add_status_message(self._app.get_text("f5_success_hide_command_sent"), "success")
@@ -3035,47 +3007,50 @@ class InventoryTab:
         return window_title
 
     def _capture_and_prepare_f6_gui(self):
-        gui_was_visible = (self._app.root.state() == 'normal')
+        gui_was_visible = self._app.root.state() == "normal"
         gui_was_foreground = False
         gui_was_topmost = self._app.should_keep_topmost()
         if gui_was_visible:
             try:
                 foreground_hwnd = win32gui.GetForegroundWindow()
                 gui_hwnd = self._app.root.winfo_id()
-                gui_was_foreground = (foreground_hwnd == gui_hwnd)
+                gui_was_foreground = foreground_hwnd == gui_hwnd
             except Exception:
                 gui_was_foreground = False
         print(f"F6: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
         if gui_was_foreground or gui_was_topmost:
+
             def _prepare_gui_for_execution():
                 try:
                     if gui_was_topmost:
                         self._app.root.attributes("-topmost", False)
                         print("F6: 已取消 GUI 置頂設定")
-                    getattr(self._app.root, 'lower', lambda: None)()
+                    getattr(self._app.root, "lower", lambda: None)()
                     print("F6: 已安排將 GUI 移到後台")
                 except Exception as e:
                     print(f"F6: 準備 GUI 失敗: {e}")
+
             try:
                 self._app.root.after(0, _prepare_gui_for_execution)
             except Exception as e:
                 print(f"F6: 安排準備 GUI 失敗: {e}")
+
         def _hide_setting_windows():
             try:
                 for w in self._app.root.winfo_children():
                     try:
-                        if w.winfo_exists() and hasattr(w, 'title'):
+                        if w.winfo_exists() and hasattr(w, "title"):
                             t = str(w.title())
-                            if ('F6' in t or '設定' in t or 'setup' in t.lower()) and w.winfo_ismapped():
+                            if ("F6" in t or "設定" in t or "setup" in t.lower()) and w.winfo_ismapped():
                                 try:
                                     try:
-                                        if hasattr(w, 'grab_release'):
+                                        if hasattr(w, "grab_release"):
                                             w.grab_release()
                                             print(f"F6: 已釋放設定視窗的 grab: {t}")
                                     except Exception:
                                         pass
                                     try:
-                                        if hasattr(self._app.root, 'grab_release'):
+                                        if hasattr(self._app.root, "grab_release"):
                                             self._app.root.grab_release()
                                             print("F6: 已釋放 root 的 grab（備援）")
                                     except Exception:
@@ -3088,6 +3063,7 @@ class InventoryTab:
                         pass
             except Exception as e:
                 print(f"F6: 隱藏設定視窗時發生錯誤: {e}")
+
         try:
             self._app.root.after(0, _hide_setting_windows)
         except Exception:
@@ -3105,7 +3081,7 @@ class InventoryTab:
         except Exception:
             original_pos = None
         try:
-            pyautogui.keyDown('ctrl')
+            pyautogui.keyDown("ctrl")
             time.sleep(0.05)
         except Exception as e:
             print(f"F6(worker): 按鍵Down失敗: {e}")
@@ -3113,7 +3089,7 @@ class InventoryTab:
             for i, (rel_x, rel_y) in enumerate(valid_coords_local):
                 abs_x = game_window.left + rel_x
                 abs_y = game_window.top + rel_y
-                print(f"F6(worker): 處理座標 {i+1}/{len(valid_coords_local)} -> ({abs_x},{abs_y})")
+                print(f"F6(worker): 處理座標 {i + 1}/{len(valid_coords_local)} -> ({abs_x},{abs_y})")
                 pyautogui.moveTo(abs_x, abs_y, duration=0.05)
                 time.sleep(0.05)
                 pyautogui.click()
@@ -3130,7 +3106,7 @@ class InventoryTab:
                     pass
         finally:
             try:
-                pyautogui.keyUp('ctrl')
+                pyautogui.keyUp("ctrl")
             except Exception:
                 pass
         self._restore_f6_gui(gui_was_foreground_local, gui_was_topmost_local)
@@ -3153,6 +3129,7 @@ class InventoryTab:
                     print("F6(worker): GUI 保持在後台（原本在後台且不置頂）")
             except Exception as e:
                 print(f"F6(worker): Restore callback 例外: {e}")
+
         try:
             self._app.root.after(0, _restore_gui)
         except Exception:
@@ -3166,7 +3143,7 @@ class InventoryTab:
 
         valid_coords = []
         seen = set()
-        if hasattr(self, 'pickup_coordinates') and self.pickup_coordinates:
+        if hasattr(self, "pickup_coordinates") and self.pickup_coordinates:
             for x, y in self.pickup_coordinates:
                 if x != 0 or y != 0:
                     t = (x, y)
@@ -3217,7 +3194,7 @@ class InventoryTab:
                 except Exception:
                     pass
                 try:
-                    pyautogui.keyUp('ctrl')
+                    pyautogui.keyUp("ctrl")
                 except Exception:
                     pass
 
@@ -3227,8 +3204,8 @@ class InventoryTab:
     def load_pickup_coordinates(self):
         """載入取物座標設定"""
         try:
-            if 'pickup_coordinates' in self._app.config:
-                self.pickup_coordinates = self._app.config['pickup_coordinates']
+            if "pickup_coordinates" in self._app.config:
+                self.pickup_coordinates = self._app.config["pickup_coordinates"]
                 print(f"載入取物座標: {len(self.pickup_coordinates)} 個座標")
         except Exception as e:
             print(f"載入取物座標失敗: {str(e)}")
@@ -3237,8 +3214,8 @@ class InventoryTab:
     def save_pickup_coordinates(self, parent_window=None):
         """儲存取物座標設定"""
         try:
-            self._app.config['pickup_coordinates'] = self.pickup_coordinates
-            with open(self._app.config_file, 'w', encoding='utf-8') as f:
+            self._app.config["pickup_coordinates"] = self.pickup_coordinates
+            with open(self._app.config_file, "w", encoding="utf-8") as f:
                 json.dump(self._app.config, f, indent=2, ensure_ascii=False)
             print("取物座標已儲存")
             messagebox.showinfo(self._app.get_text("success"), self._app.get_text("pickup_coordinates_saved"))
@@ -3273,13 +3250,12 @@ class InventoryTab:
 
         instruction_text = self._app.get_text("setup_f6_pickup_instructions")
 
-        instruction_label = ttk.Label(setup_window, text=instruction_text,
-                                     font=("", 10), justify='left')
+        instruction_label = ttk.Label(setup_window, text=instruction_text, font=("", 10), justify="left")
         instruction_label.pack(pady=10)
 
         # 座標顯示區域
         coords_frame = ttk.LabelFrame(setup_window, text=self._app.get_text("coordinate_status"), padding="10")
-        coords_frame.pack(fill='x', padx=20, pady=10)
+        coords_frame.pack(fill="x", padx=20, pady=10)
 
         # 確保pickup_coordinates有5個位置
         if self.pickup_coordinates is None:
@@ -3293,34 +3269,28 @@ class InventoryTab:
         self.coord_display_labels = []
         for i in range(5):
             frame = ttk.Frame(coords_frame)
-            frame.pack(fill='x', pady=2)
+            frame.pack(fill="x", pady=2)
 
-            ttk.Label(frame, text=self._app.get_text("coordinate_template").format(number=i+1), width=8).pack(side='left')
+            ttk.Label(frame, text=self._app.get_text("coordinate_template").format(number=i + 1), width=8).pack(side="left")
 
-            coord_label = ttk.Label(frame, text=f"({self.pickup_coordinates[i][0]}, {self.pickup_coordinates[i][1]})",
-                                   width=15, relief='sunken')
-            coord_label.pack(side='left', padx=(5, 10))
+            coord_label = ttk.Label(frame, text=f"({self.pickup_coordinates[i][0]}, {self.pickup_coordinates[i][1]})", width=15, relief="sunken")
+            coord_label.pack(side="left", padx=(5, 10))
             self.coord_display_labels.append(coord_label)
 
             # 狀態指示器
             status_label = ttk.Label(frame, text=self._app.get_text("coordinate_not_set"), foreground="gray", width=10)
-            status_label.pack(side='left', padx=5)
+            status_label.pack(side="left", padx=5)
             self.coord_display_labels.append(status_label)  # 將狀態標籤也加入列表
 
         # 按鈕區域
         button_frame = ttk.Frame(setup_window)
-        button_frame.pack(fill='x', padx=20, pady=20)
+        button_frame.pack(fill="x", padx=20, pady=20)
 
-        ttk.Button(button_frame, text=self._app.get_text("start_continuous_setup"),
-                  command=lambda: self.start_continuous_setup(setup_window), width=25).pack(side='left', padx=5)
-        ttk.Button(button_frame, text=self._app.get_text("test_f6_pickup"),
-                  command=self.test_pickup, width=15).pack(side='left', padx=5)
-        ttk.Button(button_frame, text=self._app.get_text("clear_all_coordinates"),
-                  command=self.clear_all_coordinates, width=12).pack(side='left', padx=5)
-        ttk.Button(button_frame, text=self._app.get_text("save_coordinates"),
-                  command=lambda: [self.save_pickup_coordinates(), setup_window.destroy()], width=18).pack(side='right', padx=5)
-        ttk.Button(button_frame, text=self._app.get_text("close"),
-                  command=setup_window.destroy, width=8).pack(side='right', padx=5)
+        ttk.Button(button_frame, text=self._app.get_text("start_continuous_setup"), command=lambda: self.start_continuous_setup(setup_window), width=25).pack(side="left", padx=5)
+        ttk.Button(button_frame, text=self._app.get_text("test_f6_pickup"), command=self.test_pickup, width=15).pack(side="left", padx=5)
+        ttk.Button(button_frame, text=self._app.get_text("clear_all_coordinates"), command=self.clear_all_coordinates, width=12).pack(side="left", padx=5)
+        ttk.Button(button_frame, text=self._app.get_text("save_coordinates"), command=lambda: [self.save_pickup_coordinates(), setup_window.destroy()], width=18).pack(side="right", padx=5)
+        ttk.Button(button_frame, text=self._app.get_text("close"), command=setup_window.destroy, width=8).pack(side="right", padx=5)
 
         # 初始化座標顯示
         self.update_coordinate_display()
@@ -3340,8 +3310,7 @@ class InventoryTab:
             # 等待視窗完全隱藏
             time.sleep(0.5)
 
-            messagebox.showinfo(self._app.get_text("start_setup_title"),
-                self._app.get_text("start_setup_message"))
+            messagebox.showinfo(self._app.get_text("start_setup_title"), self._app.get_text("start_setup_message"))
 
             import keyboard
 
@@ -3354,7 +3323,7 @@ class InventoryTab:
                 print("[ERROR] 用戶按下ESC，取消設定")
 
             # 註冊ESC鍵監聽
-            keyboard.on_press_key('esc', lambda _: on_esc_press())
+            keyboard.on_press_key("esc", lambda _: on_esc_press())
 
             try:
                 for i in range(5):
@@ -3365,27 +3334,26 @@ class InventoryTab:
                     # 提示當前要設定的座標
                     try:
                         # 創建一個小的提示視窗（子視窗 - 最高層級）
-                        hint_window = self._app.create_child_window(self._app.get_text("setup_coordinate_title").format(current=i+1, total=5), "450x140")
+                        hint_window = self._app.create_child_window(self._app.get_text("setup_coordinate_title").format(current=i + 1, total=5), "450x140")
                         hint_window.geometry("+100+100")
-                        hint_window.attributes('-alpha', 0.9)
+                        hint_window.attributes("-alpha", 0.9)
 
-                        hint_label = ttk.Label(hint_window,
-                            text=self._app.get_text("setup_coordinate_hint").format(number=i+1),
-                            font=("", 11), justify='center')
+                        hint_label = ttk.Label(hint_window, text=self._app.get_text("setup_coordinate_hint").format(number=i + 1), font=("", 11), justify="center")
                         hint_label.pack(expand=True)
 
                         hint_window.update()
 
                         # 等待 Enter 鍵或檢查取消標記
-                        print(f"等待設定座標 {i+1}... (按ESC取消)")
+                        print(f"等待設定座標 {i + 1}... (按ESC取消)")
 
                         # 使用keyboard.wait，但同時檢查cancel_setup標記
                         enter_pressed = False
+
                         def on_enter_press():
                             nonlocal enter_pressed
                             enter_pressed = True
 
-                        keyboard.on_press_key('enter', lambda _: on_enter_press())
+                        keyboard.on_press_key("enter", lambda _: on_enter_press())
 
                         # 等待Enter鍵或取消
                         while not enter_pressed and not cancel_setup:
@@ -3408,15 +3376,15 @@ class InventoryTab:
                                 rel_x = abs_x - game_window.left
                                 rel_y = abs_y - game_window.top
                                 self.pickup_coordinates[i] = [rel_x, rel_y]
-                                print(f"[OK] 座標 {i+1} 已設定: 絕對座標({abs_x}, {abs_y}) -> 相對座標({rel_x}, {rel_y})")
+                                print(f"[OK] 座標 {i + 1} 已設定: 絕對座標({abs_x}, {abs_y}) -> 相對座標({rel_x}, {rel_y})")
                             else:
                                 # 如果找不到遊戲視窗，使用絕對座標（向後相容）
                                 self.pickup_coordinates[i] = [abs_x, abs_y]
-                                print(f"[WARN] 找不到遊戲視窗，使用絕對座標 {i+1}: ({abs_x}, {abs_y})")
+                                print(f"[WARN] 找不到遊戲視窗，使用絕對座標 {i + 1}: ({abs_x}, {abs_y})")
                         else:
                             # 如果沒有設定遊戲視窗，使用絕對座標（向後相容）
                             self.pickup_coordinates[i] = [abs_x, abs_y]
-                            print(f"[WARN] 未設定遊戲視窗，使用絕對座標 {i+1}: ({abs_x}, {abs_y})")
+                            print(f"[WARN] 未設定遊戲視窗，使用絕對座標 {i + 1}: ({abs_x}, {abs_y})")
 
                         # 關閉提示視窗
                         hint_window.destroy()
@@ -3425,7 +3393,7 @@ class InventoryTab:
                         time.sleep(0.3)
 
                     except Exception as coord_error:
-                        print(f"設定座標 {i+1} 失敗: {coord_error}")
+                        print(f"設定座標 {i + 1} 失敗: {coord_error}")
                         try:
                             hint_window.destroy()
                         except Exception:
@@ -3442,8 +3410,7 @@ class InventoryTab:
                     # 自動儲存
                     self.save_pickup_coordinates(parent_window)
 
-                    messagebox.showinfo(self._app.get_text("setup_completed_title"),
-                        self._app.get_text("setup_completed_message"))
+                    messagebox.showinfo(self._app.get_text("setup_completed_title"), self._app.get_text("setup_completed_message"))
                     # 重新激活主視窗而不是設定視窗
                     self._app.root.lift()
                     self._app.root.focus_force()
@@ -3478,7 +3445,7 @@ class InventoryTab:
 
     def update_coordinate_display(self):
         """更新座標顯示"""
-        if hasattr(self, 'coord_display_labels'):
+        if hasattr(self, "coord_display_labels"):
             for i in range(5):
                 if i * 2 < len(self.coord_display_labels):
                     # 更新座標顯示
@@ -3529,12 +3496,12 @@ class InventoryTab:
         # 檢查JSON配置是否正確寫入和讀取
         try:
             # 檢查當前配置
-            if 'pickup_coordinates' not in self._app.config:
+            if "pickup_coordinates" not in self._app.config:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_config_missing"))
                 return
 
             # 驗證配置中的座標
-            config_coords = self._app.config['pickup_coordinates']
+            config_coords = self._app.config["pickup_coordinates"]
             if len(config_coords) != 5:
                 messagebox.showerror(self._app.get_text("error"), self._app.get_text("pickup_config_incomplete"))
                 return
@@ -3543,7 +3510,7 @@ class InventoryTab:
             for i, (config_x, config_y) in enumerate(config_coords):
                 current_x, current_y = self.pickup_coordinates[i]
                 if config_x != current_x or config_y != current_y:
-                    print(f"警告：座標{i+1}配置不一致 - 配置:({config_x},{config_y}) vs 當前:({current_x},{current_y})")
+                    print(f"警告：座標{i + 1}配置不一致 - 配置:({config_x},{config_y}) vs 當前:({current_x},{current_y})")
 
             print("[OK] 座標和遊戲視窗設定檢查通過")
 
@@ -3584,7 +3551,7 @@ class InventoryTab:
 
     def update_pickup_status(self):
         """更新取物狀態顯示"""
-        if hasattr(self, 'pickup_coords_label'):
+        if hasattr(self, "pickup_coords_label"):
             valid_coords = sum(1 for x, y in self.pickup_coordinates if x != 0 or y != 0)
             self.pickup_coords_label.config(text=f"{valid_coords}/5")
 
@@ -3603,10 +3570,10 @@ class InventoryTab:
             # 擷取當前背包UI區域
             with _mss_singleton as sct:
                 monitor = {
-                    "top": game_window.top + self.inventory_ui_region['y'],
-                    "left": game_window.left + self.inventory_ui_region['x'],
-                    "width": self.inventory_ui_region['width'],
-                    "height": self.inventory_ui_region['height']
+                    "top": game_window.top + self.inventory_ui_region["y"],
+                    "left": game_window.left + self.inventory_ui_region["x"],
+                    "width": self.inventory_ui_region["width"],
+                    "height": self.inventory_ui_region["height"],
                 }
 
                 screenshot = sct.grab(monitor)
@@ -3614,7 +3581,7 @@ class InventoryTab:
                 current_img = cv2.cvtColor(current_img, cv2.COLOR_BGRA2BGR)
 
                 # 如果有參考截圖，進行比較
-                if hasattr(self, 'inventory_ui_screenshot') and self.inventory_ui_screenshot is not None:
+                if hasattr(self, "inventory_ui_screenshot") and self.inventory_ui_screenshot is not None:
                     if current_img.shape == self.inventory_ui_screenshot.shape:
                         # 使用更寬鬆的閾值用於檢測（因為只是檢測是否存在）
                         mse = np.mean((current_img - self.inventory_ui_screenshot) ** 2)

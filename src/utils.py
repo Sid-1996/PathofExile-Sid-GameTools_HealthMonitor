@@ -12,7 +12,7 @@ import atexit
 
 def get_app_dir():
     """獲取應用程式目錄，適用於開發環境和打包後的exe"""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # 如果是打包後的exe
         return os.path.dirname(sys.executable)
     else:
@@ -32,6 +32,7 @@ def emergency_cleanup():
     try:
         # 停止所有子進程
         import psutil
+
         current_process = psutil.Process()
         for child in current_process.children(recursive=True):
             try:
@@ -66,14 +67,16 @@ def global_f12_handler():
     global _app_instance
     print("\n[STOP] F12緊急關閉被觸發")
     try:
-        if _app_instance and hasattr(_app_instance, 'close_app'):
+        if _app_instance and hasattr(_app_instance, "close_app"):
             _app_instance.close_app()
         else:
             # 如果應用程序實例不可用，直接強制退出
             import os
+
             os._exit(1)
     except Exception:
         import os
+
         os._exit(1)
 
 
@@ -81,7 +84,7 @@ def emergency_exit_handler(signum=None, frame=None):
     """緊急退出處理器 - 確保在任何異常情況下都能關閉應用程序"""
     print("\n[STOP] 收到緊急退出信號，正在強制關閉應用程式...")
     try:
-        if _app_instance and hasattr(_app_instance, 'close_app'):
+        if _app_instance and hasattr(_app_instance, "close_app"):
             _app_instance.close_app()
     except Exception:
         pass
@@ -91,6 +94,7 @@ def emergency_exit_handler(signum=None, frame=None):
 def global_exception_handler(exc_type, exc_value, exc_traceback):
     """全局異常處理器 - 捕獲所有未處理的異常"""
     import traceback
+
     print(f"\n[ERROR] 發生未捕獲的異常: {exc_type.__name__}: {exc_value}")
     print("📋 異常追蹤:")
     traceback.print_exception(exc_type, exc_value, exc_traceback)
@@ -106,6 +110,7 @@ def setup_signal_handlers():
     """設置信號處理器（適用於Unix-like系統）"""
     try:
         import signal
+
         signal.signal(signal.SIGTERM, emergency_exit_handler)
         signal.signal(signal.SIGINT, emergency_exit_handler)
     except (ImportError, AttributeError):
@@ -116,19 +121,21 @@ def setup_signal_handlers():
 def setup_exception_handler():
     """設置全局異常處理器"""
     import sys
+
     sys.excepthook = global_exception_handler
 
 
 class Tooltip:
     """可重複使用的 Tooltip：懸浮 widget 顯示說明文字，支援延遲"""
+
     def __init__(self, widget, text, delay=300):
         self.widget = widget
         self.text = text
         self.delay = delay
         self._tip = None
         self._after_id = None
-        widget.bind('<Enter>', self._schedule, add='+')
-        widget.bind('<Leave>', self._hide, add='+')
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
 
     def _schedule(self, event):
         if self._tip:
@@ -140,14 +147,13 @@ class Tooltip:
             return
         import tkinter as tk
         from tkinter import ttk
+
         x = self.widget.winfo_rootx() + 20
         y = self.widget.winfo_rooty() + 25
         self._tip = tk.Toplevel(self.widget)
         self._tip.wm_overrideredirect(True)
         self._tip.wm_geometry(f"+{x}+{y}")
-        label = ttk.Label(self._tip, text=self.text,
-                          background="#ffffcc", relief="solid",
-                          borderwidth=1, padding=2)
+        label = ttk.Label(self._tip, text=self.text, background="#ffffcc", relief="solid", borderwidth=1, padding=2)
         label.pack()
 
     def update_text(self, new_text):
@@ -189,12 +195,13 @@ def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):
     target_rect: (x, y, w, h) 定位目標，None 時退回落 parent。"""
     import tkinter as tk
     from tkinter import ttk
+
     toast = tk.Toplevel(parent)
     toast.wm_overrideredirect(True)
     toast.attributes("-topmost", True)
     toast.attributes("-alpha", 0.85)
 
-    is_multiline = '\n' in text
+    is_multiline = "\n" in text
     tw, th = (320, 80) if is_multiline else (320, 56)
     if target_rect:
         tx, ty, tw_win, th_win = target_rect
@@ -210,8 +217,7 @@ def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):
 
     frame = tk.Frame(toast, bg="black", highlightthickness=0)
     frame.pack(fill="both", expand=True)
-    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"),
-                     bg="black", fg="white", anchor="center", justify="center")
+    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"), bg="black", fg="white", anchor="center", justify="center")
     label.pack(fill="both", expand=True, padx=16, pady=8)
 
     if not persistent:

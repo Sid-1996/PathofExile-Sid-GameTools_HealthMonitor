@@ -23,7 +23,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install ruff pyright
+        pip install ruff pyright pytest pytest-cov
 
     - name: Install runtime dependencies
       run: |
@@ -31,6 +31,9 @@ jobs:
 
     - name: ruff check
       run: ruff check src/ --output-format github
+
+    - name: pytest
+      run: python -m pytest --no-cov -q
 
     - name: pyright
       run: pyright src/health_monitor.py
