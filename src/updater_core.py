@@ -39,6 +39,19 @@ class DeltaUpdateError(RuntimeError):
     """
 
 
+class UserCancelledError(RuntimeError):
+    """使用者取消下載。呼叫端以此型別區分取消與其他錯誤，不做字串比對。"""
+
+
+class UpdateError(RuntimeError):
+    """帶語言 key 的使用者可見更新錯誤。顯示層以 key+params 翻譯。"""
+
+    def __init__(self, key, **params):
+        self.key = key
+        self.params = params
+        super().__init__(key)
+
+
 @dataclass
 class UpdateInfo:
     version: str
@@ -207,7 +220,7 @@ def download_update(
         with open(zip_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=65536):
                 if cancel_event and cancel_event.is_set():
-                    raise RuntimeError("使用者取消下載")
+                    raise UserCancelledError()
                 f.write(chunk)
                 downloaded += len(chunk)
                 if progress_cb:
@@ -321,7 +334,7 @@ def download_delta_update(
         with open(zip_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=65536):
                 if cancel_event and cancel_event.is_set():
-                    raise RuntimeError("使用者取消下載")
+                    raise UserCancelledError()
                 f.write(chunk)
                 downloaded += len(chunk)
                 if progress_cb:

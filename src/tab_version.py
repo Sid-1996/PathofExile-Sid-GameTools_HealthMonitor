@@ -282,15 +282,18 @@ class VersionTab:
                 else:
                     exe_path = updater_core.download_update(info, progress_cb=_progress_cb, cancel_event=self._cancel_event)
                 self._app.root.after(0, lambda: self._on_download_finished(exe_path, info))
-            except RuntimeError as e:
-                if "使用者取消下載" in str(e):
-                    self._app.root.after(0, lambda: self._on_download_cancelled(progress_win))
-                else:
-                    self._app.root.after(0, lambda err=str(e): self._on_download_error(err, progress_win))
+            except updater_core.UserCancelledError:
+                self._app.root.after(0, lambda: self._on_download_cancelled(progress_win))
             except Exception as e:
-                self._app.root.after(0, lambda err=str(e): self._on_download_error(err, progress_win))
+                self._app.root.after(0, lambda err=self._translate_error(e): self._on_download_error(err, progress_win))
 
         threading.Thread(target=_do_download, daemon=True).start()
+
+    def _translate_error(self, e):
+        """將 updater_core 拋出的語言 key 錯誤翻譯為使用者可見訊息。"""
+        if isinstance(e, updater_core.UpdateError):
+            return self._app.get_text(e.key).format(**e.params)
+        return str(e)
 
     def _on_download_cancelled(self, progress_win):
         progress_win.grab_release()

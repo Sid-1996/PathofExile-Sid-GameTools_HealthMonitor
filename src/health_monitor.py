@@ -692,16 +692,16 @@ class HealthMonitor:
         # 綁定分頁切換事件來實現智能自適應視窗大小
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
-        # 初始化分頁最小尺寸字典 - 根據實際內容需求優化
-        self.tab_min_sizes = {
-            "血魔監控": (1000, 700),  # 血魔監控：左右分欄+設定區域，需要適中空間
-            "一鍵清包": (1200, 800),  # 一鍵清包：左側控制+右側預覽，需要較大空間
-            "技能連段": (1100, 650),  # 技能連段：3個連段區域橫向排列，需要寬度
-            "執行狀態": (800, 600),  # 執行狀態：主要是文字顯示區域，較緊湊
-            "使用說明": (900, 650),  # 使用說明：卡片式佈局，中等空間
-            "版本檢查": (750, 550),  # 版本檢查：簡單的版本資訊顯示，較小空間
-            "🚀 關於作者": (650, 500),  # 關於：卡片式按鈕佈局，緊湊空間
-        }
+        # 分頁最小尺寸列表（以 tab index 為索引，與 notebook 分頁順序一致）
+        self.tab_min_sizes = [
+            (1000, 700),  # 0 血魔監控：左右分欄+設定區域，需要適中空間
+            (1200, 800),  # 1 一鍵清包：左側控制+右側預覽，需要較大空間
+            (1100, 650),  # 2 技能連段：3個連段區域橫向排列，需要寬度
+            (800, 600),  # 3 執行狀態：主要是文字顯示區域，較緊湊
+            (900, 650),  # 4 使用說明：卡片式佈局，中等空間
+            (750, 550),  # 5 版本檢查：簡單的版本資訊顯示，較小空間
+            (650, 500),  # 6 🚀 關於作者：卡片式按鈕佈局，緊湊空間
+        ]
 
         # 創建各分頁內容
         self.monitor_tab = MonitorTab(self, self.state, self.monitor_frame, self.notebook)
@@ -724,17 +724,16 @@ class HealthMonitor:
     def on_tab_change(self, event):
         """分頁切換事件處理 - 智能自適應視窗大小"""
         try:
-            # 獲取當前選中的分頁
-            current_tab = self.notebook.tab(self.notebook.select(), "text")
+            # 獲取當前選中的分頁索引
+            tab_index = self.notebook.index(self.notebook.select())
 
             # 調整視窗大小以適應當前分頁
-            self.adjust_window_for_tab(current_tab)
+            self.adjust_window_for_tab(tab_index)
 
             # 保存當前分頁到配置中
-            self.config["last_selected_tab"] = current_tab
+            self.config["last_selected_tab"] = tab_index
 
             try:
-                tab_index = self.notebook.index(self.notebook.select())
                 if tab_index == 1:
                     self.window_key_sender._focus_watcher_interval = 200
                     if self.window_key_sender._is_game_window_visible() and hasattr(self, "inventory_tab") and self.inventory_tab.inventory_region:
@@ -747,104 +746,105 @@ class HealthMonitor:
         except Exception as e:
             print(f"{self.get_text('tab_switch_resize_error')} {e}")
 
-    def adjust_window_for_tab(self, tab_name):
-        """根據分頁名稱調整視窗大小 - 支持智能縮放"""
+    def adjust_window_for_tab(self, tab_index):
+        """根據分頁索引調整視窗大小 - 支持智能縮放"""
+        if not isinstance(tab_index, int) or not (0 <= tab_index < len(self.tab_min_sizes)):
+            return
+        tab_name = self.notebook.tab(tab_index, "text")
+
         # 啟動階段且有已儲存的視窗幾何，只做最小尺寸保底，不覆蓋使用者設定
         if self._startup_phase and "window_geometry" in self.config:
-            if tab_name in self.tab_min_sizes:
-                min_w, min_h = self.tab_min_sizes[tab_name]
-                try:
-                    geo = self.root.geometry().split("+")[0].split("x")
-                    cur_w, cur_h = int(geo[0]), int(geo[1])
-                    if cur_w < min_w or cur_h < min_h:
-                        self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
-                except Exception:
-                    pass
-            return
-        if tab_name in self.tab_min_sizes:
-            target_width, target_height = self.tab_min_sizes[tab_name]
-
-            # 嘗試動態計算實際最小尺寸
+            min_w, min_h = self.tab_min_sizes[tab_index]
             try:
-                dynamic_size = self.calculate_dynamic_tab_size(tab_name)
-                if dynamic_size:
-                    dyn_width, dyn_height = dynamic_size
-                    # 使用動態計算和預設值的較大者
-                    target_width = max(target_width, dyn_width + 50)  # 添加50px緩衝
-                    target_height = max(target_height, dyn_height + 100)  # 添加100px緩衝
-            except Exception as e:
-                print(f"{self.get_text('dynamic_size_calc_failed')} {e}")
+                geo = self.root.geometry().split("+")[0].split("x")
+                cur_w, cur_h = int(geo[0]), int(geo[1])
+                if cur_w < min_w or cur_h < min_h:
+                    self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
+            except Exception:
+                pass
+            return
+        target_width, target_height = self.tab_min_sizes[tab_index]
 
-            # 獲取當前視窗大小和位置
-            current_geometry = self.root.geometry()
-            current_parts = current_geometry.split("+")
-            current_size = current_parts[0].split("x")
-            current_width = int(current_size[0])
-            current_height = int(current_size[1])
+        # 嘗試動態計算實際最小尺寸
+        try:
+            dynamic_size = self.calculate_dynamic_tab_size(tab_index)
+            if dynamic_size:
+                dyn_width, dyn_height = dynamic_size
+                # 使用動態計算和預設值的較大者
+                target_width = max(target_width, dyn_width + 50)  # 添加50px緩衝
+                target_height = max(target_height, dyn_height + 100)  # 添加100px緩衝
+        except Exception as e:
+            print(f"{self.get_text('dynamic_size_calc_failed')} {e}")
 
-            # 智能調整策略：
-            # 1. 如果目標尺寸大於當前尺寸，放大到目標尺寸
-            # 2. 如果目標尺寸小於當前尺寸且差距較大(>100px)，適度縮小
-            # 3. 保證不小於應用程式的最小尺寸
+        # 獲取當前視窗大小和位置
+        current_geometry = self.root.geometry()
+        current_parts = current_geometry.split("+")
+        current_size = current_parts[0].split("x")
+        current_width = int(current_size[0])
+        current_height = int(current_size[1])
 
-            min_app_width, min_app_height = 650, 500  # 應用程式絕對最小尺寸
+        # 智能調整策略：
+        # 1. 如果目標尺寸大於當前尺寸，放大到目標尺寸
+        # 2. 如果目標尺寸小於當前尺寸且差距較大(>100px)，適度縮小
+        # 3. 保證不小於應用程式的最小尺寸
 
-            # 計算新尺寸
-            if target_width > current_width:
-                new_width = target_width  # 需要放大
-            elif current_width - target_width > 150:  # 當前尺寸比目標大很多時才縮小
-                new_width = max(target_width + 50, min_app_width)  # 適度縮小，保留50px緩衝
+        min_app_width, min_app_height = 650, 500  # 應用程式絕對最小尺寸
+
+        # 計算新尺寸
+        if target_width > current_width:
+            new_width = target_width  # 需要放大
+        elif current_width - target_width > 150:  # 當前尺寸比目標大很多時才縮小
+            new_width = max(target_width + 50, min_app_width)  # 適度縮小，保留50px緩衝
+        else:
+            new_width = current_width  # 保持不變
+
+        if target_height > current_height:
+            new_height = target_height  # 需要放大
+        elif current_height - target_height > 100:  # 當前尺寸比目標大很多時才縮小
+            new_height = max(target_height + 50, min_app_height)  # 適度縮小，保留50px緩衝
+        else:
+            new_height = current_height  # 保持不變
+
+        # 確保不小於最小尺寸
+        new_width = max(new_width, min_app_width)
+        new_height = max(new_height, min_app_height)
+
+        # 只有在需要調整時才改變視窗大小
+        if new_width != current_width or new_height != current_height:
+            # 保持視窗位置不變，只調整大小
+            if len(current_parts) >= 3:
+                x_pos = current_parts[1]
+                y_pos = current_parts[2]
+                new_geometry = f"{new_width}x{new_height}+{x_pos}+{y_pos}"
             else:
-                new_width = current_width  # 保持不變
+                new_geometry = f"{new_width}x{new_height}"
 
-            if target_height > current_height:
-                new_height = target_height  # 需要放大
-            elif current_height - target_height > 100:  # 當前尺寸比目標大很多時才縮小
-                new_height = max(target_height + 50, min_app_height)  # 適度縮小，保留50px緩衝
-            else:
-                new_height = current_height  # 保持不變
+            self.root.geometry(new_geometry)
 
-            # 確保不小於最小尺寸
-            new_width = max(new_width, min_app_width)
-            new_height = max(new_height, min_app_height)
+            # 輸出調整信息
+            if new_width > current_width or new_height > current_height:
+                print(self.get_text("window_enlarged").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
+            elif new_width < current_width or new_height < current_height:
+                print(self.get_text("window_shrunk").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
+        else:
+            print(self.get_text("window_size_suitable").format(tab_name=tab_name))
 
-            # 只有在需要調整時才改變視窗大小
-            if new_width != current_width or new_height != current_height:
-                # 保持視窗位置不變，只調整大小
-                if len(current_parts) >= 3:
-                    x_pos = current_parts[1]
-                    y_pos = current_parts[2]
-                    new_geometry = f"{new_width}x{new_height}+{x_pos}+{y_pos}"
-                else:
-                    new_geometry = f"{new_width}x{new_height}"
-
-                self.root.geometry(new_geometry)
-
-                # 輸出調整信息
-                if new_width > current_width or new_height > current_height:
-                    print(self.get_text("window_enlarged").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
-                elif new_width < current_width or new_height < current_height:
-                    print(self.get_text("window_shrunk").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
-            else:
-                print(self.get_text("window_size_suitable").format(tab_name=tab_name))
-
-    def calculate_dynamic_tab_size(self, tab_name):
+    def calculate_dynamic_tab_size(self, tab_index):
         """動態計算分頁內容的實際最小尺寸"""
         try:
-            # 根據分頁名稱獲取對應的框架
+            # 根據分頁索引獲取對應的框架（執行狀態 tab 無框架對應，回傳 None）
             frame_map = {
-                "血魔監控": self.monitor_frame,
-                "一鍵清包": self.inventory_frame,
-                "技能連段": self.combo_frame,
-                "使用說明": self.help_frame,
-                "版本檢查": self.version_frame,
-                "🚀 關於作者": self.about_frame,
+                0: self.monitor_frame,
+                1: self.inventory_frame,
+                2: self.combo_frame,
+                4: self.help_frame,
+                5: self.version_frame,
+                6: self.about_frame,
             }
 
-            if tab_name not in frame_map:
+            frame = frame_map.get(tab_index)
+            if frame is None:
                 return None
-
-            frame = frame_map[tab_name]
 
             # 強制更新佈局
             frame.update_idletasks()
@@ -860,14 +860,14 @@ class HealthMonitor:
             return (total_width, total_height)
 
         except Exception as e:
-            print(f"{self.get_text('calc_dynamic_size_error').format(tab_name=tab_name)} {e}")
+            print(f"{self.get_text('calc_dynamic_size_error').format(tab_name=tab_index)} {e}")
             return None
 
     def adjust_window_for_current_tab(self):
         """調整視窗大小以適應當前分頁"""
         try:
-            current_tab = self.notebook.tab(self.notebook.select(), "text")
-            self.adjust_window_for_tab(current_tab)
+            tab_index = self.notebook.index(self.notebook.select())
+            self.adjust_window_for_tab(tab_index)
         except Exception as e:
             print(f"{self.get_text('init_window_resize_error')} {e}")
 
@@ -877,20 +877,25 @@ class HealthMonitor:
             if "last_selected_tab" in self.config:
                 last_tab = self.config["last_selected_tab"]
 
-                # 尋找對應的分頁索引
-                for i in range(self.notebook.index("end")):
-                    tab_text = self.notebook.tab(i, "text")
-                    if tab_text == last_tab:
-                        self.notebook.select(i)
-                        self.adjust_window_for_tab(last_tab)
-                        print(self.get_text("restored_last_tab").format(last_tab=last_tab))
-                        # 同步更新 focus watcher 間隔
-                        if hasattr(self, "window_key_sender"):
-                            if i == 1:
-                                self.window_key_sender._focus_watcher_interval = 200
-                            else:
-                                self.window_key_sender._focus_watcher_interval = 1000
-                        break
+                # 舊版 config 存的是分頁文字（在地化），相容處理：比對分頁文字
+                if isinstance(last_tab, str):
+                    for i in range(self.notebook.index("end")):
+                        if self.notebook.tab(i, "text") == last_tab:
+                            last_tab = i
+                            break
+                    else:
+                        return
+
+                if isinstance(last_tab, int) and 0 <= last_tab < self.notebook.index("end"):
+                    self.notebook.select(last_tab)
+                    self.adjust_window_for_tab(last_tab)
+                    print(self.get_text("restored_last_tab").format(last_tab=last_tab))
+                    # 同步更新 focus watcher 間隔
+                    if hasattr(self, "window_key_sender"):
+                        if last_tab == 1:
+                            self.window_key_sender._focus_watcher_interval = 200
+                        else:
+                            self.window_key_sender._focus_watcher_interval = 1000
         except Exception as e:
             print(f"{self.get_text('restore_tab_error')} {e}")
 

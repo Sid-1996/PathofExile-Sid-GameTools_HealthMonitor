@@ -1,7 +1,6 @@
 import ctypes
 import time
 import pygetwindow as gw
-from _version import __version__
 
 
 # Windows API functions
@@ -46,8 +45,6 @@ GetWindowTextW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int]
 GetWindowTextW.restype = ctypes.c_int
 SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_long]
 SendMessageW.restype = ctypes.c_long
-
-CURRENT_VERSION = f"v{__version__}"
 
 
 class WindowKeySender:
@@ -277,7 +274,7 @@ class WindowKeySender:
                 buffer = ctypes.create_unicode_buffer(length + 1)
                 GetWindowTextW(foreground_hwnd, buffer, length + 1)
                 foreground_title = buffer.value
-                gui_title = f"Sid輔助工具 {CURRENT_VERSION} - 血魔監控 + 一鍵清包 + 自動化工具"
+                gui_title = self._app.get_text("window_title")
                 return gui_title.lower() in foreground_title.lower()
             return False
         except Exception as e:
