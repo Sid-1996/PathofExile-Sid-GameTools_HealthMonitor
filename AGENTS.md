@@ -1,220 +1,289 @@
-# AI Contributor Quick Guide
+# 專案筆記
 
-This file is for future AI/code agents to understand the project quickly and avoid breaking release flow.
+## 專案理念與方向
 
-## Project Goal
+### 核心原則
+- **最小主義，務實**。最好的程式碼是從未被寫出的程式碼（YAGNI）。
+- **社群標準優先，不造輪子**。有現成函式庫就用、不重做別人做過的事。
+- **普通使用者面向**。進階選項摺疊隱藏、預設行為簡單直覺、不讓使用者看到實作細節。
+- **刪除優先於新增**。功能不必要就砍，減少維護負擔。
+- **不懶惰的地方**：信任邊界驗證、資料遺失防止（config backup）、安全性。
 
-Windows automation tool for Path of Exile workflows:
-- health/mana monitor
-- skill combo
-- inventory clear/pickup
-- auto-click integration
+### 目標方向
+Windows 上給 Path of Exile 玩家的日常自動化工具：健康/魔力監控、技能連招、背包整理、自動點擊。
 
-## Shell Environment
+---
 
-This project runs on Windows with **PowerShell 7+** available as the shell.
-All commands in this file and related scripts assume PowerShell 7+ syntax (pipeline chain operators `&&` / `||`, `Set-Content`, `Get-ChildItem`, etc.).
-Avoid `cmd.exe` batch idioms unless running explicit `.bat` scripts.
+## 文件索引
 
-## Available Tools
+| 路徑 | 對象 | 用途 |
+|---|---|---|
+| `docs/` | 使用者 | 使用者導向說明（使用說明、運作原理） |
+| `docs/index.html` | 使用者 | GitHub Pages 教學網站 |
+| `CHANGELOG.md` | 開發者 | 版本記錄（commitizen 自動維護） |
+| `AGENTS.md` | AI agent | 本檔案 — 工作規範與流程 |
 
-The following tools are available in PATH and can be used by agents for searching and analysis:
+---
 
-- **ripgrep** (`rg 15.1.0`) — fast recursive search with PCRE2 support
-  - Use `rg -C` for context around matches
-  - Use `rg --count-matches` for precise match counting
-  - Defaults to `.gitignore`-aware behavior
+## 工作完成規範
 
-- **ruff** (`ruff 0.15.16`, via pipx) — fast Python linter + formatter
-  - `ruff check src/` — scan for issues
-  - `ruff check src/ --statistics` — summary view (good for large files)
-  - `ruff check src/ --fix` — auto-fix safe issues (whitespace, f-string, etc.)
-  - Config lives in `pyproject.toml` `[tool.ruff]`; aligned with existing `.flake8` rules
-  - Current baseline: 11 `C901` `complex-structure` errors in `health_monitor.py`
-  - Resolved: all `E722` (bare-except), `F821` (undefined-name), `E402` (import-order) — zero remaining
+每個獨立任務完成後應立即單獨 commit，不得累積多個不相關任務到同一個 commit。若同一輪對話涉及多個檔案的不同修改目的，必須拆成多次 git add + commit，逐一提交。
 
-- **pyright** (`pyright 1.1.410`, via pipx) — static type checker
-  - `pyright src/health_monitor.py` — type-check main app
-  - Useful before touching `close_app()`, threading code, or tkinter callbacks
-  - No `pyrightconfig.json` yet — runs with defaults (basic mode)
+每次完成任何程式碼修改後，**必須主動依序跑完以下檢查清單，不得等待使用者提醒**。使用者是 vibe coding，不會提醒你做這些事——這份清單就是你的提醒：
 
-- **py-spy** (`py-spy 0.4.2`, via pipx) — live profiler, no code changes needed
-  - `py-spy top --pid <PID>` — see which functions are hot while app is running
-  - `py-spy record -o profile.svg --pid <PID>` — flamegraph output
-  - Requires running process PID; use `psutil` or Task Manager to find it
+1. **Lint / 格式化**（本次有改 `.py` 檔才需要，純文件/設定變更跳過）：
+   ```powershell
+   ruff check src/ --fix
+   ruff format src/
+   ```
+   確認無殘留 error 才進下一步。注意：`health_monitor.py` 有 11 個既有 `C901`，是 backlog 非本次新增。
 
-- **commitizen** (`cz 4.16.3`, via pipx) — structured commit messages + auto changelog
-  - `cz commit` — interactive prompt instead of `git commit`
-  - `cz bump` — auto-increment version in `_version.py` + `build.py` + `CHANGELOG.md`
-  - Config lives in `pyproject.toml` `[tool.commitizen]`
-  - Conventional commit format: `feat:`, `fix:`, `refactor:`, `chore:` etc.
+2. **自檢測試**（本次有改非 trivial 邏輯——有分支、迴圈、解析、信任邊界/資料安全路徑——才需要）：
+   檢查該檔案是否有 `if __name__ == "__main__":` self-check，有就執行：
+   ```powershell
+   python -c "import sys,runpy; sys.path.insert(0,'src'); runpy.run_path('src/<改動的檔案>', run_name='__main__')"
+   ```
+   同時跑 pytest 套件：
+   ```powershell
+   python -m pytest --no-cov -q
+   ```
+   改 `src/` 邏輯後不跑 pytest 視為未完成。
+
+3. **add + commit + push**（一次完成）：
+   ```powershell
+   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+   git add -A
+   '類型: 中文說明' | Out-File -FilePath __commit_msg.txt -Encoding utf8
+   git commit -F __commit_msg.txt
+   Remove-Item __commit_msg.txt
+   git push origin master
+   ```
+
+commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 中文說明。
+注意：`cz commit` 在無互動 console 會失敗（`NoConsoleScreenBufferError`），一律用上面的 `git commit -F` 方式。
+
+---
+
+## Shell / Git 指令規範
+
+### PowerShell 7+
+
+本專案在 Windows 上以 **PowerShell 7+** 為 shell。所有指令使用 PowerShell 7 語法（`&&` / `||` pipeline chain、`Set-Content`、`Get-ChildItem`）。避免 `cmd.exe` batch idioms，除非是執行明確的 `.bat` 腳本。
+
+中文 commit 訊息用 `-F` 暫存檔方式，避免引號截斷（見上方工作完成規範第 3 步）。
+
+---
+
+## Coding 風格（Ponytail）
+
+你是一個懶惰的資深開發者。懶惰代表高效，不代表不認真。最好的程式碼是從未被寫出的程式碼。
+
+寫任何程式之前，先停在第一個能撐住的台階：
+
+1. 這個需要存在嗎？→ 不：跳過（YAGNI）
+2. 標準函式庫能做？→ 用它
+3. 原生平台功能能用？→ 用它
+4. 已安裝的 dependency 能解？→ 用它
+5. 一行搞定？→ 就一行
+6. 以上都不是：才寫最少能跑的程式碼
+
+**不做的事：**
+- 沒被要求的抽象層
+- 能避免就避免的新 dependency
+- 沒人要求的 boilerplate
+- 刪除優先於新增
+- 無聊優先於聰明
+- 檔案數量越少越好
+
+兩個 stdlib 方案大小相同？選在 edge case 正確的那個。懶惰是寫更少程式碼，不是選更脆弱的演算法。
+
+刻意的簡化用 `# ponytail:` 註解標記。
+
+**懶惰程式碼沒有檢查就是未完成的。** 非平凡邏輯（有分支、迴圈、解析、信任邊界路徑）留下一個可執行的檢查——最小的、邏輯壞掉就會失敗的東西：assert-based demo() / `__main__` self-check 或一個小 `test_*.py`。單行 trivial 程式碼不需要測試。
+
+**不懶惰的地方：**
+- 信任邊界的輸入驗證
+- 防止資料遺失的錯誤處理（config 備份）
+- 安全性
+- 任何被明確要求的事項
+
+---
+
+## 可用工具
+
+### ripgrep（`rg`）
+搜尋程式碼時**一律用 `rg`，不用 `grep` 或 `findstr`**。
+
+### Ruff（`ruff`）
+Lint 和格式化一律用 `ruff`，不用 flake8 / black / isort。
+設定在 `pyproject.toml` `[tool.ruff]`：line-length 200、select E/F/W/C90、mccabe max-complexity 20。
+
+```powershell
+ruff check src/ --statistics   # 摘要（大型檔案好用）
+ruff check src/ --fix          # 自動修復安全問題
+ruff format src/
+```
+
+- `[*]` = auto-fixable，跑 `ruff check src/ --fix`
+- `C901`（complex-structure）= 既有 backlog（health_monitor.py 11 個），不在此任務處理
+- `[ ]` = manual fix，case by case
+
+### pyright（`pyright`）
+`pyright src/health_monitor.py` — type-check 主程式。
+碰 `close_app()`、threading、tkinter callbacks 前先跑。
+
+### py-spy（`py-spy`）
+`py-spy top --pid <PID>` / `py-spy record -o profile.svg --pid <PID>`。
+
+### commitizen（`cz`）
+`cz bump` 管理版本（同步 `_version.py` + `CHANGELOG.md`）。`cz commit` 互動失敗時改用 `git commit -F`。
+
+### pytest
+```powershell
+python -m pytest --no-cov -q
+```
+設定在 `pyproject.toml` `[tool.pytest.ini_options]`。
+
+---
 
 ## CodeGraph
 
 專案已用 `codegraph init` 建過索引（`.codegraph/`），透過 MCP server 自動接給 agent 使用，不需要在這裡寫使用規則——`codegraph_explore` 由 agent 依需求自行判斷呼叫，索引也由檔案監控自動同步，commit 流程不需要任何額外步驟。
 
-## When to Use Each Tool
+---
 
-**Before editing any Python**
-→ run `ruff check src/ --statistics` to confirm the existing baseline; don't mistake pre-existing issues for your own
-
-**Before touching `close_app()`, threading, or tkinter callbacks**
-→ run `pyright src/health_monitor.py` to catch type errors first
-
-**Before committing**
-→ `ruff check src/ --fix && ruff format src/` to auto-fix safe issues
-→ use `cz commit` instead of `git commit` for structured messages
-→ use `cz bump` to increment version — it syncs `_version.py`, `build.py`, `CHANGELOG.md` automatically
-
-**When ruff reports issues**
-→ `[*]` = auto-fixable, run `ruff check src/ --fix`
-→ `E722` (bare-except) = manual review needed
-→ `C901` (complex-structure) = pre-existing, add to refactor backlog, do not touch in current task
-→ `[ ]` = manual fix, decide case by case
-
-**When a performance issue is reported**
-→ `py-spy top --pid <PID>` to find hot functions
-→ `py-spy record -o profile.svg --pid <PID>` for a flamegraph
-
-## Canonical Structure
+## 目錄結構
 
 ```text
-src/                          # Single source of truth for runtime code
-scripts/                      # One-click local workflows
-tools/build.py                # PyInstaller packaging pipeline
-docs/                         # User-facing documentation
-.github/workflows/ci.yml      # Lint + type check on push/PR
-latest_version.txt            # Raw GitHub version check (no API limit)
-release.ps1                   # One-click publish script
-updater_main.py               # Standalone updater process (built to updater.exe)
+src/                          # 執行期程式碼唯一事實來源
+scripts/                      # 一鍵本地工作流（install/build）
+tools/build.py                # PyInstaller 打包管線
+docs/                         # 使用者導向文件
+.github/workflows/ci.yml      # push/PR 時 lint + type check
+latest_version.txt            # 原始 GitHub 版本檢查（無 API 限制）
+release.ps1                   # 一鍵發版腳本
+updater_main.py               # 獨立更新程式（打包為 updater.exe）
 ```
 
-### src/ Module Responsibilities
-
-| Module | Role | Lines | Dependencies |
-|---|---|---|---|
-| `health_monitor.py` | Main entry, UI orchestration, event loop | ~2,042 | All other modules |
-| `monitor_analyzer.py` | Health/mana HSV analysis, trigger logic | 349 | cv2, numpy |
-| `capture_utils.py` | Screenshot capture, mss singleton | 72 | mss, PIL, numpy |
-| `image_utils.py` | Image drawing, resizing, preview utilities | 203 | PIL |
-| `inventory_utils.py` | Inventory slot analysis, item detection | 95 | numpy |
-| `config_manager.py` | JSON config load/save with backup | 208 | none |
-| `custom_dialogs.py` | Modal dialogs with dynamic sizing | 215 | tkinter |
-| `language_system.py` | Bilingual string lookup | 144 | JSON |
-| `skill_timer.py` | Skill cooldown timer module | 432 | tkinter |
-| `utils.py` | Emergency cleanup, F12 handler, Tooltip | 166 | keyboard, psutil |
-| `tab_inventory.py` | Inventory clear + pickup UI + logic | 3,628 | cv2, numpy, PIL, mss, pyautogui |
-| `tab_monitor.py` | Health/mana monitor tab UI + logic | 1,647 | cv2, numpy, PIL, mss, keyboard |
-| `tab_version.py` | Version check + in-app download/update | 402 | requests, updater_core |
-| `tab_about.py` | About tab, sponsor/donate buttons | ~200 | tkinter |
-| `app_state.py` | Shared application state container | ~100 | none |
-| `auto_click_manager.py` | Auto-click management (AHK) | ~150 | subprocess, psutil |
-| `usage_tracker.py` | Usage time statistics | ~100 | none |
-| `window_key_sender.py` | Window-focused key sending | ~80 | pygetwindow, pyautogui |
-
-Root-level modules (not in src/):
+### src/ Module 職責
 
 | Module | Role | Dependencies |
 |---|---|---|
-| `updater_core.py` | Update engine: version check, download, apply | requests, zipfile |
-| `updater_main.py` | Standalone updater process (built to updater.exe) | ctypes, subprocess |
-| `latest_version.txt` | Raw GitHub version string for update checks | — |
+| `health_monitor.py` | 主入口、UI 編排、事件迴圈（~2,185 行，主要 refactor 目標） | 全部 |
+| `monitor_analyzer.py` | 健康/魔力 HSV 分析、觸發邏輯 | cv2, numpy |
+| `capture_utils.py` | 截圖、mss singleton | mss, PIL, numpy |
+| `image_utils.py` | 影像繪製、resize、預覽工具 | PIL |
+| `inventory_utils.py` | 背包格分析、物品偵測 | numpy |
+| `config_manager.py` | JSON config 讀寫 + 備份 | none |
+| `custom_dialogs.py` | 動態尺寸 modal dialog | tkinter |
+| `language_system.py` | 雙語字串查詢 | JSON |
+| `skill_timer.py` | 技能冷卻計時 | tkinter |
+| `utils.py` | 緊急清理、F12 handler、Tooltip | keyboard, psutil |
+| `tab_inventory.py` | 背包清理 + 拾取 UI 與邏輯 | cv2, numpy, PIL, mss, pyautogui |
+| `tab_monitor.py` | 健康/魔力監控 tab UI 與邏輯 | cv2, numpy, PIL, mss, keyboard |
+| `tab_combo.py` | 技能連招 tab | — |
+| `tab_version.py` | 版本檢查 + 應用內下載/更新 | requests, updater_core |
+| `tab_about.py` / `tab_help.py` / `tab_status.py` | 關於/說明/狀態 tab | tkinter |
+| `app_state.py` | 共用應用狀態容器 | none |
+| `auto_click_manager.py` | 自動點擊管理（AHK） | subprocess, psutil |
+| `usage_tracker.py` | 使用時間統計 | none |
+| `window_key_sender.py` | 視窗聚焦按鍵發送 | pygetwindow, pyautogui |
+| `updater_core.py` | 更新引擎：版本檢查、下載、套用 | requests, zipfile |
+| `_version.py` | 版本唯一事實來源（commitizen 管理） | none |
 
-Runtime-generated files — do not treat as source:
-- `src/health_monitor_config.json` (user config state)
-- `src/health_monitor_config.json.backup`
+Runtime-generated 檔案（非 source，勿當程式碼改）：
+- `src/health_monitor_config.json` / `.backup`
 - `src/screenshots/`
 
-## One-Click Workflows
+## 一鍵工作流
 
-1. Install dependencies: `scripts/install_dependencies.bat`
-2. Run from source or EXE: `Run.bat`
-3. Build EXE: `scripts/build_exe.bat`
-4. Test built EXE: `Run.bat`
+1. 安裝依賴：`scripts/install_dependencies.bat`
+2. 從 source 或 EXE 執行：`Run.bat`
+3. 建 EXE：`scripts/build_exe.bat`
+4. 測試建出的 EXE：`Run.bat`
 
-## Version
+## 版本管理與發行流程
 
-- Current: **v1.2.1**
-- Single source: `src/_version.py` (`__version__ = "1.2.1"`)
+### 版本資訊
+- 目前：**v1.2.1**；唯一事實來源 `src/_version.py`（`__version__ = "1.2.1"`）
 - `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
 - `build.py`: `APP_VERSION = __version__`
-- Managed by commitizen via `src/_version.py:__version__`
+- 由 commitizen 管理（`cz bump` 同步 `_version.py` + `CHANGELOG.md`）
 
-## Packaging Rules (Critical)
+### Dual-Track 版本檢查
 
-- `tools/build.py` sources assets from `src/` and `docs/`.
-- Build output includes:
-  - `GameTools_HealthMonitor.exe`, `auto_click.exe`, `updater.exe`, `language_packs.json`
-  - `使用說明.md` (from `docs/`), `啟動工具.bat`, `README.txt`
-- If PyInstaller cache is locked on Windows (`WinError 5`), clear `build/GameTools_HealthMonitor` and rebuild.
+使用者落在兩種版本檢查機制之一：
 
-## Release Workflow
-
-### Dual-Track Version Check
-
-Users are on one of two version check mechanisms:
-
-| User version | Check method | Endpoint |
+| 使用者版本 | 檢查方式 | Endpoint |
 |---|---|---|
-| ≤ v1.2.0 (old) | GitHub API `/releases/latest` | `api.github.com/repos/.../releases/latest` |
-| ≥ v1.2.1 (new) | `latest_version.txt` | `raw.githubusercontent.com/.../master/latest_version.txt` |
+| ≤ v1.2.0（舊） | GitHub API `/releases/latest` | `api.github.com/repos/.../releases/latest` |
+| ≥ v1.2.1（新） | `latest_version.txt` | `raw.githubusercontent.com/.../master/latest_version.txt` |
 
-GitHub API `/releases/latest` **only returns non-pre-release, non-draft releases**. This means pre-release versions are invisible to old users automatically.
+GitHub API `/releases/latest` **只回傳非 pre-release、非 draft 的 release**。這讓 pre-release 版本自動對舊用戶不可見。
 
-### Pre-release Testing (no user notification)
+### Pre-release 測試（不通知用戶）
 
-When you want to test a new version without notifying users:
+要測試新版本但不通知用戶：
 
-1. Set `_version.py` to pre-release: `__version__ = "1.2.2-beta"`
-2. Run `.\release.ps1 -Preview` — builds, creates GitHub **Pre-release**, updates `latest_version_prerelease.txt` only
-3. `latest_version.txt` is **NOT updated** → all existing users see no change
-4. Your config: `"allow_prerelease": true` → your app detects `1.2.2-beta`
-5. Test the full auto-download flow (download → extract → updater.exe → restart)
-6. When stable: `_version.py` = `"1.2.2"`, run `.\release.ps1` (normal) → updates `latest_version.txt` → all users notified
+1. 設 `_version.py` 為 pre-release：`__version__ = "1.2.2-beta"`
+2. `.\release.ps1 -Preview` — 建 EXE、建立 GitHub **Pre-release**、只更新 `latest_version_prerelease.txt`
+3. `latest_version.txt` **不更新** → 所有現有用戶看不到變化
+4. 你的 config：`"allow_prerelease": true` → 你的 app 偵測到 `1.2.2-beta`
+5. 測試完整自動下載流程（download → extract → updater.exe → restart）
+6. 穩定後：`_version.py` = `"1.2.2"`，跑 `.\release.ps1`（一般）→ 更新 `latest_version.txt` → 通知所有用戶
 
-### Stable Release
+### 穩定發版
 
-Run `.\release.ps1` — updates `latest_version.txt`, creates normal GitHub Release, all users notified on next launch.
+跑 `.\release.ps1` — 更新 `latest_version.txt`、建立正常 GitHub Release、所有用戶下次啟動被通知。
 
-### Key Rules
+### 關鍵規則
 
-- **NEVER update `latest_version.txt` to a pre-release version** — this would notify all users
-- `allow_prerelease` config defaults to `false` — only you (the developer) should set it to `true` for testing
-- `_parse_version()` treats `1.2.2-beta` as lower than `1.2.2` (stable beats pre-release)
-- Pre-release assets on GitHub Releases are downloadable via the same URL pattern as normal releases
+- **絕不把 pre-release 版本寫進 `latest_version.txt`** — 這會通知所有用戶
+- `allow_prerelease` config 預設 `false` — 只有開發者應為測試設為 `true`
+- `_parse_version()` 把 `1.2.2-beta` 視為低於 `1.2.2`（stable 勝 pre-release）
+- Pre-release assets 在 GitHub Releases 可用與正常 release 相同的 URL pattern 下載
 
-### When User Mentions Release Keywords
+### 使用者提到發版關鍵字時
 
-If the user says "發版", "release", "測試更新", "不通知用戶", "pre-release", or similar:
-- Remind them about the `-Preview` flag and `allow_prerelease` config
-- Confirm whether they want to test first (preview) or release to all users (stable)
-- Guide them through the correct flow
+使用者說「發版」、「release」、「測試更新」、「不通知用戶」、「pre-release」等：
+- 提醒 `-Preview` flag 與 `allow_prerelease` config
+- 確認要「先測試（preview）」還是「直接發給所有人（stable）」
+- 引導正確流程
 
-## Safety/Review Checklist Before Commit
+## 打包規則（Critical）
 
-- No secrets/tokens/private keys.
-- No accidental mirror directories (e.g. duplicated project copies).
-- README versions/links match current release state.
-- Build + launch smoke test passes.
-- Stage only request-scoped files when the worktree is mixed.
+- `tools/build.py` 從 `src/` 與 `docs/` 收集 assets。
+- 建出內容包含：
+  - `GameTools_HealthMonitor.exe`、`auto_click.exe`、`updater.exe`、`language_packs.json`
+  - `使用說明.md`（from `docs/`）、`啟動工具.bat`、`README.txt`
+- `updater_main.py` 建為 `updater.exe`（輕量、無 GUI deps）。
+- 若 PyInstaller cache 在 Windows 被鎖（`WinError 5`），清 `build/GameTools_HealthMonitor` 重建。
 
-## Close Lifecycle Notes
+## commit 前安全檢查
 
-- `close_app()` is a sensitive path. Be careful with `_is_closing`, scheduled `after(...)` callbacks, and background threads.
-- Background workers must not touch Tk widgets after shutdown begins.
-- When modifying startup or shutdown logic, re-check normal close flow, not just app launch.
+- 無 secrets/tokens/private keys。
+- 無意外鏡像目錄（例如重複的專案副本）。
+- README 版本/連結符合目前 release 狀態。
+- Build + launch smoke test 通過。
+- worktree 混雜時只 stage request-scoped 檔案。
 
-## Notes for Future Refactor
+## Close 生命週期注意事項
 
-- `health_monitor.py` at ~2,042 lines (down from ~9,842) is the main refactor target. Remaining 11 `C901` warnings are pre-existing complex functions.
-- Inventory exclusion feature: `excluded_inventory_slots` (set of ints), saved in config JSON, rendered as blue overlay on preview, respected in all F3 clear paths.
-- `_on_preview_click()` handles Canvas click → toggle exclusion → re-render.
-- `_preview_meta` stores rendered image dimensions for click coordinate mapping.
-- No automated test suite exists yet.
-- Do not assume `README_EN.md` exists. If bilingual public docs are required, add it explicitly.
+- `close_app()` 是敏感路徑。小心 `_is_closing`、排程中的 `after(...)` callbacks、背景 threads。
+- 背景 workers 在 shutdown 開始後不得碰 Tk widgets。
+- 修改 startup/shutdown 邏輯時，重測正常關閉流程，不只測 app 啟動。
+
+## Future Refactor 筆記
+
+- `health_monitor.py`（~2,185 行，從 ~9,842 降下來）是主要 refactor 目標。剩 11 個 `C901` 是既有複雜函式。
+- Inventory exclusion：`excluded_inventory_slots`（set of ints），存 config JSON、preview 上畫藍色 overlay、F3 清理路徑都尊重。
+- `_on_preview_click()` 處理 Canvas click → toggle exclusion → re-render。
+- `_preview_meta` 存渲染影像尺寸供 click coordinate mapping。
+- `updater_core.py` 移植自 ocr-trigger-clicker `core/12_updater.py`，但**尚無 delta 支援**（只整包 ZIP）——delta 產生端與用戶端樹狀套用是下一階段工作。
+- 不要假設 `README_EN.md` 存在。要雙語公開文件就明確新增。
 
 ## Known Issues
 
-- `PrintWindow` (GDI) returns all-black frames for Path of Exile 2 (DirectX).
-- `dxcam` / `mss` both capture the composited desktop — covered/minimized windows yield desktop content, not game content.
-- Activation guard (`_is_game_window_active()`) is the current mitigation; no reliable capture-before-activation solution without Windows.Graphics.Capture (Win10+).
+- `PrintWindow`（GDI）對 Path of Exile 2（DirectX）回傳全黑 frame。
+- `dxcam` / `mss` 都截合成桌面 — 被遮蓋/最小化視窗得到桌面內容而非遊戲內容。
+- Activation guard（`_is_game_window_active()`）是目前 mitigation；沒有 Windows.Graphics.Capture（Win10+）就沒有可靠的 capture-before-activation 方案。
