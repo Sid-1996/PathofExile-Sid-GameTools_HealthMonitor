@@ -22,9 +22,20 @@ _GITHUB_OWNER = "Sid-1996"
 _GITHUB_REPO = "PathofExile-Sid-GameTools_HealthMonitor"
 _RAW_VERSION_URL = f"https://raw.githubusercontent.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/master/latest_version.txt"
 _RAW_PRERELEASE_URL = f"https://raw.githubusercontent.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/master/latest_version_prerelease.txt"
+_RAW_DELTA_URL = f"https://raw.githubusercontent.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/master/delta_info.json"
 ASSET_NAME = "GameTools_HealthMonitor.zip"
+DELTA_ASSET_NAME = "GameTools_HealthMonitor-delta.zip"
+MANIFEST_FILENAME = "manifest.json"
+DELTA_PAYLOAD_DIR = "files"
 UPDATER_EXE_NAME = "updater.exe"
 _TEMP_PREFIX = "gtool_update_"
+
+
+class DeltaUpdateError(RuntimeError):
+    """delta 不適用於本機安裝（版本基準不符／payload 驗證失敗）。
+
+    只代表「差異更新行不通」，呼叫端應改用完整更新。
+    """
 
 
 @dataclass
@@ -115,6 +126,41 @@ def _clean_stale_temp_dirs():
     for d in Path(tempfile.gettempdir()).glob(f"{_TEMP_PREFIX}*"):
         if d.is_dir():
             shutil.rmtree(d, ignore_errors=True)
+
+
+# ── delta manifest ──────────────────────────────────────
+
+
+def sha256_of_file(path: Path) -> str:
+    """回傳檔案 SHA-256 hex。"""
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def build_manifest(root: Path, version: str, base_version: str | None = None) -> dict:
+    """掃描安裝樹（含 _internal/），產出 {version, base_version, files:{rel:{size,sha256}}}。"""
+    files = {}
+    for p in sorted(root.rglob("*")):
+        if p.is_file():
+            rel = p.relative_to(root).as_posix()
+            st = p.stat()
+            files[rel] = {"size": st.st_size, "sha256": sha256_of_file(p)}
+    return {"version": version, "base_version": base_version, "files": files}
+
+
+def diff_manifests(prev: dict, new: dict) -> tuple[list[str], list[str], list[str]]:
+    """比對兩份 manifest，回傳 (changed, added, removed) 的 rel 路徑清單。"""
+    prev_files = prev.get("files", {})
+    new_files = new.get("files", {})
+    changed = [r for r in prev_files if r in new_files and new_files[r] != prev_files[r]]
+    added = [r for r in new_files if r not in prev_files]
+    removed = [r for r in prev_files if r not in new_files]
+    return changed, added, removed
 
 
 def download_update(
@@ -241,4 +287,30 @@ if __name__ == "__main__":
     assert _parse_version("v1.2.1") == _parse_version("1.2.1"), "v prefix must be stripped"
     assert _parse_version("1.2.2-beta") > _parse_version("1.2.1"), "newer pre-release beats older"
     assert _parse_version("") == (0,), "empty version -> (0,)"
-    print("updater_core self-check OK")
+
+    # ── manifest / diff self-check ──
+    tmp = Path(tempfile.mkdtemp(prefix="gtool_manifest_demo_"))
+    try:
+        old = tmp / "old"
+        new = tmp / "new"
+        for d in (old, new):
+            d.mkdir()
+        (old / "a.txt").write_text("a", encoding="utf-8")
+        (old / "b.txt").write_text("b", encoding="utf-8")
+        (new / "a.txt").write_text("a", encoding="utf-8")
+        (new / "b.txt").write_text("b2", encoding="utf-8")
+        (new / "c.txt").write_text("c", encoding="utf-8")
+        prev = build_manifest(old, "1.2.1")
+        assert prev["version"] == "1.2.1", prev
+        assert prev["base_version"] is None, prev
+        changed, added, removed = diff_manifests(prev, build_manifest(new, "1.2.2", "1.2.1"))
+        assert changed == ["b.txt"], changed
+        assert added == ["c.txt"], added
+        assert removed == [], removed
+        removed_prev = build_manifest(new, "1.2.2", "1.2.1")
+        removed_prev["files"].pop("b.txt")
+        _, _, removed = diff_manifests(prev, removed_prev)
+        assert removed == ["b.txt"], removed
+        print("updater_core self-check OK")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)

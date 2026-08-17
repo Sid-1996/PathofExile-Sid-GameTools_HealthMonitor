@@ -34,6 +34,12 @@ if ($Version -and $Version -ne $currentVersion) {
 }
 
 # 版本檔同步
+# base_version = 上一版（覆寫 latest_version.txt 之前先讀，供 make_delta 比對）
+$baseVersion = ""
+$latestFile = Join-Path $PSScriptRoot "latest_version.txt"
+if (Test-Path $latestFile) {
+    $baseVersion = (Get-Content -Path $latestFile -Encoding utf8 | Select-Object -First 1).Trim()
+}
 if ($Preview) {
     $preFile = Join-Path $PSScriptRoot "latest_version_prerelease.txt"
     Set-Content $preFile "$currentVersion`n" -Encoding UTF8
@@ -94,9 +100,23 @@ if (Test-Path $fixedZip) { Remove-Item $fixedZip -Force }
 Compress-Archive -Path "$packageDir\*" -DestinationPath $fixedZip
 Write-Host "  Created: GameTools_HealthMonitor.zip"
 
+# ── 差異更新（delta）── 僅 stable 發版產生（preview 會斷 delta 鏈）
+Write-Host "`n[5.5/7] Generating delta update..."
+if ($Preview) {
+    Write-Host "  Preview: skip make_delta（delta 只對 stable 發佈）"
+} else {
+    $makeDelta = Join-Path $PSScriptRoot "tools" "make_delta.py"
+    $packageDirForDelta = Join-Path $PSScriptRoot "dist" "GameTools_Package"
+    python $makeDelta $currentVersion $baseVersion $packageDirForDelta (Join-Path $PSScriptRoot "dist")
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] make_delta failed" -ForegroundColor Red
+        exit 1
+    }
+}
+
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py release.ps1 index.html sitemap.xml
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py tools/make_delta.py release.ps1 index.html sitemap.xml manifest.json delta_info.json
 if ($Preview) {
     git commit -m "chore: release v$currentVersion (preview)"
 } else {
@@ -121,10 +141,19 @@ if ($Preview) {
     Write-Host " latest_version.txt UNCHANGED — users not notified" -ForegroundColor Yellow
     Write-Host "========================================" -ForegroundColor Yellow
 } else {
-    gh release create $tagName `
-        --title "v$currentVersion" `
-        --generate-notes `
-        "$fixedZip"
+    $deltaZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor-delta.zip"
+    if (Test-Path $deltaZip) {
+        gh release create $tagName `
+            --title "v$currentVersion" `
+            --generate-notes `
+            "$fixedZip" "$deltaZip"
+        Write-Host "  delta asset attached: GameTools_HealthMonitor-delta.zip"
+    } else {
+        gh release create $tagName `
+            --title "v$currentVersion" `
+            --generate-notes `
+            "$fixedZip"
+    }
     Write-Host "`n========================================" -ForegroundColor Green
     Write-Host " Release v$currentVersion published!" -ForegroundColor Green
     Write-Host " ZIP: GameTools_HealthMonitor.zip" -ForegroundColor Green
