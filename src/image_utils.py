@@ -150,11 +150,12 @@ def draw_mana_indicator(img, mana_percent):
     draw.text((text_x, text_y - 1), text, fill=(0, 0, 0), font=None)
 
 
-def get_region_text(config):
+def get_region_text(config, get_text=None):
     """Format the health bar region configuration as a display string.
 
     Args:
         config: Dictionary containing a 'region' key with tuple (x, y, w, h).
+        get_text: Optional language lookup callable; used for the unset placeholder.
 
     Returns:
         Formatted string or unset placeholder.
@@ -162,14 +163,15 @@ def get_region_text(config):
     if config and config.get("region"):
         x, y, w, h = config["region"]
         return f"x={x}, y={y}, w={w}, h={h}"
-    return "未設定"
+    return get_text("coordinate_not_set") if get_text else "未設定"
 
 
-def get_mana_region_text(config):
+def get_mana_region_text(config, get_text=None):
     """Format the mana bar region configuration as a display string.
 
     Args:
         config: Dictionary containing a 'mana_region' key with tuple (x, y, w, h).
+        get_text: Optional language lookup callable; used for the unset placeholder.
 
     Returns:
         Formatted string or unset placeholder.
@@ -177,14 +179,15 @@ def get_mana_region_text(config):
     if config and config.get("mana_region"):
         x, y, w, h = config["mana_region"]
         return f"x={x}, y={y}, w={w}, h={h}"
-    return "未設定"
+    return get_text("coordinate_not_set") if get_text else "未設定"
 
 
-def get_interface_ui_region_text(interface_ui_region):
+def get_interface_ui_region_text(interface_ui_region, get_text=None):
     """Format the interface UI region as a display string.
 
     Args:
         interface_ui_region: Dict with keys 'x', 'y', 'width', 'height', or None.
+        get_text: Optional language lookup callable; used for the not-recorded placeholder.
 
     Returns:
         Formatted string or not-recorded placeholder.
@@ -195,4 +198,4 @@ def get_interface_ui_region_text(interface_ui_region):
         w = interface_ui_region["width"]
         h = interface_ui_region["height"]
         return f"x={x}, y={y}, w={w}, h={h}"
-    return "尚未記錄"
+    return get_text("not_recorded") if get_text else "尚未記錄"

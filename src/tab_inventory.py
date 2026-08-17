@@ -1834,7 +1834,7 @@ class InventoryTab:
                         self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
                         # 更新UI顯示
-                        self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgreen")
+                        self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgreen")
 
                         # 更新介面UI預覽
                         self.update_interface_ui_preview()
@@ -1947,7 +1947,7 @@ class InventoryTab:
 
                 # 更新UI標籤狀態
                 if hasattr(self._app.monitor_tab, "interface_ui_label"):
-                    self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgreen")
+                    self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgreen")
 
                 # 更新介面UI預覽
                 if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
@@ -2216,7 +2216,7 @@ class InventoryTab:
                 final_img = np.frombuffer(final_screenshot.rgb, dtype=np.uint8).reshape(final_screenshot.height, final_screenshot.width, 3)
                 final_img = cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR)
             final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
-            final_progress_text = f"清包完成: {total_processed} 個道具"
+            final_progress_text = self._app.get_text("inventory_clear_done").format(count=total_processed)
             self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(final_img, final_occupied, final_progress_text))
             self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(final_occupied)}/60") if hasattr(self, "occupied_label") else None)
             print(f"最終確認：清包完成 {total_processed} 個道具，剩餘: {len(final_occupied)} 個")
@@ -2267,7 +2267,7 @@ class InventoryTab:
                     _, retry_final_occupied = should_clear_inventory(
                         retry_final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1
                     )
-                    final_progress_text = f"清包完成(包含重試): {total_processed} 個道具"
+                    final_progress_text = self._app.get_text("inventory_clear_done_retry").format(count=total_processed)
                     self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(retry_final_img, retry_final_occupied, final_progress_text))
                     self._app.root.after(0, lambda: self.occupied_label.config(text=f"{len(retry_final_occupied)}/60") if hasattr(self, "occupied_label") else None)
                     print(f"重試最終確認：總共處理 {total_processed} 個道具，剩餘: {len(retry_final_occupied)} 個")
@@ -2342,7 +2342,7 @@ class InventoryTab:
                     )
 
                     # 更新預覽
-                    progress_text = f"動態清包: {total_processed} 個道具已處理"
+                    progress_text = self._app.get_text("inventory_clear_dynamic_progress").format(count=total_processed)
                     self._app.root.after(0, lambda: self.update_inventory_preview_with_progress(current_img, current_occupied, progress_text))
                     print(f"辨識結果：剩餘 {len(current_occupied)} 個物品需要清理")
 

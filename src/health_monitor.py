@@ -215,11 +215,11 @@ class HealthMonitor:
 
             # 更新遊戲視窗設定區域
             if hasattr(self.monitor_tab, "region_label"):
-                self.monitor_tab.region_label.config(text=get_region_text(self.config))
+                self.monitor_tab.region_label.config(text=get_region_text(self.config, self.get_text))
                 if self.monitor_tab.mana_region_label:
-                    self.monitor_tab.mana_region_label.config(text=get_mana_region_text(self.config))
+                    self.monitor_tab.mana_region_label.config(text=get_mana_region_text(self.config, self.get_text))
                 if self.monitor_tab.interface_ui_label:
-                    self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region))
+                    self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region, self.get_text))
 
             # 更新觸發設定區域
             if self.remove_selected_btn is not None:
@@ -462,19 +462,19 @@ class HealthMonitor:
         self.preview_interval_var = tk.StringVar(value="250")
 
         # GUI 元件
-        self.update_loading_status("正在創建介面元件...")
+        self.update_loading_status(self.get_text("loading_creating_ui"))
         self.create_widgets()
 
         # 在UI元件創建後載入設定
-        self.update_loading_status("正在載入設定...")
-        success, message = self.config_manager.load_config()
+        self.update_loading_status(self.get_text("loading_settings"))
+        self.config_manager.load_config()
         self.config = self.config_manager.config
 
         # 載入配置到各個變數
         self.load_config()
 
         # 將窗口置中於螢幕（如果沒有儲存的位置）
-        self.update_loading_status("正在初始化視窗...")
+        self.update_loading_status(self.get_text("loading_initializing_window"))
         self.center_window()
 
         # 確保GUI最上方設定正確應用（無論設定載入是否成功）
@@ -482,7 +482,7 @@ class HealthMonitor:
         # self.root.attributes("-topmost", self.always_on_top_var.get())
 
         # 設置全域滾輪支持
-        self.update_loading_status("正在設置功能...")
+        self.update_loading_status(self.get_text("loading_setting_features"))
         self.setup_global_scroll()
 
         # 配置pyautogui
@@ -1251,13 +1251,13 @@ class HealthMonitor:
             return  # 已經在監控中
 
         if not self.monitor_tab.window_var.get():
-            raise Exception("未選擇遊戲視窗")
+            raise Exception(self.get_text("monitor_no_window_selected"))
 
         if not self.config.get("region"):
-            raise Exception("未設定血量條區域")
+            raise Exception(self.get_text("monitor_no_region_set"))
 
         if not self.config.get("settings"):
-            raise Exception("未設定觸發條件")
+            raise Exception(self.get_text("monitor_no_triggers_set"))
 
         # 激活遊戲視窗（靜默）
         try:
@@ -1300,7 +1300,7 @@ class HealthMonitor:
                     # 獲取遊戲視窗位置
                     windows = gw.getWindowsWithTitle(self.monitor_tab.window_var.get())
                     if not windows:
-                        self.monitor_tab.update_status("--", "--", "視窗未找到", "")
+                        self.monitor_tab.update_status("--", "--", self.get_text("window_not_found"), "")
                         self.status_tab.add_status_message(self.get_text("game_window_closed"), "warning")
                         interruptible_sleep(1.0, self.is_monitoring)
                         continue
@@ -1412,7 +1412,7 @@ class HealthMonitor:
 
                 except Exception as e:
                     print(f"監控錯誤: {e}")
-                    self.monitor_tab.update_status("--", "--", "--", f"錯誤: {str(e)}")
+                    self.monitor_tab.update_status("--", "--", "--", self.get_text("error_prefix").format(error=str(e)))
                     interruptible_sleep(1, self.is_monitoring)
 
     def press_key_sequence(self, key_sequence, health_percent=None):
@@ -1680,7 +1680,7 @@ class HealthMonitor:
         # 計算並記錄運行時間
         end_time = datetime.now()
         runtime = end_time - self.start_time
-        runtime_str = f"{runtime.days}天 {runtime.seconds // 3600}小時 {(runtime.seconds % 3600) // 60}分鐘 {runtime.seconds % 60}秒"
+        runtime_str = format_usage_time(runtime.total_seconds(), lang=self.current_language)
         print(f"應用程式運行時間: {runtime_str}")
         self.status_tab.add_status_message(self.get_text("application_runtime").format(runtime=runtime_str), "info")
 
@@ -1820,7 +1820,7 @@ class HealthMonitor:
                         self.inventory_tab.update_ui_preview()
 
             if hasattr(self.monitor_tab, "interface_ui_label") and self.interface_ui_region:
-                self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region), background="lightgreen")
+                self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region, self.get_text), background="lightgreen")
                 if hasattr(self.monitor_tab, "interface_ui_preview_canvas"):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
@@ -1958,12 +1958,12 @@ class HealthMonitor:
 
             if hasattr(self.monitor_tab, "region_label"):
                 self.monitor_tab.region_label.config(
-                    text=get_region_text(self.config),
+                    text=get_region_text(self.config, self.get_text),
                     background="lightgreen" if self.config.get("region") else "lightgray",
                 )
             if hasattr(self.monitor_tab, "mana_region_label"):
                 self.monitor_tab.mana_region_label.config(
-                    text=get_mana_region_text(self.config),
+                    text=get_mana_region_text(self.config, self.get_text),
                     background="lightgreen" if self.config.get("mana_region") else "lightgray",
                 )
 

@@ -324,7 +324,7 @@ class VersionTab:
                 updater_core.apply_update(exe_path)
                 os._exit(0)
             except Exception as e:
-                messagebox.showerror(self._app.get_text("error"), self._app.get_text("apply_update_failed").format(error=str(e)))
+                messagebox.showerror(self._app.get_text("error"), self._app.get_text("apply_update_failed").format(error=self._translate_error(e)))
 
     # ── Release Notes 格式化 ─────────────────────────────
 

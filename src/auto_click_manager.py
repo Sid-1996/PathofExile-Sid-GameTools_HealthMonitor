@@ -61,16 +61,16 @@ class AutoClickManager:
                     self.auto_click_process = subprocess.Popen([self.auto_click_exe_path, process_name], creationflags=subprocess.CREATE_NO_WINDOW)
                     time.sleep(0.3)
                     if self.auto_click_process.poll() is not None:
-                        msg = "auto_click.exe 啟動後異常終止，請檢查檔案是否完整\nauto_click.exe exited unexpectedly. The file may be corrupted."
+                        msg = self._app.get_text("auto_click_exe_crashed")
                         print(msg)
                         self._app.status_tab.add_status_message(msg, "error")
                     else:
                         print(" AHK自動點擊(EXE版)已啟動")
                         print(" 現在可以直接使用 CTRL+左鍵 進行自動連點")
                         print(" 當主程式退出時，AHK腳本會自動關閉")
-                        self._app.status_tab.add_status_message("CTRL+Click 自動連點已啟動 (auto_click.exe)", "success")
+                        self._app.status_tab.add_status_message(self._app.get_text("auto_click_started"), "success")
                 except Exception as e:
-                    msg = f"啟動 auto_click.exe 失敗: {e}\nFailed to start auto_click.exe: {e}"
+                    msg = self._app.get_text("auto_click_start_failed").format(error=e)
                     print(msg)
                     self._app.status_tab.add_status_message(msg, "error")
                 return
@@ -92,7 +92,7 @@ class AutoClickManager:
                         break
 
                 if not ahk_exe:
-                    msg = "[ERROR] 未找到AutoHotkey程式，請確保已安裝AutoHotkey或使用EXE版本\nAutoHotkey not found. Please install AutoHotkey v2 or use the EXE version."
+                    msg = self._app.get_text("auto_click_ahk_not_found")
                     print(msg)
                     self._app.status_tab.add_status_message(msg, "error")
                     return
@@ -104,18 +104,12 @@ class AutoClickManager:
                 print(" 當主程式退出時，AHK腳本會自動關閉")
 
             else:
-                msg = (
-                    "[ERROR] 未找到AHK腳本或EXE文件\n"
-                    "請確保存在以下文件之一：\n"
-                    f"  - {self.auto_click_exe_path}\n"
-                    f"  - {self.auto_click_script_path}\n"
-                    "Auto-click files not found. Please reinstall the package or restore the missing files."
-                )
+                msg = self._app.get_text("auto_click_files_missing").format(exe_path=self.auto_click_exe_path, script_path=self.auto_click_script_path)
                 print(msg)
                 self._app.status_tab.add_status_message(msg, "error")
 
         except Exception as e:
-            msg = f"[ERROR] 啟動AHK自動點擊失敗: {e}\nAuto-click startup failed: {e}"
+            msg = self._app.get_text("auto_click_ahk_start_failed").format(error=e)
             print(msg)
             self._app.status_tab.add_status_message(msg, "error")
 

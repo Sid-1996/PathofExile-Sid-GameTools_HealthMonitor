@@ -231,7 +231,7 @@ def download_update(
                 # 防 zip-slip：確保解壓路徑留在 staging 內
                 dest = (tmp_dir / member.filename).resolve()
                 if not dest.is_relative_to(tmp_dir.resolve()):
-                    raise RuntimeError(f"ZIP 內含非法路徑: {member.filename}")
+                    raise UpdateError("update_zip_invalid_path", path=member.filename)
                 if member.is_dir():
                     dest.mkdir(parents=True, exist_ok=True)
                     continue
@@ -240,14 +240,14 @@ def download_update(
                     shutil.copyfileobj(src, dst)
 
         if not main_exe_path.exists():
-            raise RuntimeError("ZIP 內找不到主程式 GameTools_HealthMonitor.exe")
+            raise UpdateError("update_zip_no_main_exe")
         if not (tmp_dir / UPDATER_EXE_NAME).exists():
-            raise RuntimeError("ZIP 內缺少 updater.exe")
+            raise UpdateError("update_zip_no_updater")
 
         # 驗證 MZ header
         with open(main_exe_path, "rb") as f:
             if f.read(2) != b"MZ":
-                raise RuntimeError("下載檔案不是有效的 EXE（PE 標頭錯誤）")
+                raise UpdateError("update_invalid_exe")
 
         # 解壓完成後移除 ZIP，避免被 updater 當作 app 檔複製進安裝目錄
         zip_path.unlink(missing_ok=True)
@@ -382,12 +382,12 @@ def download_delta_update(
 def apply_update(new_exe_path: Path) -> None:
     """啟動 updater.exe 背景替換主程式。呼叫後主程式應立即退出。"""
     if not is_frozen():
-        raise RuntimeError("原始碼模式不支援自動更新，請手動下載")
+        raise UpdateError("updater_source_mode_warning")
 
     old_exe = current_exe_path()
     updater_exe = new_exe_path.parent / UPDATER_EXE_NAME
     if not updater_exe.exists():
-        raise RuntimeError("找不到 updater.exe，無法套用更新")
+        raise UpdateError("update_updater_not_found")
 
     debug_log_dir = Path.home() / "AppData" / "Roaming" / "GameTools_HealthMonitor" / "logs"
     debug_log_dir.mkdir(parents=True, exist_ok=True)
@@ -430,7 +430,7 @@ def apply_update(new_exe_path: Path) -> None:
                 continue
 
         if not launched:
-            raise RuntimeError("無法啟動 updater.exe")
+            raise UpdateError("update_launch_failed")
 
     finally:
         if not launched:

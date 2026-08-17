@@ -175,17 +175,17 @@ class MonitorTab:
 
         self.health_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("health_bar_region"))
         self.health_bar_region_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.region_label = ttk.Label(self.window_frame, text=get_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
+        self.region_label = ttk.Label(self.window_frame, text=get_region_text(self._app.config, self._app.get_text), background="lightgray", relief="sunken", padding=2)
         self.region_label.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.mana_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("mana_bar_region"))
         self.mana_bar_region_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.mana_region_label = ttk.Label(self.window_frame, text=get_mana_region_text(self._app.config), background="lightgray", relief="sunken", padding=2)
+        self.mana_region_label = ttk.Label(self.window_frame, text=get_mana_region_text(self._app.config, self._app.get_text), background="lightgray", relief="sunken", padding=2)
         self.mana_region_label.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.interface_ui_region_label = ttk.Label(self.window_frame, text=self._app.get_text("interface_ui_region"))
         self.interface_ui_region_label.grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.interface_ui_label = ttk.Label(self.window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region), background="lightgray", relief="sunken", padding=2)
+        self.interface_ui_label = ttk.Label(self.window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgray", relief="sunken", padding=2)
         self.interface_ui_label.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.select_health_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_health_region"), command=self.start_selection)
@@ -621,7 +621,7 @@ class MonitorTab:
             self.selected_region = (left, top, width, height)
 
             self._app.config["region"] = self.selected_region
-            self.region_label.config(text=get_region_text(self._app.config), background="lightgreen")
+            self.region_label.config(text=get_region_text(self._app.config, self._app.get_text), background="lightgreen")
 
             self._app.root.after(100, self.capture_preview_async)
 
@@ -757,7 +757,7 @@ class MonitorTab:
             self.selected_mana_region = (left, top, width, height)
 
             self._app.config["mana_region"] = self.selected_mana_region
-            self.mana_region_label.config(text=get_mana_region_text(self._app.config), background="lightgreen")
+            self.mana_region_label.config(text=get_mana_region_text(self._app.config, self._app.get_text), background="lightgreen")
 
             self._app.root.after(100, self.capture_mana_preview_async)
 
@@ -1690,9 +1690,9 @@ class MonitorTab:
         self.enable_preview_check.config(text=self._app.get_text("enable_preview"))
         self.preview_interval_label.config(text=self._app.get_text("preview_interval"))
         self.preview_ms_label.config(text=self._app.get_text("ms"))
-        self.region_label.config(text=get_region_text(self._app.config))
-        self.mana_region_label.config(text=get_mana_region_text(self._app.config))
-        self.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region))
+        self.region_label.config(text=get_region_text(self._app.config, self._app.get_text))
+        self.mana_region_label.config(text=get_mana_region_text(self._app.config, self._app.get_text))
+        self.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text))
         self.real_time_status_frame.config(text=self._app.get_text("real_time_status"))
         self.current_health_label.config(text=self._app.get_text("current_health"))
         self.current_mana_label.config(text=self._app.get_text("current_mana"))
