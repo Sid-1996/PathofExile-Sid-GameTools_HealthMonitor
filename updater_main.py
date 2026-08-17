@@ -6,6 +6,7 @@ updater_main.py
 
 import argparse
 import ctypes
+import json
 import os
 import shutil
 import subprocess
@@ -113,24 +114,55 @@ def _restore(target_dir: Path, name: str, old: Path, log_path):
         _log(log_path, f"restore {name} failed: {e}")
 
 
-def _cleanup_staging(staging: Path, log_path):
+def _delete_removed(target_dir: Path, removed_path, log_path):
+    """依 removed 清單刪除 target_dir 內的 rel 檔案（merge-copy 不會自動刪）。"""
+    if not removed_path or not Path(removed_path).is_file():
+        return
     try:
-        for _entry in staging.iterdir():
-            if _entry.name == Path(sys.executable).name:
-                continue
-            try:
-                if _entry.is_file():
-                    _entry.unlink()
-                elif _entry.is_dir():
-                    shutil.rmtree(str(_entry), ignore_errors=True)
-            except Exception:
-                pass
+        removed = json.loads(Path(removed_path).read_text(encoding="utf-8"))
     except Exception as e:
-        _log(log_path, f"cleanup failed: {e}")
-    try:
-        staging.rmdir()
-    except Exception:
-        pass
+        _log(log_path, f"read removed list failed: {e}")
+        return
+    for rel in removed:
+        p = target_dir / rel
+        try:
+            if p.is_dir():
+                shutil.rmtree(str(p), ignore_errors=True)
+            else:
+                p.unlink(missing_ok=True)
+            _log(log_path, f"removed {rel}")
+        except Exception as e:
+            _log(log_path, f"remove {rel} failed: {e}")
+
+
+def _cleanup_staging(staging: Path, log_path):
+    """清整個 gtool_update_* temp_root（delta 路徑有 staging/+delta/ 兩層）。
+
+    staging 若是 tmp 根目錄本身（整包更新），直接清 staging；
+    若是子目錄（delta 更新，staging.name == "staging"），連同其父 temp_root 一起清。
+    執行中的 updater.exe（sys.executable）一律保留。
+    """
+    roots = [staging]
+    if staging.name == "staging" and staging.parent.name.startswith("gtool_update_"):
+        roots.append(staging.parent)
+    for root in roots:
+        try:
+            for _entry in root.iterdir():
+                if _entry.name == Path(sys.executable).name:
+                    continue
+                try:
+                    if _entry.is_file():
+                        _entry.unlink()
+                    elif _entry.is_dir():
+                        shutil.rmtree(str(_entry), ignore_errors=True)
+                except Exception:
+                    pass
+        except Exception as e:
+            _log(log_path, f"cleanup failed: {e}")
+        try:
+            root.rmdir()
+        except Exception:
+            pass
 
 
 def main():
@@ -139,6 +171,7 @@ def main():
     parser.add_argument("--new", required=True)
     parser.add_argument("--pid", type=int, required=True)
     parser.add_argument("--log", default=None)
+    parser.add_argument("--removed", default=None)
     args = parser.parse_args()
 
     log_path = args.log
@@ -164,6 +197,9 @@ def main():
                 _restore(target_dir, "GameTools_HealthMonitor.exe", exe_old, log_path)
             sys.exit(1)
 
+        # ── Phase 2.5: 清除 delta 標記為 removed 的檔案 ──
+        _delete_removed(target_dir, args.removed, log_path)
+
         # ── Phase 3: 清除備份 ──
         if have_internal_backup and internal_old.exists():
             shutil.rmtree(str(internal_old), ignore_errors=True)
@@ -184,5 +220,56 @@ def main():
         _cleanup_staging(staging, log_path)
 
 
+def _demo():
+    """self-check：驗證 _delete_removed 與 _cleanup_staging（含 temp_root 清理）。"""
+    import tempfile
+
+    tmp = Path(tempfile.mkdtemp(prefix="gtool_update_demo_"))
+    target = Path(tempfile.mkdtemp(prefix="target_"))
+    log = tmp / "updater.log"
+
+    # 佈置 staging 子目錄（模擬 delta 路徑：tmp/staging）
+    staging = tmp / "staging"
+    (staging / "_internal").mkdir(parents=True)
+    (staging / "_internal" / "app.dll").write_bytes(b"new")
+    (staging / "GameTools_HealthMonitor.exe").write_bytes(b"NEWMZ")
+    (staging / "updater.exe").write_bytes(b"UPD")
+
+    # 佈置 target：含將被 removed 的檔案與目錄
+    (target / "_internal").mkdir()
+    (target / "_internal" / "old_removed.dll").write_bytes(b"old")
+    (target / "_internal" / "keep.dll").write_bytes(b"old")
+    (target / "_internal" / "old_subdir").mkdir()
+    (target / "_internal" / "old_subdir" / "x.bin").write_bytes(b"x")
+    (target / "GameTools_HealthMonitor.exe").write_bytes(b"OLDMZ")
+    (target / "config.json").write_bytes(b"{}")
+
+    removed_file = tmp / "removed.json"
+    removed_file.write_text(json.dumps(["_internal/old_removed.dll", "_internal/old_subdir/x.bin", "_internal/old_subdir"]), encoding="utf-8")
+
+    # 模擬 swap（merge-copy）＋ _delete_removed
+    shutil.copytree(str(staging), str(target), dirs_exist_ok=True)
+    _delete_removed(target, removed_file, log)
+
+    assert (target / "GameTools_HealthMonitor.exe").read_bytes() == b"NEWMZ", "exe 未覆蓋"
+    assert (target / "_internal" / "app.dll").read_bytes() == b"new", "dll 未覆蓋"
+    assert (target / "_internal" / "keep.dll").read_bytes() == b"old", "keep.dll 不應被動"
+    assert not (target / "_internal" / "old_removed.dll").exists(), "removed 檔未刪除"
+    assert not (target / "_internal" / "old_subdir").exists(), "removed 目錄未刪除"
+    assert (target / "config.json").exists(), "旁置 config 應保留"
+
+    # _cleanup_staging 應清掉整個 temp_root（但保留執行中的 updater.exe 之名稱）
+    _cleanup_staging(staging, log)
+    assert not (tmp / "staging").exists() or (tmp / "staging" / "updater.exe").exists(), "staging 清理異常"
+    assert not (tmp / "removed.json").exists(), "temp_root 未清理 removed.json"
+
+    shutil.rmtree(str(target), ignore_errors=True)
+    shutil.rmtree(str(tmp), ignore_errors=True)
+    print("updater_main self-check OK")
+
+
 if __name__ == "__main__":
-    main()
+    if "--demo" in sys.argv:
+        _demo()
+    else:
+        main()

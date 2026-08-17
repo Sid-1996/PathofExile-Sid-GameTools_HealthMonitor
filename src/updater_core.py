@@ -7,6 +7,7 @@ updater_core.py
 """
 
 import os as _os
+import json
 import re
 import shutil
 import subprocess
@@ -43,6 +44,9 @@ class UpdateInfo:
     version: str
     download_url: str
     release_url: str
+    delta_url: str | None = None
+    delta_base_version: str | None = None
+    delta_bytes: int = 0
 
 
 # ── 版本解析 ──────────────────────────────────────────────
@@ -112,11 +116,26 @@ def check_for_update(current_version: str, allow_prerelease: bool = False) -> Up
     if latest <= current:
         return None
 
-    return UpdateInfo(
+    info = UpdateInfo(
         version=latest_text,
         download_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/download/v{latest_text}/{ASSET_NAME}"),
         release_url=(f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/tag/v{latest_text}"),
     )
+
+    # delta 資訊非必要：取得失敗一律退回整包更新，不能擋掉更新檢查。
+    try:
+        resp_delta = requests.get(_RAW_DELTA_URL, timeout=10)
+        resp_delta.raise_for_status()
+        delta_info = resp_delta.json()
+        # 用 _parse_version 比對（v 前綴 / -beta 後綴差異），不用字串 ==
+        if _parse_version(delta_info.get("version", "")) == latest and _parse_version(delta_info.get("base_version", "")) == current and delta_info.get("asset"):
+            info.delta_url = f"https://github.com/{_GITHUB_OWNER}/{_GITHUB_REPO}/releases/download/v{latest_text}/{delta_info['asset']}"
+            info.delta_base_version = delta_info["base_version"]
+            info.delta_bytes = int(delta_info.get("delta_bytes") or 0)
+    except Exception:
+        pass
+
+    return info
 
 
 # ── 下載 ──────────────────────────────────────────────────
@@ -227,6 +246,123 @@ def download_update(
         raise
 
 
+# ── 差異更新（delta）──────────────────────────────────────
+
+
+def _safe_extract(zip_path: Path, dest: Path) -> None:
+    """防 zip-slip 解壓 delta.zip。"""
+    dest = dest.resolve()
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        for name in zf.namelist():
+            if not (dest / name).resolve().is_relative_to(dest):
+                raise DeltaUpdateError("delta 壓縮檔包含非法路徑")
+        zf.extractall(dest)
+
+
+def apply_delta_to_staging(install_dir: Path, staging: Path, delta_root: Path, manifest: dict) -> None:
+    """複製目前安裝樹到 staging，覆蓋 delta payload，刪除 removed 清單。"""
+    shutil.copytree(install_dir, staging, dirs_exist_ok=True)
+    payload_dir = delta_root / DELTA_PAYLOAD_DIR
+    files = manifest.get("files", {})
+    if payload_dir.is_dir():
+        for p in sorted(payload_dir.rglob("*")):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(payload_dir).as_posix()
+            dst = staging / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, dst)
+            expect = files.get(rel)
+            if expect is None or sha256_of_file(dst) != expect["sha256"]:
+                raise DeltaUpdateError(f"delta 檔案驗證失敗: {rel}")
+    for rel in manifest.get("removed", []):
+        (staging / rel).unlink(missing_ok=True)
+
+
+def verify_tree(root: Path, manifest: dict) -> bool:
+    """整棵 staging 樹對 manifest 全檔驗證（torn copy / 損壞的最後防線）。"""
+    files = manifest.get("files", {})
+    for rel, meta in files.items():
+        p = root / rel
+        try:
+            if not p.is_file() or p.stat().st_size != meta["size"]:
+                return False
+            if sha256_of_file(p) != meta["sha256"]:
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def download_delta_update(
+    info: UpdateInfo,
+    progress_cb=None,
+    cancel_event=None,
+    fallback_cb=None,
+) -> Path:
+    """下載 delta.zip → 建立 staging（複製目前安裝樹 + 覆蓋變更）。
+
+    僅「delta 不適用／驗證失敗」（DeltaUpdateError）自動退回整包；
+    網路／取消等一般錯誤直接往上拋，與整包下載行為一致。
+    回傳 staging 內的主 EXE 路徑（與 download_update 一致，apply_update 免改）。
+    """
+    if not info.delta_url:
+        return download_update(info, progress_cb, cancel_event)
+
+    _clean_stale_temp_dirs()
+    tmp_dir = Path(tempfile.mkdtemp(prefix=_TEMP_PREFIX))
+    try:
+        zip_path = tmp_dir / DELTA_ASSET_NAME
+        resp = requests.get(info.delta_url, timeout=60, stream=True)
+        resp.raise_for_status()
+
+        total = int(resp.headers.get("Content-Length", 0))
+        downloaded = 0
+        with open(zip_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=65536):
+                if cancel_event and cancel_event.is_set():
+                    raise RuntimeError("使用者取消下載")
+                f.write(chunk)
+                downloaded += len(chunk)
+                if progress_cb:
+                    progress_cb(downloaded, total)
+
+        delta_root = tmp_dir / "delta"
+        _safe_extract(zip_path, delta_root)
+
+        manifest_path = delta_root / MANIFEST_FILENAME
+        if not manifest_path.is_file():
+            raise DeltaUpdateError("delta 缺少 manifest.json")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if _parse_version(manifest.get("base_version", "")) != _parse_version(info.delta_base_version or ""):
+            raise DeltaUpdateError("delta 版本基準不符")
+
+        install_dir = current_exe_path().parent
+        if not (install_dir / "_internal").is_dir():
+            raise DeltaUpdateError("非 onedir 安裝")
+
+        staging = tmp_dir / "staging"
+        apply_delta_to_staging(install_dir, staging, delta_root, manifest)
+        if not verify_tree(staging, manifest):
+            raise DeltaUpdateError("staging 樹驗證失敗")
+
+        main_exe = staging / "GameTools_HealthMonitor.exe"
+        if not main_exe.exists() or main_exe.read_bytes()[:2] != b"MZ":
+            raise DeltaUpdateError("staging 內主程式驗證失敗")
+
+        # 記下 removed 清單，供 updater_main 在 swap 後刪除 target 內對應檔案
+        (tmp_dir / "removed.json").write_text(json.dumps(manifest.get("removed", [])), encoding="utf-8")
+        return main_exe
+    except DeltaUpdateError:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        if fallback_cb:
+            fallback_cb()
+        return download_update(info, progress_cb, cancel_event)
+    except Exception:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
+
+
 # ── 套用更新 ──────────────────────────────────────────────
 
 
@@ -250,6 +386,11 @@ def apply_update(new_exe_path: Path) -> None:
     ]
     launched = False
     tmp_dir = new_exe_path.parent
+    # delta 更新時 removed.json 在 staging 的上層 tmp_dir（整包更新則無此檔）
+    removed_path = tmp_dir.parent / "removed.json"
+    removed_arg = []
+    if removed_path.is_file():
+        removed_arg = ["--removed", str(removed_path)]
     try:
         for flags in creationflags_variants:
             try:
@@ -264,7 +405,8 @@ def apply_update(new_exe_path: Path) -> None:
                         str(_os.getpid()),
                         "--log",
                         str(debug_log_path),
-                    ],
+                    ]
+                    + removed_arg,
                     cwd=str(old_exe.parent),
                     creationflags=flags,
                     close_fds=True,
@@ -311,6 +453,40 @@ if __name__ == "__main__":
         removed_prev["files"].pop("b.txt")
         _, _, removed = diff_manifests(prev, removed_prev)
         assert removed == ["b.txt"], removed
+
+        # ── apply_delta_to_staging / verify_tree self-check ──
+        install = tmp / "install"
+        install.mkdir()
+        (install / "a.txt").write_text("a", encoding="utf-8")
+        (install / "b.txt").write_text("b", encoding="utf-8")
+        (install / "_internal").mkdir()
+        (install / "_internal" / "dll.dll").write_text("dllv1", encoding="utf-8")
+        staging = tmp / "staging"
+        delta_root = tmp / "delta"
+        delta_root.mkdir()
+        (delta_root / "files").mkdir(parents=True)
+        (delta_root / "files" / "_internal").mkdir(parents=True)
+        (delta_root / "files" / "b.txt").write_text("b2", encoding="utf-8")
+        (delta_root / "files" / "_internal" / "dll.dll").write_text("dllv2", encoding="utf-8")
+        manifest = build_manifest(install, "1.2.2", "1.2.1")
+        for rel in ("b.txt", "_internal/dll.dll"):
+            src = delta_root / "files" / rel
+            manifest["files"][rel]["size"] = src.stat().st_size
+            manifest["files"][rel]["sha256"] = sha256_of_file(src)
+        apply_delta_to_staging(install, staging, delta_root, manifest)
+        assert (staging / "b.txt").read_text(encoding="utf-8") == "b2", "payload 應覆蓋"
+        assert (staging / "_internal" / "dll.dll").read_text(encoding="utf-8") == "dllv2", "_internal 應覆蓋"
+        assert (staging / "a.txt").read_text(encoding="utf-8") == "a", "未變更應保留"
+        assert verify_tree(staging, manifest), "staging 應通過整樹驗證"
+        (staging / "b.txt").write_text("corrupt", encoding="utf-8")
+        assert not verify_tree(staging, manifest), "損壞應驗證失敗"
+
+        # ── removed 清單刪除 self-check ──
+        manifest["removed"] = ["_internal/stale.dll"]
+        (install / "_internal" / "stale.dll").write_text("stale", encoding="utf-8")
+        staging2 = tmp / "staging2"
+        apply_delta_to_staging(install, staging2, delta_root, manifest)
+        assert not (staging2 / "_internal" / "stale.dll").exists(), "removed 檔應刪除"
         print("updater_core self-check OK")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

@@ -32,7 +32,7 @@
     "adjust_interface_ui_main_title": "戰鬥狀態偵測 — 調整介面UI出現的判斷標準",
     "apply_settings": "✅ 應用設定",
     "reset_to_defaults": "🔄 重置預設值",
-    "cancel": "❌ 取消",
+    "cancel": "取消",
     "current_value": "當前值:",
     "new_value": "新值",
     "red_min_saturation": "紅色最小鮮豔度:",
@@ -256,7 +256,6 @@
     "download_complete": "✅ 下載完成！",
     "restart_to_apply": "current: {current}\nlatest: {latest}\n\n是否立即重啟套用更新？",
     "apply_update_failed": "套用更新失敗: {error}",
-    "cancel": "取消",
     "updater_source_mode_warning": "原始碼模式不支援自動更新，請手動下載",
     "about_title": "🎮 Path of Exile Sid輔助工具",
     "about_subtitle": "完全開源免費版 | GNU AGPL v3",
@@ -521,7 +520,7 @@
     "f6_fail_with_error": "F6 執行失敗 - {error}",
     "open_github_failed": "無法打開 GitHub 頁面：{error}",
     "open_sid_toolbox_failed": "無法打開 Sid流亡工具箱 頁面：{error}",
-"open_ecpay_failed": "無法打開 ECPay 頁面：{error}",
+    "open_ecpay_failed": "無法打開 ECPay 頁面：{error}",
     "open_paypal_failed": "無法打開 PayPal 頁面：{error}",
     "open_afdian_failed": "無法打開愛發電頁面：{error}",
     "inventory_grid_position_calc_failed": "無法計算格子位置",
@@ -579,7 +578,8 @@
     "skill_timer_auto_stopped": "技能計時器已自動停止",
     "skill_timer_auto_restarted": "技能計時器已自動恢復",
     "skill_timer_auto_restart_failed": "技能計時器恢復失敗: {error}",
-    "skill_timer_no_pyautogui": "⚠ 找不到 pyautogui，請執行： pip install pyautogui"
+    "skill_timer_no_pyautogui": "⚠ 找不到 pyautogui，請執行： pip install pyautogui",
+    "fallback_to_full_update": "差異更新不適用，改用完整更新…"
   },
   "en": {
     "window_title": "Sid Game Tools v{version} - Health Monitor + Auto Clear Inventory + Automation Tools",
@@ -614,7 +614,7 @@
     "adjust_interface_ui_main_title": "Combat State Detection — Adjust UI Appearance Criteria",
     "apply_settings": "✅ Apply Settings",
     "reset_to_defaults": "🔄 Reset to Defaults",
-    "cancel": "❌ Cancel",
+    "cancel": "Cancel",
     "current_value": "Current Value:",
     "new_value": "New Value",
     "red_min_saturation": "Red Min Saturation:",
@@ -838,7 +838,6 @@
     "download_complete": "✅ Download complete!",
     "restart_to_apply": "current: {current}\nlatest: {latest}\n\nRestart now to apply update?",
     "apply_update_failed": "Failed to apply update: {error}",
-    "cancel": "Cancel",
     "updater_source_mode_warning": "Auto-update is not available in source mode. Please download manually.",
     "about_title": "🎮 Path of Exile Sid Game Tools",
     "about_subtitle": "Fully Open Source Free Version | GNU AGPL v3",
@@ -1103,7 +1102,7 @@
     "f6_fail_with_error": "F6 failed - {error}",
     "open_github_failed": "Unable to open GitHub page: {error}",
     "open_sid_toolbox_failed": "Unable to open Sid Toolbox page: {error}",
-"open_ecpay_failed": "Unable to open ECPay page: {error}",
+    "open_ecpay_failed": "Unable to open ECPay page: {error}",
     "open_paypal_failed": "Unable to open PayPal page: {error}",
     "open_afdian_failed": "Unable to open Afdian page: {error}",
     "inventory_grid_position_calc_failed": "Unable to calculate grid positions",
@@ -1161,6 +1160,7 @@
     "skill_timer_auto_stopped": "Skill timer auto-stopped",
     "skill_timer_auto_restarted": "Skill timer auto-restored",
     "skill_timer_auto_restart_failed": "Skill timer restore failed: {error}",
-    "skill_timer_no_pyautogui": "⚠ pyautogui not found. Run: pip install pyautogui"
+    "skill_timer_no_pyautogui": "⚠ pyautogui not found. Run: pip install pyautogui",
+    "fallback_to_full_update": "Delta update unavailable, using full update..."
   }
 }

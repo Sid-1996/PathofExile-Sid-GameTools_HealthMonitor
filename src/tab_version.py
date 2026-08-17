@@ -272,7 +272,15 @@ class VersionTab:
 
         def _do_download():
             try:
-                exe_path = updater_core.download_update(info, progress_cb=_progress_cb, cancel_event=self._cancel_event)
+                if info.delta_url:
+                    exe_path = updater_core.download_delta_update(
+                        info,
+                        progress_cb=_progress_cb,
+                        cancel_event=self._cancel_event,
+                        fallback_cb=lambda: self._app.root.after(0, lambda: status_var.set(self._app.get_text("fallback_to_full_update"))),
+                    )
+                else:
+                    exe_path = updater_core.download_update(info, progress_cb=_progress_cb, cancel_event=self._cancel_event)
                 self._app.root.after(0, lambda: self._on_download_finished(exe_path, info))
             except RuntimeError as e:
                 if "使用者取消下載" in str(e):
