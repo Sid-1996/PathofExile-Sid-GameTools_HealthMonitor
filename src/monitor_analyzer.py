@@ -18,6 +18,7 @@ import numpy as np
 
 _last_printed_health = None
 
+
 def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_threshold):
     """Analyze health percentage from an image region using 18 equally-spaced detection positions."""
     global _last_printed_health
@@ -34,7 +35,7 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
         y_end = min(height, y_center + sample_height // 2)
         segment = img[y_start:y_end, :]
         is_health = is_health_color_fn(segment)
-        debug_info.append(f"血量檢測點{i+1} ({int(pos_percent*100)}%): Y範圍[{y_start}-{y_end}], 有血量色彩: {is_health}")
+        debug_info.append(f"血量檢測點{i + 1} ({int(pos_percent * 100)}%): Y範圍[{y_start}-{y_end}], 有血量色彩: {is_health}")
         if is_health:
             health_count += 1
 
@@ -69,8 +70,7 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
     return result
 
 
-def is_health_color(segment, red_saturation_min, red_value_min, red_h_range,
-                    green_h_range, green_saturation_min, green_value_min, health_threshold):
+def is_health_color(segment, red_saturation_min, red_value_min, red_h_range, green_h_range, green_saturation_min, green_value_min, health_threshold):
     """Check if a pixel segment is primarily health color (red/green)."""
     hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
 
@@ -94,8 +94,7 @@ def is_health_color(segment, red_saturation_min, red_value_min, red_h_range,
     return health_ratio > health_threshold
 
 
-def get_health_color_ratio(segment, red_saturation_min, red_value_min, red_h_range,
-                           green_h_range, green_saturation_min, green_value_min):
+def get_health_color_ratio(segment, red_saturation_min, red_value_min, red_h_range, green_h_range, green_saturation_min, green_value_min):
     """Get the proportion of health-colored pixels in a segment."""
     hsv = cv2.cvtColor(segment, cv2.COLOR_BGR2HSV)
 
@@ -120,6 +119,7 @@ def get_health_color_ratio(segment, red_saturation_min, red_value_min, red_h_ran
 
 _last_printed_mana = None
 
+
 def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
     """Analyze mana percentage from an image region using 18 equally-spaced detection positions."""
     global _last_printed_mana
@@ -136,7 +136,7 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
         y_end = min(height, y_center + sample_height // 2)
         segment = img[y_start:y_end, :]
         is_mana = is_mana_color_fn(segment)
-        debug_info.append(f"魔力檢測點{i+1} ({int(pos_percent*100)}%): Y範圍[{y_start}-{y_end}], 有魔力色彩: {is_mana}")
+        debug_info.append(f"魔力檢測點{i + 1} ({int(pos_percent * 100)}%): Y範圍[{y_start}-{y_end}], 有魔力色彩: {is_mana}")
         if is_mana:
             mana_count += 1
 
@@ -207,13 +207,12 @@ def get_main_color(img):
     return f"RGB({dominant_color[2]}, {dominant_color[1]}, {dominant_color[0]})"
 
 
-def check_triggers(health_percent, mana_percent, config, last_trigger_times,
-                   get_text_fn, is_interface_ui_visible_fn, window_title,
-                   interface_ui_region, interface_ui_screenshot):
+def check_triggers(health_percent, mana_percent, config, last_trigger_times, get_text_fn, is_interface_ui_visible_fn, window_title, interface_ui_region, interface_ui_screenshot):
     """檢查當前應該觸發哪個設定（優先顯示最低百分比的設定）"""
     if interface_ui_region and interface_ui_screenshot is not None:
         try:
             import pygetwindow as gw
+
             windows = gw.getWindowsWithTitle(window_title)
             if windows:
                 game_window = windows[0]
@@ -227,51 +226,62 @@ def check_triggers(health_percent, mana_percent, config, last_trigger_times,
     health_settings = []
     mana_settings = []
 
-    for setting in config.get('settings', []):
-        setting_type = setting.get('type', 'HP')
-        if setting_type == 'HP':
+    for setting in config.get("settings", []):
+        setting_type = setting.get("type", "HP")
+        if setting_type == "HP":
             health_settings.append(setting)
         else:
             mana_settings.append(setting)
 
-    health_settings.sort(key=lambda x: x['percent'])
-    mana_settings.sort(key=lambda x: x['percent'])
+    health_settings.sort(key=lambda x: x["percent"])
+    mana_settings.sort(key=lambda x: x["percent"])
 
     if health_settings:
         for setting in health_settings:
-            if health_percent <= setting['percent']:
-                cooldown = setting.get('cooldown', 500)
-                last_trigger = last_trigger_times.get(setting['percent'], 0)
+            if health_percent <= setting["percent"]:
+                cooldown = setting.get("cooldown", 500)
+                last_trigger = last_trigger_times.get(setting["percent"], 0)
                 current_time = time.time()
                 if current_time - last_trigger >= cooldown / 1000:
-                    return get_text_fn("trigger_health").format(percent=setting['percent'], key=setting['key'])
+                    return get_text_fn("trigger_health").format(percent=setting["percent"], key=setting["key"])
                 else:
                     remaining = cooldown - (current_time - last_trigger) * 1000
-                    return get_text_fn("cooldown_health").format(percent=setting['percent'], key=setting['key'], remaining=f"{remaining:.0f}")
+                    return get_text_fn("cooldown_health").format(percent=setting["percent"], key=setting["key"], remaining=f"{remaining:.0f}")
 
     if mana_percent is not None and mana_settings:
         for setting in mana_settings:
-            if mana_percent <= setting['percent']:
-                cooldown = setting.get('cooldown', 500)
+            if mana_percent <= setting["percent"]:
+                cooldown = setting.get("cooldown", 500)
                 last_trigger = last_trigger_times.get(f"mana_{setting['percent']}", 0)
                 current_time = time.time()
                 if current_time - last_trigger >= cooldown / 1000:
-                    return get_text_fn("trigger_mana").format(percent=setting['percent'], key=setting['key'])
+                    return get_text_fn("trigger_mana").format(percent=setting["percent"], key=setting["key"])
                 else:
                     remaining = cooldown - (current_time - last_trigger) * 1000
-                    return get_text_fn("cooldown_mana").format(percent=setting['percent'], key=setting['key'], remaining=f"{remaining:.0f}")
+                    return get_text_fn("cooldown_mana").format(percent=setting["percent"], key=setting["key"], remaining=f"{remaining:.0f}")
 
     return get_text_fn("normal")
 
 
-def trigger_actions(health_percent, mana_percent, config, last_trigger_times,
-                    multi_trigger, add_status_message_fn, get_text_fn,
-                    is_interface_ui_visible_fn, press_key_sequence_fn,
-                    window_title, interface_ui_region, interface_ui_screenshot):
+def trigger_actions(
+    health_percent,
+    mana_percent,
+    config,
+    last_trigger_times,
+    multi_trigger,
+    add_status_message_fn,
+    get_text_fn,
+    is_interface_ui_visible_fn,
+    press_key_sequence_fn,
+    window_title,
+    interface_ui_region,
+    interface_ui_screenshot,
+):
     """根據血量/魔力百分比觸發對應的快捷鍵動作，優先處理低百分比設定"""
     if interface_ui_region and interface_ui_screenshot is not None:
         try:
             import pygetwindow as gw
+
             windows = gw.getWindowsWithTitle(window_title)
             if windows:
                 game_window = windows[0]
@@ -290,32 +300,32 @@ def trigger_actions(health_percent, mana_percent, config, last_trigger_times,
     health_settings = []
     mana_settings = []
 
-    for setting in config.get('settings', []):
-        setting_type = setting.get('type', 'HP')
-        if setting_type == 'HP':
+    for setting in config.get("settings", []):
+        setting_type = setting.get("type", "HP")
+        if setting_type == "HP":
             health_settings.append(setting)
         else:
             mana_settings.append(setting)
 
-    health_settings.sort(key=lambda x: x['percent'])
-    mana_settings.sort(key=lambda x: x['percent'])
+    health_settings.sort(key=lambda x: x["percent"])
+    mana_settings.sort(key=lambda x: x["percent"])
 
     if health_settings:
         for setting in health_settings:
-            if health_percent <= setting['percent']:
-                cooldown = setting.get('cooldown', 500)
-                last_trigger = last_trigger_times.get(setting['percent'], 0)
+            if health_percent <= setting["percent"]:
+                cooldown = setting.get("cooldown", 500)
+                last_trigger = last_trigger_times.get(setting["percent"], 0)
                 current_time = time.time()
                 time_diff = current_time - last_trigger
 
                 print(f" 血量觸發檢查: {health_percent}% <= {setting['percent']}% (設定閾值)")
-                print(f" 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown/1000:.1f}秒")
+                print(f" 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown / 1000:.1f}秒")
 
                 if time_diff >= cooldown / 1000:
                     try:
                         print(f"[OK] 準備觸發: 血量{setting['percent']}%, 按鍵{setting['key']}")
-                        add_status_message_fn(get_text_fn("health_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
-                        press_key_sequence_fn(setting['key'], setting['percent'])
+                        add_status_message_fn(get_text_fn("health_low_triggered").format(percent=setting["percent"], key=setting["key"]), "monitor")
+                        press_key_sequence_fn(setting["key"], setting["percent"])
                         print(f" 已完成按鍵序列: {setting['key']}")
                     except Exception as e:
                         print(f"[ERROR] 按鍵觸發失敗: {e}")
@@ -331,14 +341,14 @@ def trigger_actions(health_percent, mana_percent, config, last_trigger_times,
 
     if mana_percent is not None and mana_settings:
         for setting in mana_settings:
-            if mana_percent <= setting['percent']:
-                cooldown = setting.get('cooldown', 500)
+            if mana_percent <= setting["percent"]:
+                cooldown = setting.get("cooldown", 500)
                 last_trigger = last_trigger_times.get(f"mana_{setting['percent']}", 0)
                 current_time = time.time()
                 if current_time - last_trigger >= cooldown / 1000:
                     try:
-                        add_status_message_fn(get_text_fn("mana_low_triggered").format(percent=setting['percent'], key=setting['key']), "monitor")
-                        press_key_sequence_fn(setting['key'], f"mana_{setting['percent']}")
+                        add_status_message_fn(get_text_fn("mana_low_triggered").format(percent=setting["percent"], key=setting["key"]), "monitor")
+                        press_key_sequence_fn(setting["key"], f"mana_{setting['percent']}")
                     except Exception:
                         pass
                 else:
@@ -355,3 +365,20 @@ def interruptible_sleep(duration, is_monitoring_fn, interval=0.01):
     start_time = time.time()
     while is_monitoring_fn() and (time.time() - start_time) < duration:
         time.sleep(interval)
+
+
+if __name__ == "__main__":
+    # ponytail: 合成影像 + stub callbacks 驗證分析邏輯
+    full = np.full((100, 100, 3), (0, 0, 255), dtype=np.uint8)  # 全紅 = 滿血
+    empty = np.zeros((100, 100, 3), dtype=np.uint8)  # 全黑 = 空血
+    assert analyze_health(full, lambda s: True, lambda s: 1.0, 0.5) == 100.0
+    assert analyze_health(empty, lambda s: False, lambda s: 0.0, 0.5) == 0.0
+    assert analyze_mana(full, lambda s: False, lambda s: 0.0) == 0.0
+
+    def always_true():
+        return True
+
+    start = time.time()
+    interruptible_sleep(0.05, always_true)
+    assert time.time() - start >= 0.04, "interruptible_sleep did not sleep"
+    print("monitor_analyzer self-check OK")

@@ -1,6 +1,7 @@
 """
 Capture utility functions extracted from health_monitor.py.
 """
+
 import os
 import threading
 import mss
@@ -12,6 +13,7 @@ from utils import get_app_dir
 
 try:
     import cv2
+
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
@@ -20,12 +22,14 @@ except ImportError:
 class _MssSingleton:
     _local = threading.local()
     _lock = threading.Lock()
+
     def __enter__(self):
-        if not hasattr(self._local, 'instance'):
+        if not hasattr(self._local, "instance"):
             with self._lock:
-                if not hasattr(self._local, 'instance'):
+                if not hasattr(self._local, "instance"):
                     self._local.instance = mss.mss()
         return self._local.instance
+
     def __exit__(self, *args):
         pass
 
@@ -70,3 +74,24 @@ def load_screenshot_from_file(filename, subdir="screenshots"):
     if os.path.exists(path):
         return Image.open(path)
     return None
+
+
+if __name__ == "__main__":
+    import tempfile
+
+    tmp = tempfile.mkdtemp()
+    old_app_dir = get_app_dir
+    try:
+
+        def get_app_dir():  # noqa: F811
+            return tmp
+
+        img = Image.new("RGB", (8, 8), (255, 0, 0))
+        path = save_screenshot(img, "t.png")
+        assert os.path.exists(path), "save_screenshot failed"
+        loaded = load_screenshot_from_file("t.png")
+        assert loaded is not None and loaded.size == (8, 8), "roundtrip failed"
+        assert load_screenshot_from_file("missing.png") is None, "missing file -> None"
+    finally:
+        get_app_dir = old_app_dir  # noqa: F811
+    print("capture_utils self-check OK")

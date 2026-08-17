@@ -18,7 +18,7 @@ except ImportError:
 
 def get_app_dir():
     """獲取應用程式目錄，適用於開發環境和打包後的exe"""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # 如果是打包後的exe
         return os.path.dirname(sys.executable)
     else:
@@ -35,15 +35,15 @@ def load_language_packs():
         print(f"[DEBUG] 語言包載入 - 檔案路徑: {language_file}")
         print(f"[DEBUG] 語言包載入 - 檔案存在: {os.path.exists(language_file)}")
 
-        with open(language_file, 'r', encoding='utf-8') as f:
+        with open(language_file, "r", encoding="utf-8") as f:
             language_packs = json.load(f)
 
         print(f"[DEBUG] 語言包載入成功 - 可用語言: {list(language_packs.keys())}")
-        if 'zh-tw' in language_packs:
+        if "zh-tw" in language_packs:
             print(f"[DEBUG] zh-tw 語言包包含的鍵數量: {len(language_packs['zh-tw'])}")
-            sample_keys = ['tab_health_monitor', 'window_title', 'language']
+            sample_keys = ["tab_health_monitor", "window_title", "language"]
             for key in sample_keys:
-                if key in language_packs['zh-tw']:
+                if key in language_packs["zh-tw"]:
                     print(f"[DEBUG] zh-tw['{key}'] = '{language_packs['zh-tw'][key]}'")
                 else:
                     print(f"[DEBUG] zh-tw 缺少鍵: {key}")
@@ -62,12 +62,9 @@ LANGUAGE_PACKS = load_language_packs()
 class LanguageManager:
     """語言管理器"""
 
-    def __init__(self, default_language='zh-tw'):
+    def __init__(self, default_language="zh-tw"):
         self.current_language = default_language
-        self.language_display_map = {
-            "繁體中文": "zh-tw",
-            "English": "en"
-        }
+        self.language_display_map = {"繁體中文": "zh-tw", "English": "en"}
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
 
     def get_text(self, key):
@@ -75,9 +72,9 @@ class LanguageManager:
         try:
             result = LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
             # Format window_title with current version
-            if key == 'window_title':
+            if key == "window_title":
                 result = result.format(version=APP_VERSION)
-            if key in ['window_title', 'tab_health_monitor', 'control_panel']:
+            if key in ["window_title", "tab_health_monitor", "control_panel"]:
                 print(f"[DEBUG] get_text('{key}') -> '{result}' (語言: {self.current_language})")
             return result
         except Exception:
@@ -142,3 +139,24 @@ def get_current_language():
 def set_current_language(language_code):
     """設定當前語言代碼"""
     return get_language_manager().change_language(language_code)
+
+
+if __name__ == "__main__":
+    import tempfile
+
+    tmp = tempfile.mkdtemp()
+    with open(os.path.join(tmp, "language_packs.json"), "w", encoding="utf-8") as f:
+        json.dump({"zh-tw": {"hello": "哈囉"}, "en": {"hello": "hello"}}, f)
+
+    old_app_dir = get_app_dir
+    try:
+
+        def get_app_dir():  # noqa: F811
+            return tmp
+
+        packs = load_language_packs()
+        assert packs.get("zh-tw", {}).get("hello") == "哈囉", "zh-tw lookup failed"
+        assert packs.get("en", {}).get("hello") == "hello", "en lookup failed"
+    finally:
+        get_app_dir = old_app_dir  # noqa: F811
+    print("language_system self-check OK")

@@ -11,8 +11,7 @@ All functions are pure (no tkinter dependency).
 import numpy as np
 
 
-def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions,
-                            inventory_region, skip_slots=None, current_slot=None):
+def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots=None, current_slot=None):
     """檢查背包是否需要清空 - 檢查60個格子，可選擇跳過指定格子和之前的格子"""
     if not empty_inventory_colors or not inventory_grid_positions:
         return False, []
@@ -28,8 +27,8 @@ def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions
         if i >= len(empty_inventory_colors):
             continue
 
-        img_x = pos_x - inventory_region['x']
-        img_y = pos_y - inventory_region['y']
+        img_x = pos_x - inventory_region["x"]
+        img_y = pos_y - inventory_region["y"]
 
         if 0 <= img_x < img.shape[1] and 0 <= img_y < img.shape[0]:
             x1 = max(0, img_x - 10)
@@ -51,13 +50,9 @@ def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions
     return len(occupied_slots) > 0, occupied_slots
 
 
-def find_inventory_items(img, empty_inventory_colors, inventory_grid_positions,
-                          inventory_region, skip_slots=None, current_slot=None):
+def find_inventory_items(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots=None, current_slot=None):
     """分析圖片並找到有物品的格子位置"""
-    _, occupied_indices = should_clear_inventory(
-        img, empty_inventory_colors, inventory_grid_positions,
-        inventory_region, skip_slots, current_slot
-    )
+    _, occupied_indices = should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots, current_slot)
     occupied_positions = []
     for index in occupied_indices:
         if index < len(inventory_grid_positions):
@@ -70,10 +65,10 @@ def calculate_inventory_grid_positions(inventory_region, grid_offset_x=0, grid_o
     if not inventory_region:
         return []
 
-    region_width = inventory_region['width']
-    region_height = inventory_region['height']
-    region_x = inventory_region['x']
-    region_y = inventory_region['y']
+    region_width = inventory_region["width"]
+    region_height = inventory_region["height"]
+    region_x = inventory_region["x"]
+    region_y = inventory_region["y"]
 
     cols = 12
     rows = 5
@@ -93,3 +88,13 @@ def calculate_inventory_grid_positions(inventory_region, grid_offset_x=0, grid_o
             positions.append((abs_x, abs_y))
 
     return positions
+
+
+if __name__ == "__main__":
+    region = {"x": 0, "y": 0, "width": 120, "height": 50}
+    positions = calculate_inventory_grid_positions(region)
+    assert len(positions) == 60, f"expected 60 slots, got {len(positions)}"
+    assert positions[0] == (5, 5), f"first slot {positions[0]}"
+    assert positions[59] == (115, 45), f"last slot {positions[59]}"
+    assert calculate_inventory_grid_positions(None) == [], "None region -> []"
+    print("inventory_utils self-check OK")

@@ -237,3 +237,11 @@ def apply_update(new_exe_path: Path) -> None:
     finally:
         if not launched:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    assert _parse_version("1.2.2") > _parse_version("1.2.2-beta"), "stable must beat pre-release"
+    assert _parse_version("v1.2.1") == _parse_version("1.2.1"), "v prefix must be stripped"
+    assert _parse_version("1.2.2-beta") > _parse_version("1.2.1"), "newer pre-release beats older"
+    assert _parse_version("") == (0,), "empty version -> (0,)"
+    print("updater_core self-check OK")

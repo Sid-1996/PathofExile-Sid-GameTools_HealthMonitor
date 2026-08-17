@@ -13,15 +13,17 @@ from utils import get_app_dir
 class ConfigManager:
     """配置管理器"""
 
-    def __init__(self, config_filename="health_monitor_config.json"):
-        self.config_file = os.path.join(get_app_dir(), config_filename)
+    def __init__(self, config_filename="health_monitor_config.json", config_path=None):
+        # ponytail: config_path 供測試注入暫存路徑，預設行為不變
+        base_dir = config_path if config_path else get_app_dir()
+        self.config_file = os.path.join(base_dir, config_filename)
         self.config = {}
 
     def load_config(self):
         """載入設定檔案"""
         try:
             if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
                 return True, "設定檔案載入成功"
             else:
@@ -38,17 +40,18 @@ class ConfigManager:
                 self.config = config_data
 
             # 在保存前創建備份，防止配置文件被破壞
-            backup_file = self.config_file + '.backup'
+            backup_file = self.config_file + ".backup"
             if os.path.exists(self.config_file):
                 try:
                     import shutil
+
                     shutil.copy2(self.config_file, backup_file)
                     print(f"[DEBUG] 配置文件備份已創建: {backup_file}")
                 except Exception as backup_error:
                     print(f"[WARN] 創建備份失敗: {backup_error}")
 
             # 保存配置文件
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
 
             print(f"[DEBUG] 配置文件已保存: {self.config_file}")
@@ -58,10 +61,11 @@ class ConfigManager:
             print(f"[ERROR] {error_msg}")
 
             # 嘗試從備份恢復
-            backup_file = self.config_file + '.backup'
+            backup_file = self.config_file + ".backup"
             if os.path.exists(backup_file):
                 try:
                     import shutil
+
                     shutil.copy2(backup_file, self.config_file)
                     print("[WARN] 已從備份恢復配置文件")
                     return False, f"{error_msg} - 已從備份恢復"
@@ -86,11 +90,11 @@ class ConfigManager:
     def get_region_settings(self):
         """獲取區域設定"""
         return {
-            'region': self.config.get('region'),
-            'mana_region': self.config.get('mana_region'),
-            'inventory_region': self.config.get('inventory_region'),
-            'inventory_ui_region': self.config.get('inventory_ui_region'),
-            'interface_ui_region': self.config.get('interface_ui_region')
+            "region": self.config.get("region"),
+            "mana_region": self.config.get("mana_region"),
+            "inventory_region": self.config.get("inventory_region"),
+            "inventory_ui_region": self.config.get("inventory_ui_region"),
+            "interface_ui_region": self.config.get("interface_ui_region"),
         }
 
     def set_region_settings(self, regions):
@@ -102,11 +106,11 @@ class ConfigManager:
     def get_inventory_settings(self):
         """獲取背包設定"""
         return {
-            'empty_inventory_colors': self.config.get('empty_inventory_colors', []),
-            'inventory_grid_positions': self.config.get('inventory_grid_positions', []),
-            'grid_offset_x': self.config.get('grid_offset_x', 0),
-            'grid_offset_y': self.config.get('grid_offset_y', 0),
-            'excluded_inventory_slots': self.config.get('excluded_inventory_slots', [])
+            "empty_inventory_colors": self.config.get("empty_inventory_colors", []),
+            "inventory_grid_positions": self.config.get("inventory_grid_positions", []),
+            "grid_offset_x": self.config.get("grid_offset_x", 0),
+            "grid_offset_y": self.config.get("grid_offset_y", 0),
+            "excluded_inventory_slots": self.config.get("excluded_inventory_slots", []),
         }
 
     def set_inventory_settings(self, settings):
@@ -117,22 +121,22 @@ class ConfigManager:
 
     def get_trigger_settings(self):
         """獲取觸發設定"""
-        return self.config.get('settings', [])
+        return self.config.get("settings", [])
 
     def set_trigger_settings(self, settings):
         """設定觸發設定"""
-        self.config['settings'] = settings
+        self.config["settings"] = settings
 
     def get_ui_settings(self):
         """獲取UI設定"""
         return {
-            'language': self.config.get('language', 'zh-tw'),
-            'always_on_top': self.config.get('always_on_top', False),
-            'preview_enabled': self.config.get('preview_enabled', True),
-            'multi_trigger': self.config.get('multi_trigger', False),
-            'last_selected_tab': self.config.get('last_selected_tab', 0),
-            'window_geometry': self.config.get('window_geometry'),
-            'window_title': self.config.get('window_title', '')
+            "language": self.config.get("language", "zh-tw"),
+            "always_on_top": self.config.get("always_on_top", False),
+            "preview_enabled": self.config.get("preview_enabled", True),
+            "multi_trigger": self.config.get("multi_trigger", False),
+            "last_selected_tab": self.config.get("last_selected_tab", 0),
+            "window_geometry": self.config.get("window_geometry"),
+            "window_title": self.config.get("window_title", ""),
         }
 
     def set_ui_settings(self, settings):
@@ -149,8 +153,8 @@ class ConfigManager:
 
             backup_file = f"{self.config_file}.backup_{backup_suffix}"
 
-            with open(self.config_file, 'r', encoding='utf-8') as src:
-                with open(backup_file, 'w', encoding='utf-8') as dst:
+            with open(self.config_file, "r", encoding="utf-8") as src:
+                with open(backup_file, "w", encoding="utf-8") as dst:
                     dst.write(src.read())
 
             return True, f"設定檔案已備份至: {backup_file}"
@@ -163,8 +167,8 @@ class ConfigManager:
             if not os.path.exists(backup_file):
                 return False, f"備份檔案不存在: {backup_file}"
 
-            with open(backup_file, 'r', encoding='utf-8') as src:
-                with open(self.config_file, 'w', encoding='utf-8') as dst:
+            with open(backup_file, "r", encoding="utf-8") as src:
+                with open(self.config_file, "w", encoding="utf-8") as dst:
                     dst.write(src.read())
 
             # 重新載入設定
@@ -206,3 +210,19 @@ def get_config_value(key, default=None):
 def set_config_value(key, value):
     """設定配置值（全域便利函數）"""
     return get_config_manager().set_config_value(key, value)
+
+
+if __name__ == "__main__":
+    import tempfile
+
+    tmp = tempfile.mkdtemp()
+    cm = ConfigManager(config_path=tmp)
+    ok, _ = cm.load_config()
+    assert ok, "load_config on empty dir should succeed"
+    cm.set_config_value("language", "en")
+    ok, _ = cm.save_config()
+    assert ok, "save_config should succeed"
+    cm2 = ConfigManager(config_path=tmp)
+    ok, _ = cm2.load_config()
+    assert ok and cm2.get_config_value("language") == "en", "round-trip language=en failed"
+    print("config_manager self-check OK")
