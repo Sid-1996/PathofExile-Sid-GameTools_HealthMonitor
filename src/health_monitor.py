@@ -37,7 +37,7 @@ from utils import set_app_instance, setup_signal_handlers, setup_exception_handl
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
-from ui_theme import setup_theme, BG as UI_BG, SUCCESS, ERROR
+from ui_theme import setup_theme, BG as UI_BG, SUCCESS, ERROR, FG_MUTED
 from app_state import AppState
 from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
@@ -1707,11 +1707,11 @@ class HealthMonitor:
                 recorded_count = len([c for c in self.inventory_tab.empty_inventory_colors if c != (0, 0, 0)])
                 self.inventory_tab.empty_color_label.config(
                     text=self.get_text("recorded_colors_template").format(count=recorded_count),
-                    background="lightgreen",
+                    foreground=SUCCESS,
                 )
 
             if hasattr(self, "inventory_tab") and hasattr(self.inventory_tab, "inventory_ui_label") and self.inventory_tab.inventory_ui_region:
-                self.inventory_tab.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), background="lightgreen")
+                self.inventory_tab.inventory_ui_label.config(text=self.get_text("inventory_ui_recorded"), foreground=SUCCESS)
                 if hasattr(self.inventory_tab, "ui_preview_canvas"):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
@@ -1719,7 +1719,7 @@ class HealthMonitor:
                         self.inventory_tab.update_ui_preview()
 
             if hasattr(self.monitor_tab, "interface_ui_label") and self.interface_ui_region:
-                self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region, self.get_text), background="lightgreen")
+                self.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self.interface_ui_region, self.get_text), foreground=SUCCESS)
                 if hasattr(self.monitor_tab, "interface_ui_preview_canvas"):
                     if self._startup_phase:
                         self._startup_visual_refresh_pending = True
@@ -1860,12 +1860,12 @@ class HealthMonitor:
             if hasattr(self.monitor_tab, "region_label"):
                 self.monitor_tab.region_label.config(
                     text=get_region_text(self.config, self.get_text),
-                    background="lightgreen" if self.config.get("region") else "lightgray",
+                    foreground=SUCCESS if self.config.get("region") else FG_MUTED,
                 )
             if hasattr(self.monitor_tab, "mana_region_label"):
                 self.monitor_tab.mana_region_label.config(
                     text=get_mana_region_text(self.config, self.get_text),
-                    background="lightgreen" if self.config.get("mana_region") else "lightgray",
+                    foreground=SUCCESS if self.config.get("mana_region") else FG_MUTED,
                 )
 
             if hasattr(self.monitor_tab, "load_settings_to_tree"):

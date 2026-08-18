@@ -138,23 +138,23 @@ class InventoryTab:
                     recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
                     self.empty_color_label.config(
                         text=self._app.get_text("recorded_colors_template").format(count=recorded_count),
-                        background="lightgreen",
+                        foreground=SUCCESS,
                     )
                 else:
                     self.empty_color_label.config(
                         text=self._app.get_text("not_recorded"),
-                        background="lightgray",
+                        foreground=FG_MUTED,
                     )
             if hasattr(self, "inventory_ui_label"):
                 if self.inventory_ui_region and self.inventory_ui_screenshot is not None:
                     self.inventory_ui_label.config(
                         text=self._app.get_text("inventory_ui_recorded"),
-                        background="lightgreen",
+                        foreground=SUCCESS,
                     )
                 else:
                     self.inventory_ui_label.config(
                         text=self._app.get_text("not_recorded"),
-                        background="lightgray",
+                        foreground=FG_MUTED,
                     )
 
             # 更新重置按鈕
@@ -887,13 +887,13 @@ class InventoryTab:
         # 顏色顯示
         self.record_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("record_status"))
         self.record_status_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.empty_color_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG, relief="sunken")
+        self.empty_color_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG_MUTED, relief="sunken")
         self.empty_color_label.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 背包UI顯示
         self.inventory_ui_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("inventory_ui_status"))
         self.inventory_ui_status_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.inventory_ui_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG, relief="sunken")
+        self.inventory_ui_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG_MUTED, relief="sunken")
         self.inventory_ui_label.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 控制按鈕
@@ -1427,7 +1427,7 @@ class InventoryTab:
 
                 # 更新顯示
                 recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
-                self.empty_color_label.config(text=self._app.get_text("recorded_colors_template").format(count=recorded_count), background="lightgreen")
+                self.empty_color_label.config(text=self._app.get_text("recorded_colors_template").format(count=recorded_count), foreground=SUCCESS)
 
                 # 恢復主GUI視窗
                 self.restore_all_guis()
@@ -1695,7 +1695,7 @@ class InventoryTab:
                         self.inventory_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
                         # 更新UI顯示
-                        self.inventory_ui_label.config(text=self._app.get_text("inventory_ui_recorded"), background="lightgreen")
+                        self.inventory_ui_label.config(text=self._app.get_text("inventory_ui_recorded"), foreground=SUCCESS)
 
                         # 更新UI預覽
                         self.update_ui_preview()
@@ -1854,7 +1854,7 @@ class InventoryTab:
                         self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
                         # 更新UI顯示
-                        self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgreen")
+                        self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), foreground=SUCCESS)
 
                         # 更新介面UI預覽
                         self.update_interface_ui_preview()
@@ -1931,7 +1931,7 @@ class InventoryTab:
 
                 # 更新UI標籤狀態
                 if hasattr(self, "inventory_ui_label"):
-                    self.inventory_ui_label.config(text=self._app.get_text("inventory_ui_recorded"), background="lightgreen")
+                    self.inventory_ui_label.config(text=self._app.get_text("inventory_ui_recorded"), foreground=SUCCESS)
 
                 # 更新UI預覽
                 if hasattr(self, "ui_preview_canvas"):
@@ -1967,7 +1967,7 @@ class InventoryTab:
 
                 # 更新UI標籤狀態
                 if hasattr(self._app.monitor_tab, "interface_ui_label"):
-                    self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgreen")
+                    self._app.monitor_tab.interface_ui_label.config(text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), foreground=SUCCESS)
 
                 # 更新介面UI預覽
                 if hasattr(self._app.monitor_tab, "interface_ui_preview_canvas"):
