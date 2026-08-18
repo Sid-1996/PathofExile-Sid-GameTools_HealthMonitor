@@ -20,8 +20,8 @@ class StatusTab:
     def create_status_tab(self):
         main_frame = self.parent_frame
 
-        self.title_label = ttk.Label(main_frame, text=self._app.get_text("tool_execution_status"), font=("Microsoft YaHei", 20, "bold"))
-        self.title_label.pack(pady=(15, 35))
+        self.title_label = ttk.Label(main_frame, text=self._app.get_text("tool_execution_status"), style="Title.TLabel")
+        self.title_label.pack(pady=(15, 25))
 
         control_frame = ttk.Frame(main_frame)
         control_frame.pack(fill="x", pady=(0, 15))

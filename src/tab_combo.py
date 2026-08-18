@@ -10,6 +10,7 @@ import keyboard
 from ctypes import windll
 from skill_timer import SkillTimerModule
 from utils import Tooltip
+from ui_theme import BG
 
 SendMessageW = windll.user32.SendMessageW
 WM_KEYDOWN = 0x0100
@@ -32,14 +33,14 @@ class ComboTab:
     def create_combo_tab(self):
         main_frame = self.parent_frame
 
-        _combo_canvas = tk.Canvas(main_frame, highlightthickness=0)
+        _combo_canvas = tk.Canvas(main_frame, highlightthickness=0, bg=BG)
         _combo_scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=_combo_canvas.yview)
         _combo_scrollable = ttk.Frame(_combo_canvas)
 
         _combo_scrollable.bind("<Configure>", lambda e: _combo_canvas.configure(scrollregion=_combo_canvas.bbox("all")))
 
         _combo_canvas_window = _combo_canvas.create_window((0, 0), window=_combo_scrollable, anchor="nw")
-        _combo_canvas.configure(yscrollcommand=_combo_scrollbar.set)
+        _combo_canvas.configure(yscrollcommand=_combo_scrollbar.set, bg=BG)
 
         def _on_combo_canvas_resize(event):
             _combo_canvas.itemconfig(_combo_canvas_window, width=event.width)
@@ -51,7 +52,7 @@ class ComboTab:
         self.combo_canvas = _combo_canvas
         main_frame = _combo_scrollable
 
-        title_label = ttk.Label(main_frame, text=self._app.get_text("skill_combo_system_title"), font=("Microsoft YaHei", 20, "bold"))
+        title_label = ttk.Label(main_frame, text=self._app.get_text("skill_combo_system_title"), style="Title.TLabel")
         title_label.pack(pady=(15, 25))
 
         # 左右雙欄佈局

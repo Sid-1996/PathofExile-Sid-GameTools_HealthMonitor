@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from _version import __version__
 from utils import format_usage_time
+from ui_theme import BG, CARD_BG, FG, FG_MUTED
 
 CURRENT_VERSION = f"v{__version__}"
 
@@ -17,14 +18,14 @@ class AboutTab:
     def create_about_tab(self):
         main_frame = self.parent_frame
 
-        canvas = tk.Canvas(main_frame, bg="#f8f9fa", highlightthickness=0)
+        canvas = tk.Canvas(main_frame, bg=BG, highlightthickness=0)
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas, style="Card.TFrame")
 
         scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
         canvas_window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.configure(yscrollcommand=scrollbar.set, bg=BG)
 
         def _on_canvas_resize_about(event):
             canvas.itemconfig(canvas_window_id, width=event.width)
@@ -38,10 +39,10 @@ class AboutTab:
         header_frame = ttk.Frame(scrollable_frame, style="Card.TFrame")
         header_frame.pack(fill="x", padx=20, pady=(20, 10))
 
-        title_label = ttk.Label(header_frame, text=self._app.get_text("about_title"), font=("Microsoft YaHei", 24, "bold"), foreground="#2c3e50")
+        title_label = ttk.Label(header_frame, text=self._app.get_text("about_title"), font=("Microsoft YaHei", 24, "bold"), foreground=FG, background=CARD_BG)
         title_label.pack(pady=(10, 5))
 
-        subtitle_label = ttk.Label(header_frame, text=self._app.get_text("about_subtitle"), font=("Microsoft YaHei", 12), foreground="#7f8c8d")
+        subtitle_label = ttk.Label(header_frame, text=self._app.get_text("about_subtitle"), font=("Microsoft YaHei", 12), foreground=FG_MUTED, background=CARD_BG)
         subtitle_label.pack(pady=(0, 10))
 
         content_frame = ttk.Frame(scrollable_frame, style="Card.TFrame")

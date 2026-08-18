@@ -48,8 +48,8 @@ class VersionTab:
     def create_version_tab(self):
         main_frame = self.parent_frame
 
-        title_label = ttk.Label(main_frame, text=self._app.get_text("version_check_title"), font=("Microsoft YaHei", 18, "bold"))
-        title_label.pack(pady=(15, 35))
+        title_label = ttk.Label(main_frame, text=self._app.get_text("version_check_title"), style="Title.TLabel")
+        title_label.pack(pady=(15, 25))
 
         current_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("current_version_info"), padding="20")
         current_frame.pack(fill=tk.X, pady=(0, 20))

@@ -16,6 +16,12 @@ from image_utils import resize_and_center_image, get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, should_clear_inventory, find_inventory_items
 from capture_utils import _mss_singleton, capture_region_to_cv2
 from custom_dialogs import CustomMessageBox
+from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER
+
+# F3 清包期間 GUI 縮小尺寸（與主視窗 minsize 分離，僅清包流程使用）
+CLEAR_MIN_MINSIZE = (400, 350)
+CLEAR_MINIMIZED_WIDTH = 650
+CLEAR_MINIMIZED_HEIGHT = 500
 
 
 class InventoryTab:
@@ -63,6 +69,9 @@ class InventoryTab:
     def update_inventory_tab_language(self):  # noqa: C901 — linear per-widget hasattr guards, not worth splitting
         """更新一鍵清包分頁的語言"""
         try:
+            # 更新頁首標題
+            if getattr(self, "page_title_label", None):
+                self.page_title_label.config(text=self._app.get_text("inventory_title"))
             # 更新LabelFrame標題
             if getattr(self, "inventory_settings_frame", None):
                 self.inventory_settings_frame.config(text=self._app.get_text("inventory_settings"))
@@ -602,7 +611,7 @@ class InventoryTab:
 
             # 臨時移除最小尺寸限制，允許GUI縮小
             self.original_min_size = self._app.root.minsize()
-            self._app.root.minsize(400, 350)  # 設置允許縮小到500x450的最小尺寸
+            self._app.root.minsize(*CLEAR_MIN_MINSIZE)  # 清包期間允許縮到更小
 
             # 檢查GUI當前是否在前台
             try:
@@ -632,8 +641,8 @@ class InventoryTab:
             preview_min_height = 400  # 確保6行格子有足夠高度
 
             # 加上GUI其他控件的空間
-            minimized_width = max(preview_min_width, 650)  # 增加寬度確保預覽完整
-            minimized_height = max(preview_min_height, 500)  # 增加高度確保預覽和控件都可見
+            minimized_width = max(preview_min_width, CLEAR_MINIMIZED_WIDTH)  # 增加寬度確保預覽完整
+            minimized_height = max(preview_min_height, CLEAR_MINIMIZED_HEIGHT)  # 增加高度確保預覽和控件都可見
 
             # 智能計算位置，避免覆蓋背包區域，並確保背包預覽區域可見
             minimized_x, minimized_y = self.calculate_safe_gui_position_with_preview(game_window, minimized_width, minimized_height, screen_width, screen_height)
@@ -837,22 +846,32 @@ class InventoryTab:
         # 主框架
         main_frame = self.inventory_frame
 
+        # 頁首統一標題
+        self.page_title_label = ttk.Label(main_frame, text=self._app.get_text("inventory_title"), style="Title.TLabel")
+        self.page_title_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
         # 創建左右分欄佈局
         left_frame = ttk.Frame(main_frame)
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
 
         right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # 左欄內容可捲動，右側背包預覽固定不動
+        left_scroll = ScrollArea(left_frame)
+        self.left_scroll_canvas = left_scroll.canvas
+        left_scroll.pack()
+        left_content = left_scroll.frame
 
         # 設定列寬 - 調整左右比例，讓右側預覽區域更大
-        main_frame.columnconfigure(0, weight=1)  # 左側控制面板
-        main_frame.columnconfigure(1, weight=2)  # 右側預覽區域 (更大的權重)
-        main_frame.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(0, weight=2)  # 左側控制面板
+        main_frame.columnconfigure(1, weight=3)  # 右側預覽區域 (更大的權重)
+        main_frame.rowconfigure(1, weight=1)
 
         # === 左側區域：控制面板 ===
         # 背包設定區域
-        self.inventory_settings_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_settings"), padding="15")
-        self.inventory_settings_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        self.inventory_settings_frame = ttk.LabelFrame(left_content, text=self._app.get_text("inventory_settings"), padding="15")
+        self.inventory_settings_frame.pack(fill=tk.X, pady=(0, 15))
 
         # 框選背包區域
         self.select_inventory_region_btn = ttk.Button(self.inventory_settings_frame, text=self._app.get_text("select_inventory_region"), command=self.select_inventory_region)
@@ -868,18 +887,18 @@ class InventoryTab:
         # 顏色顯示
         self.record_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("record_status"))
         self.record_status_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.empty_color_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
+        self.empty_color_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG, relief="sunken")
         self.empty_color_label.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 背包UI顯示
         self.inventory_ui_status_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("inventory_ui_status"))
         self.inventory_ui_status_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.inventory_ui_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background="lightgray", relief="sunken")
+        self.inventory_ui_label = ttk.Label(self.inventory_settings_frame, text=self._app.get_text("not_recorded"), background=INPUT_BG, foreground=FG, relief="sunken")
         self.inventory_ui_label.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=2, padx=(10, 0))
 
         # 控制按鈕
-        self.control_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("control_panel"), padding="15")
-        self.control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        self.control_frame = ttk.LabelFrame(left_content, text=self._app.get_text("control_panel"), padding="15")
+        self.control_frame.pack(fill=tk.X, pady=(0, 15))
 
         self.test_clear_inventory_btn = ttk.Button(self.control_frame, text=self._app.get_text("test_clear_inventory"), command=self.test_inventory_clearing)
         self.test_clear_inventory_btn.grid(row=0, column=0, pady=2)
@@ -917,8 +936,8 @@ class InventoryTab:
         self.always_on_top_check.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=(5, 0))
 
         # 狀態顯示
-        self.status_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("status"), padding="15")
-        self.status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
+        self.status_frame = ttk.LabelFrame(left_content, text=self._app.get_text("status"), padding="15")
+        self.status_frame.pack(fill=tk.X, pady=(0, 15))
 
         self.inventory_f3_label = ttk.Label(self.status_frame, text=self._app.get_text("f3_hotkey"))
         self.inventory_f3_label.grid(row=0, column=0, sticky=tk.W, pady=2)
@@ -931,8 +950,8 @@ class InventoryTab:
         self.pause_status_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # F6取物座標設定
-        self.pickup_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("pickup_coordinates"), padding="10")
-        self.pickup_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.pickup_frame = ttk.LabelFrame(left_content, text=self._app.get_text("pickup_coordinates"), padding="10")
+        self.pickup_frame.pack(fill=tk.X, pady=(0, 15))
 
         # 座標設定按鈕
         self.setup_pickup_coordinates_btn = ttk.Button(self.pickup_frame, text=self._app.get_text("setup_pickup_coordinates"), command=self.setup_pickup_coordinates)
@@ -954,11 +973,11 @@ class InventoryTab:
         self.pickup_status_label.grid(row=2, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # UI截圖顯示區域
-        self.ui_preview_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("inventory_ui_screenshot"), padding="10")
-        self.ui_preview_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.ui_preview_frame = ttk.LabelFrame(left_content, text=self._app.get_text("inventory_ui_screenshot"), padding="10")
+        self.ui_preview_frame.pack(fill=tk.X, pady=(0, 15))
 
         # 創建一個Canvas來顯示UI截圖
-        self.ui_preview_canvas = tk.Canvas(self.ui_preview_frame, width=200, height=150, bg="lightgray", relief="sunken")
+        self.ui_preview_canvas = tk.Canvas(self.ui_preview_frame, width=200, height=150, bg=BG, highlightthickness=0, relief="sunken")
         self.ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         # 添加說明文字
@@ -990,7 +1009,7 @@ class InventoryTab:
         self.horizontal_label = ttk.Label(offset_frame, text=self._app.get_text("horizontal"))
         self.horizontal_label.grid(row=1, column=0, sticky=tk.W)
         ttk.Button(offset_frame, text="◀", width=3, command=lambda: self.adjust_grid_offset(-1, 0)).grid(row=1, column=1, padx=(5, 2))
-        self.offset_x_label = ttk.Label(offset_frame, text="0", width=4, relief="sunken")
+        self.offset_x_label = ttk.Label(offset_frame, text="0", width=4, relief="sunken", background=INPUT_BG, foreground=FG)
         self.offset_x_label.grid(row=1, column=2, padx=(2, 2))
         ttk.Button(offset_frame, text="▶", width=3, command=lambda: self.adjust_grid_offset(1, 0)).grid(row=1, column=3, padx=(2, 10))
 
@@ -998,14 +1017,14 @@ class InventoryTab:
         self.vertical_label = ttk.Label(offset_frame, text=self._app.get_text("vertical"))
         self.vertical_label.grid(row=1, column=4, sticky=tk.W)
         ttk.Button(offset_frame, text="▲", width=3, command=lambda: self.adjust_grid_offset(0, -1)).grid(row=1, column=5, padx=(5, 2))
-        self.offset_y_label = ttk.Label(offset_frame, text="0", width=4, relief="sunken")
+        self.offset_y_label = ttk.Label(offset_frame, text="0", width=4, relief="sunken", background=INPUT_BG, foreground=FG)
         self.offset_y_label.grid(row=1, column=6, padx=(2, 2))
         ttk.Button(offset_frame, text="▼", width=3, command=lambda: self.adjust_grid_offset(0, 1)).grid(row=1, column=7, padx=(2, 5))
 
         self.reset_offset_btn = ttk.Button(offset_frame, text=self._app.get_text("reset"), command=self.reset_grid_offset)
         self.reset_offset_btn.grid(row=1, column=8, padx=(10, 0))
 
-        self.inventory_preview_label = tk.Canvas(self.preview_frame, bg="lightgray", highlightthickness=0, relief="sunken", borderwidth=2, width=300, height=200)
+        self.inventory_preview_label = tk.Canvas(self.preview_frame, bg=BG, highlightthickness=1, highlightbackground=BORDER, relief="sunken", borderwidth=1, width=300, height=200)
         self.inventory_preview_label.grid(row=2, column=0, pady=(5, 0), sticky=(tk.N, tk.S, tk.W, tk.E))
         self._preview_placeholder = self.inventory_preview_label.create_text(10, 10, text=self._app.get_text("select_inventory_region_first"), anchor="nw", fill="gray")
         self.inventory_preview_label.bind("<Button-1>", self._on_preview_click)
@@ -1019,6 +1038,7 @@ class InventoryTab:
         self.preview_frame.columnconfigure(0, weight=1)
         self.preview_frame.rowconfigure(2, weight=1)  # 預覽圖片區域
         right_frame.rowconfigure(0, weight=1)
+        right_frame.columnconfigure(0, weight=1)
 
         # 初始化偏移標籤
         self.update_offset_labels()
@@ -2499,10 +2519,19 @@ class InventoryTab:
         self._app.save_config(show_message=False)
 
     def _on_preview_resize(self, event=None):
-        """Canvas 尺寸變更時重新縮放預覽"""
+        """Canvas 尺寸變更時重新縮放預覽（debounce 合併連鎖 Configure 事件）"""
         if not getattr(self, "_preview_has_image", False) or not hasattr(self, "_last_preview_img"):
             return
-        self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
+        try:
+            if getattr(self, "_preview_resize_after", None):
+                self._app.root.after_cancel(self._preview_resize_after)
+        except (RuntimeError, tk.TclError):
+            pass
+        self._preview_resize_after = self._app.root.after(100, self._render_preview_resize)
+
+    def _render_preview_resize(self):
+        if getattr(self, "_preview_has_image", False) and hasattr(self, "_last_preview_img"):
+            self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
 
     def _on_click_mode_changed(self):
         self._app.save_config(show_message=False)

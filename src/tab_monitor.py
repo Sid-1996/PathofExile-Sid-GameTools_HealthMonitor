@@ -28,6 +28,7 @@ from capture_utils import (
 from utils import Tooltip, get_app_dir
 from custom_dialogs import CustomMessageBox
 from monitor_analyzer import get_main_color
+from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER, ERROR
 
 
 def _validate_float_input(P):
@@ -152,18 +153,28 @@ class MonitorTab:
     def create_monitor_tab(self):
         main_frame = self.monitor_frame
 
+        # 頁首統一標題
+        self.page_title_label = ttk.Label(main_frame, text=self._app.get_text("monitor_title"), style="Title.TLabel")
+        self.page_title_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
         left_frame = ttk.Frame(main_frame)
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
 
         right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=0)
-        main_frame.rowconfigure(0, weight=1)
+        # 左欄內容可捲動，右欄即時狀態/預覽固定不動
+        left_scroll = ScrollArea(left_frame)
+        self.left_scroll_canvas = left_scroll.canvas
+        left_scroll.pack()
+        left_content = left_scroll.frame
 
-        self.window_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("game_window_settings"), padding="10")
-        self.window_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        main_frame.columnconfigure(0, weight=3)
+        main_frame.columnconfigure(1, weight=2)
+        main_frame.rowconfigure(1, weight=1)
+
+        self.window_frame = ttk.LabelFrame(left_content, text=self._app.get_text("game_window_settings"), padding="10")
+        self.window_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.game_window_label = ttk.Label(self.window_frame, text=self._app.get_text("game_window"))
         self.game_window_label.grid(row=0, column=0, sticky=tk.W, pady=2)
@@ -175,17 +186,19 @@ class MonitorTab:
 
         self.health_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("health_bar_region"))
         self.health_bar_region_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.region_label = ttk.Label(self.window_frame, text=get_region_text(self._app.config, self._app.get_text), background="lightgray", relief="sunken", padding=2)
+        self.region_label = ttk.Label(self.window_frame, text=get_region_text(self._app.config, self._app.get_text), background=INPUT_BG, foreground=FG, relief="sunken", padding=2)
         self.region_label.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.mana_bar_region_label = ttk.Label(self.window_frame, text=self._app.get_text("mana_bar_region"))
         self.mana_bar_region_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.mana_region_label = ttk.Label(self.window_frame, text=get_mana_region_text(self._app.config, self._app.get_text), background="lightgray", relief="sunken", padding=2)
+        self.mana_region_label = ttk.Label(self.window_frame, text=get_mana_region_text(self._app.config, self._app.get_text), background=INPUT_BG, foreground=FG, relief="sunken", padding=2)
         self.mana_region_label.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.interface_ui_region_label = ttk.Label(self.window_frame, text=self._app.get_text("interface_ui_region"))
         self.interface_ui_region_label.grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.interface_ui_label = ttk.Label(self.window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background="lightgray", relief="sunken", padding=2)
+        self.interface_ui_label = ttk.Label(
+            self.window_frame, text=get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text), background=INPUT_BG, foreground=FG, relief="sunken", padding=2
+        )
         self.interface_ui_label.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
 
         self.select_health_region_btn = ttk.Button(self.window_frame, text=self._app.get_text("select_health_region"), command=self.start_selection)
@@ -200,8 +213,8 @@ class MonitorTab:
 
         self.window_frame.columnconfigure(1, weight=1)
 
-        self.trigger_settings_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("trigger_settings"), padding="10")
-        self.trigger_settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.trigger_settings_frame = ttk.LabelFrame(left_content, text=self._app.get_text("trigger_settings"), padding="10")
+        self.trigger_settings_frame.pack(fill=tk.X, pady=(0, 10))
 
         add_frame = ttk.Frame(self.trigger_settings_frame)
         add_frame.grid(row=0, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -281,8 +294,8 @@ class MonitorTab:
 
         self.load_settings_to_tree()
 
-        self.control_frame = ttk.LabelFrame(left_frame, text=self._app.get_text("control_panel"), padding="10")
-        self.control_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.control_frame = ttk.LabelFrame(left_content, text=self._app.get_text("control_panel"), padding="10")
+        self.control_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.start_btn = ttk.Button(self.control_frame, text=self._app.get_text("start_monitoring"), command=self._app.start_monitoring)
         self.start_btn.grid(row=0, column=0, padx=(0, 5))
@@ -310,7 +323,7 @@ class MonitorTab:
 
         reminder_text = self._app.get_text("reminder_text")
 
-        self.reminder_label = ttk.Label(self.reminder_frame, text=reminder_text, font=("Arial", 9), foreground="red", justify=tk.LEFT, wraplength=400)
+        self.reminder_label = ttk.Label(self.reminder_frame, text=reminder_text, font=("Arial", 9), foreground=ERROR, justify=tk.LEFT, wraplength=520)
         self.reminder_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         language_text = self._app.get_text("language")
@@ -379,13 +392,17 @@ class MonitorTab:
         self.health_preview_frame = ttk.LabelFrame(self.preview_frame, text=self._app.get_text("health_preview"), padding="5")
         self.health_preview_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
 
-        self.preview_label = ttk.Label(self.health_preview_frame, text=self._app.get_text("select_health_region_first"), relief="sunken", background="lightgray", width=45, anchor="center")
+        self.preview_label = ttk.Label(
+            self.health_preview_frame, text=self._app.get_text("select_health_region_first"), relief="sunken", background=INPUT_BG, foreground=FG_MUTED, width=45, anchor="center"
+        )
         self.preview_label.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         self.mana_preview_frame = ttk.LabelFrame(self.preview_frame, text=self._app.get_text("mana_preview"), padding="5")
         self.mana_preview_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
 
-        self.mana_preview_label = ttk.Label(self.mana_preview_frame, text=self._app.get_text("select_mana_region_first"), relief="sunken", background="lightblue", width=45, anchor="center")
+        self.mana_preview_label = ttk.Label(
+            self.mana_preview_frame, text=self._app.get_text("select_mana_region_first"), relief="sunken", background=INPUT_BG, foreground=FG_MUTED, width=45, anchor="center"
+        )
         self.mana_preview_label.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         self.preview_frame.columnconfigure(0, weight=1)
@@ -400,13 +417,14 @@ class MonitorTab:
         interface_ui_preview_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
 
         self.interface_ui_preview_frame = interface_ui_preview_frame
-        self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg="lightgray", relief="sunken")
+        self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg=BG, highlightthickness=1, highlightbackground=BORDER, relief="sunken")
         self.interface_ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"), font=("", 7), foreground="gray")
         self.interface_ui_preview_hint.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
 
         right_frame.rowconfigure(1, weight=1)
+        right_frame.columnconfigure(0, weight=1)
 
         self.preview_size = (380, 280)
 
@@ -1631,6 +1649,8 @@ class MonitorTab:
         ttk.Button(button_frame, text=self._app.get_text("cancel"), command=adjust_window.destroy, width=10).grid(row=0, column=2)
 
     def update_monitor_tab_language(self):  # noqa: C901 -- intentionally linear widget refresh
+        if hasattr(self, "page_title_label"):
+            self.page_title_label.config(text=self._app.get_text("monitor_title"))
         if hasattr(self, "window_frame"):
             self.window_frame.config(text=self._app.get_text("game_window_settings"))
         if hasattr(self, "game_window_label"):

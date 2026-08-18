@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from _version import __version__
+from ui_theme import BG, CARD_BG, FG, FG_MUTED
 
 CURRENT_VERSION = f"v{__version__}"
 
@@ -14,7 +15,7 @@ class HelpTab:
         self.create_help_tab()
 
     def create_help_tab(self):
-        canvas = tk.Canvas(self.parent_frame, bg="#f8f9fa")
+        canvas = tk.Canvas(self.parent_frame, bg=BG)
         scrollbar = ttk.Scrollbar(self.parent_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas, style="Card.TFrame")
 
@@ -23,7 +24,7 @@ class HelpTab:
         scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
         canvas_window_id_help = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set, bg="#f8f9fa")
+        canvas.configure(yscrollcommand=scrollbar.set, bg=BG)
 
         def _on_canvas_resize_help(event):
             canvas.itemconfig(canvas_window_id_help, width=event.width)
@@ -42,10 +43,10 @@ class HelpTab:
         header_frame = ttk.Frame(scrollable_frame, style="Card.TFrame")
         header_frame.pack(fill="x", padx=20, pady=(20, 10))
 
-        title_label = ttk.Label(header_frame, text=self._app.get_text("poe_sid_tools_title"), font=("Microsoft YaHei", 24, "bold"), foreground="#2c3e50")
+        title_label = ttk.Label(header_frame, text=self._app.get_text("poe_sid_tools_title"), font=("Microsoft YaHei", 24, "bold"), foreground=FG, background=CARD_BG)
         title_label.pack(pady=(10, 5))
 
-        subtitle_label = ttk.Label(header_frame, text=self._app.get_text("opensource_subtitle"), font=("Microsoft YaHei", 12), foreground="#7f8c8d")
+        subtitle_label = ttk.Label(header_frame, text=self._app.get_text("opensource_subtitle"), font=("Microsoft YaHei", 12), foreground=FG_MUTED, background=CARD_BG)
         subtitle_label.pack(pady=(0, 10))
 
         video_frame = ttk.Frame(header_frame)

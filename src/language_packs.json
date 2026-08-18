@@ -602,7 +602,9 @@
     "skill_timer_auto_restarted": "技能計時器已自動恢復",
     "skill_timer_auto_restart_failed": "技能計時器恢復失敗: {error}",
     "skill_timer_no_pyautogui": "⚠ 找不到 pyautogui，請執行： pip install pyautogui",
-    "fallback_to_full_update": "差異更新不適用，改用完整更新…"
+    "fallback_to_full_update": "差異更新不適用，改用完整更新…",
+    "monitor_title": "⚡ 血魔監控",
+    "inventory_title": "🗑️ 一鍵清包"
   },
   "en": {
     "window_title": "Sid Game Tools v{version} - Health Monitor + Auto Clear Inventory + Automation Tools",
@@ -1207,6 +1209,8 @@
     "skill_timer_auto_restarted": "Skill timer auto-restored",
     "skill_timer_auto_restart_failed": "Skill timer restore failed: {error}",
     "skill_timer_no_pyautogui": "⚠ pyautogui not found. Run: pip install pyautogui",
-    "fallback_to_full_update": "Delta update unavailable, using full update..."
+    "fallback_to_full_update": "Delta update unavailable, using full update...",
+    "monitor_title": "⚡ Health Monitor",
+    "inventory_title": "🗑️ Auto Clear Inventory"
   }
 }
