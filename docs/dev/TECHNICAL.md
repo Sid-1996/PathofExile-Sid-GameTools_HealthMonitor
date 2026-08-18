@@ -2,7 +2,8 @@
 
 ## 環境
 
-- Python 3.13（開發機）；`pyproject.toml` target-version `py310`（相容下限）
+- Python 3.13（開發機與目標）；`pyproject.toml` target-version `py310`（相容下限）
+- 套件管理：**uv 全域環境**（無專案 venv）——`uv pip install --system -p 3.13`，開發機 `python` 指令統一為 3.13
 - 打包：PyInstaller onedir（`tools/build.py`，exe + `_internal/` 樹）
 - Lint/格式：ruff（line-length 200、select E/F/W/C90、mccabe 20）
 - 型別檢查：pyright（僅 `src/health_monitor.py`）
@@ -20,6 +21,8 @@
 | psutil | 子進程管理 |
 | pyautogui / pygetwindow | 按鍵/視窗控制 |
 | requests | 版本檢查、下載 |
+| ttkbootstrap | 深色主題（dracula-dark）、圓角 UI |
+| pywin32 (win32gui) | 視窗/前景視窗偵測 |
 
 ## 監控分析
 
