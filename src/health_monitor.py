@@ -37,6 +37,7 @@ from utils import set_app_instance, setup_signal_handlers, setup_exception_handl
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
+from ui_theme import setup_theme, BG as UI_BG
 from app_state import AppState
 from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
@@ -343,9 +344,19 @@ class HealthMonitor:
         # 初始化自訂對話框（替換 tkinter.messagebox）
         setup_custom_messagebox()
 
-        # 初始設定為中等大小的視窗
-        self.root.geometry("800x600")
-        self.root.minsize(650, 500)
+        # 套用統一深色 theme（必須在任何 ttk widget 建立之前）
+        setup_theme(self.root)
+
+        # 追蹤最後一次非最大化的一般幾何，供 window_state 持久化使用
+        self._last_normal_geometry = None
+        self._pending_restore_zoomed = False
+        self.root.bind("<Configure>", self._on_root_configure)
+
+        # 初始設定為固定尺寸視窗（依螢幕尺寸 clamp，避免高縮放螢幕被裁切）
+        default_w = min(1600, int(self.root.winfo_screenwidth() * 0.9))
+        default_h = min(900, int(self.root.winfo_screenheight() * 0.9))
+        self.root.geometry(f"{default_w}x{default_h}")
+        self.root.minsize(1000, 700)
         self.root.attributes("-alpha", 1.0)
 
         # 記錄應用程式啟動時間
@@ -593,6 +604,14 @@ class HealthMonitor:
                 print(f"{self.get_text('mouse_interrupt_error')} {e}")
                 time.sleep(1)  # 錯誤時稍作延遲
 
+    def _on_root_configure(self, event):
+        """追蹤最後一次非最大化的一般幾何，供存檔時取得正確的 window_geometry"""
+        try:
+            if self.root.state() != "zoomed" and event.widget is self.root:
+                self._last_normal_geometry = self.root.geometry()
+        except Exception:
+            pass
+
     def center_window(self):
         """將窗口置中於螢幕，如果沒有儲存的位置"""
         try:
@@ -614,9 +633,9 @@ class HealthMonitor:
 
             # 如果窗口還沒有正確的尺寸，使用預設尺寸
             if window_width <= 1:
-                window_width = 900
+                window_width = 1600
             if window_height <= 1:
-                window_height = 700
+                window_height = 900
 
             # 計算置中位置
             x = (screen_width - window_width) // 2
@@ -625,6 +644,10 @@ class HealthMonitor:
             # 確保位置不超出螢幕邊界
             x = max(0, x)
             y = max(0, y)
+
+            # 確保尺寸不超出螢幕
+            window_width = min(window_width, screen_width)
+            window_height = min(window_height, screen_height)
 
             # 設置窗口位置和尺寸
             self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -689,19 +712,8 @@ class HealthMonitor:
         self.about_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.about_frame, text=self.get_text("tab_about"))
 
-        # 綁定分頁切換事件來實現智能自適應視窗大小
+        # 綁定分頁切換事件（不再隨分頁調整視窗大小，固定統一尺寸）
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
-
-        # 分頁最小尺寸列表（以 tab index 為索引，與 notebook 分頁順序一致）
-        self.tab_min_sizes = [
-            (1000, 700),  # 0 血魔監控：左右分欄+設定區域，需要適中空間
-            (1200, 800),  # 1 一鍵清包：左側控制+右側預覽，需要較大空間
-            (1100, 650),  # 2 技能連段：3個連段區域橫向排列，需要寬度
-            (800, 600),  # 3 執行狀態：主要是文字顯示區域，較緊湊
-            (900, 650),  # 4 使用說明：卡片式佈局，中等空間
-            (750, 550),  # 5 版本檢查：簡單的版本資訊顯示，較小空間
-            (650, 500),  # 6 🚀 關於作者：卡片式按鈕佈局，緊湊空間
-        ]
 
         # 創建各分頁內容
         self.monitor_tab = MonitorTab(self, self.state, self.monitor_frame, self.notebook)
@@ -722,13 +734,10 @@ class HealthMonitor:
         self.update_ui_language()
 
     def on_tab_change(self, event):
-        """分頁切換事件處理 - 智能自適應視窗大小"""
+        """分頁切換事件處理 - 保存分頁狀態，不調整視窗大小"""
         try:
             # 獲取當前選中的分頁索引
             tab_index = self.notebook.index(self.notebook.select())
-
-            # 調整視窗大小以適應當前分頁
-            self.adjust_window_for_tab(tab_index)
 
             # 保存當前分頁到配置中
             self.config["last_selected_tab"] = tab_index
@@ -747,121 +756,15 @@ class HealthMonitor:
             print(f"{self.get_text('tab_switch_resize_error')} {e}")
 
     def adjust_window_for_tab(self, tab_index):
-        """根據分頁索引調整視窗大小 - 支持智能縮放"""
-        if not isinstance(tab_index, int) or not (0 <= tab_index < len(self.tab_min_sizes)):
-            return
-        tab_name = self.notebook.tab(tab_index, "text")
-
-        # 啟動階段且有已儲存的視窗幾何，只做最小尺寸保底，不覆蓋使用者設定
-        if self._startup_phase and "window_geometry" in self.config:
-            min_w, min_h = self.tab_min_sizes[tab_index]
-            try:
-                geo = self.root.geometry().split("+")[0].split("x")
-                cur_w, cur_h = int(geo[0]), int(geo[1])
-                if cur_w < min_w or cur_h < min_h:
-                    self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
-            except Exception:
-                pass
-            return
-        target_width, target_height = self.tab_min_sizes[tab_index]
-
-        # 嘗試動態計算實際最小尺寸
+        """確保視窗不小於最小尺寸；不再隨分頁縮放（固定統一尺寸策略）"""
         try:
-            dynamic_size = self.calculate_dynamic_tab_size(tab_index)
-            if dynamic_size:
-                dyn_width, dyn_height = dynamic_size
-                # 使用動態計算和預設值的較大者
-                target_width = max(target_width, dyn_width + 50)  # 添加50px緩衝
-                target_height = max(target_height, dyn_height + 100)  # 添加100px緩衝
-        except Exception as e:
-            print(f"{self.get_text('dynamic_size_calc_failed')} {e}")
-
-        # 獲取當前視窗大小和位置
-        current_geometry = self.root.geometry()
-        current_parts = current_geometry.split("+")
-        current_size = current_parts[0].split("x")
-        current_width = int(current_size[0])
-        current_height = int(current_size[1])
-
-        # 智能調整策略：
-        # 1. 如果目標尺寸大於當前尺寸，放大到目標尺寸
-        # 2. 如果目標尺寸小於當前尺寸且差距較大(>100px)，適度縮小
-        # 3. 保證不小於應用程式的最小尺寸
-
-        min_app_width, min_app_height = 650, 500  # 應用程式絕對最小尺寸
-
-        # 計算新尺寸
-        if target_width > current_width:
-            new_width = target_width  # 需要放大
-        elif current_width - target_width > 150:  # 當前尺寸比目標大很多時才縮小
-            new_width = max(target_width + 50, min_app_width)  # 適度縮小，保留50px緩衝
-        else:
-            new_width = current_width  # 保持不變
-
-        if target_height > current_height:
-            new_height = target_height  # 需要放大
-        elif current_height - target_height > 100:  # 當前尺寸比目標大很多時才縮小
-            new_height = max(target_height + 50, min_app_height)  # 適度縮小，保留50px緩衝
-        else:
-            new_height = current_height  # 保持不變
-
-        # 確保不小於最小尺寸
-        new_width = max(new_width, min_app_width)
-        new_height = max(new_height, min_app_height)
-
-        # 只有在需要調整時才改變視窗大小
-        if new_width != current_width or new_height != current_height:
-            # 保持視窗位置不變，只調整大小
-            if len(current_parts) >= 3:
-                x_pos = current_parts[1]
-                y_pos = current_parts[2]
-                new_geometry = f"{new_width}x{new_height}+{x_pos}+{y_pos}"
-            else:
-                new_geometry = f"{new_width}x{new_height}"
-
-            self.root.geometry(new_geometry)
-
-            # 輸出調整信息
-            if new_width > current_width or new_height > current_height:
-                print(self.get_text("window_enlarged").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
-            elif new_width < current_width or new_height < current_height:
-                print(self.get_text("window_shrunk").format(tab_name=tab_name, new_width=new_width, new_height=new_height))
-        else:
-            print(self.get_text("window_size_suitable").format(tab_name=tab_name))
-
-    def calculate_dynamic_tab_size(self, tab_index):
-        """動態計算分頁內容的實際最小尺寸"""
-        try:
-            # 根據分頁索引獲取對應的框架（執行狀態 tab 無框架對應，回傳 None）
-            frame_map = {
-                0: self.monitor_frame,
-                1: self.inventory_frame,
-                2: self.combo_frame,
-                4: self.help_frame,
-                5: self.version_frame,
-                6: self.about_frame,
-            }
-
-            frame = frame_map.get(tab_index)
-            if frame is None:
-                return None
-
-            # 強制更新佈局
-            frame.update_idletasks()
-
-            # 獲取框架的實際所需尺寸
-            req_width = frame.winfo_reqwidth()
-            req_height = frame.winfo_reqheight()
-
-            # 加上Notebook和其他元素的額外空間
-            total_width = req_width + 40  # padding和borders
-            total_height = req_height + 80  # 分頁標籤和padding
-
-            return (total_width, total_height)
-
-        except Exception as e:
-            print(f"{self.get_text('calc_dynamic_size_error').format(tab_name=tab_index)} {e}")
-            return None
+            min_w, min_h = 1000, 700
+            geo = self.root.geometry().split("+")[0].split("x")
+            cur_w, cur_h = int(geo[0]), int(geo[1])
+            if cur_w < min_w or cur_h < min_h:
+                self.root.geometry(f"{max(cur_w, min_w)}x{max(cur_h, min_h)}")
+        except Exception:
+            pass
 
     def adjust_window_for_current_tab(self):
         """調整視窗大小以適應當前分頁"""
@@ -1002,10 +905,20 @@ class HealthMonitor:
         # 為notebook綁定分頁切換事件，確保滾輪在分頁切換後仍能工作
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
 
-        # 儲存可滾動組件的引用
+        # 儲存可滾動組件的引用（滾輪依滑鼠位置路由）
         self.scrollable_widgets = {}
-        if hasattr(self, "settings_tree"):
+        if hasattr(self, "monitor_tab") and hasattr(self.monitor_tab, "settings_tree"):
             self.scrollable_widgets["settings_tree"] = self.monitor_tab.settings_tree
+        if hasattr(self, "monitor_tab") and hasattr(self.monitor_tab, "left_scroll_canvas"):
+            self.scrollable_widgets["monitor_left"] = self.monitor_tab.left_scroll_canvas
+        if hasattr(self, "inventory_tab") and hasattr(self.inventory_tab, "left_scroll_canvas"):
+            self.scrollable_widgets["inventory_left"] = self.inventory_tab.left_scroll_canvas
+        if hasattr(self, "combo_tab") and getattr(self.combo_tab, "combo_canvas", None):
+            self.scrollable_widgets["combo"] = self.combo_tab.combo_canvas
+        if hasattr(self, "help_tab") and getattr(self.help_tab, "help_canvas", None):
+            self.scrollable_widgets["help"] = self.help_tab.help_canvas
+        if hasattr(self, "about_tab") and getattr(self.about_tab, "about_canvas", None):
+            self.scrollable_widgets["about"] = self.about_tab.about_canvas
 
     def on_tab_changed(self, event):
         """分頁切換時的處理"""
@@ -1015,32 +928,18 @@ class HealthMonitor:
         self.on_tab_change(event)
 
     def handle_mousewheel(self, event):
-        """處理滾輪事件，轉發給當前可見的可滾動組件"""
-        # 獲取當前選中的分頁索引
-        current_tab_index = self.notebook.index(self.notebook.select())
-
-        # 根據不同的分頁處理滾輪事件
-        if current_tab_index == 0:  # 血量監控分頁
-            # 血量監控分頁：滾動Treeview
-            self.monitor_tab.settings_tree.yview_scroll(int(-1 * (event.delta / 120)), "units")
-            return "break"
-
-        elif current_tab_index == 2:  # 技能組合分頁
-            if hasattr(self, "combo_tab") and self.combo_tab.combo_canvas:
-                self.combo_tab.combo_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-                return "break"
-
-        elif current_tab_index == 4:  # 使用說明分頁
-            help_canvas = self.help_tab.help_canvas if hasattr(self, "help_tab") else None
-            if help_canvas:
-                help_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-                return "break"
-
-        elif current_tab_index == 6:  # 關於作者分頁
-            if hasattr(self, "about_tab") and self.about_tab.about_canvas:
-                self.about_tab.about_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-                return "break"
-
+        """處理滾輪事件，依滑鼠所在位置路由到對應的可滾動組件"""
+        try:
+            # 從事件來源 widget 沿父鏈向上找註冊過的可滾動組件
+            current = getattr(event, "widget", None)
+            while current is not None:
+                for scrollable in self.scrollable_widgets.values():
+                    if current is scrollable:
+                        scrollable.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                        return "break"
+                current = getattr(current, "master", None)
+        except Exception:
+            pass
         return "break"  # 阻止事件繼續傳播
 
     def setup_global_esc_listener_for_inventory(self):
@@ -1907,6 +1806,8 @@ class HealthMonitor:
                     saved_geometry = self.config["window_geometry"]
                     self.root.geometry(saved_geometry)
                     print(f"已還原視窗幾何: {saved_geometry}")
+                    if self.config.get("window_state") == "zoomed":
+                        self._pending_restore_zoomed = True
                 except Exception as e:
                     print(f"還原視窗幾何失敗: {e}")
 
@@ -2069,11 +1970,16 @@ class HealthMonitor:
             # 儲存語言設定
             self.config["language"] = self.current_language
 
-            # 儲存窗口位置和大小
+            # 儲存窗口位置、大小與最大化狀態
             try:
-                current_geometry = self.root.geometry()
-                self.config["window_geometry"] = current_geometry
-                print(f"已儲存窗口位置: {current_geometry}")
+                window_state = self.root.state()
+                if window_state == "zoomed" and self._last_normal_geometry:
+                    saved_geometry = self._last_normal_geometry
+                else:
+                    saved_geometry = self.root.geometry()
+                self.config["window_geometry"] = saved_geometry
+                self.config["window_state"] = window_state
+                print(f"已儲存窗口位置: {saved_geometry} (狀態: {window_state})")
             except Exception as e:
                 print(f"儲存窗口位置失敗: {e}")
 
@@ -2262,6 +2168,9 @@ class HealthMonitor:
                 self.loading_window.destroy()
                 self.loading_window = None
                 self.root.deiconify()  # 所有啟動排程完成後才顯示主視窗
+                if getattr(self, "_pending_restore_zoomed", False):
+                    self.root.state("zoomed")
+                    self._pending_restore_zoomed = False
                 self._startup_phase = False
         except Exception as e:
             print(f"關閉載入提示視窗失敗: {e}")
@@ -2279,7 +2188,19 @@ class HealthMonitor:
         self.status_tab.add_status_message(message, msg_type)
 
 
+def enable_dpi_awareness():
+    """在 Tk 建立前設定 Per-Monitor DPI awareness，避免高縮放下視窗被裁切與模糊"""
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+    except (AttributeError, OSError):
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except (AttributeError, OSError):
+            pass
+
+
 if __name__ == "__main__":
+    enable_dpi_awareness()
 
     def emergency_exit_handler(signum=None, frame=None):
         """緊急退出處理器 - 確保在任何異常情況下都能關閉應用程序"""
