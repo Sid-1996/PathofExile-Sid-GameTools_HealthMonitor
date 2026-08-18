@@ -38,6 +38,10 @@ GetParentProcessName() {
         parentProcessName := "python3.11.exe"
         TrayTip("滑鼠連點工具", "偵測到Python 3.11: " . parentProcessName, 16)
     }
+    else if (ProcessExist("python3.13.exe")) {
+        parentProcessName := "python3.13.exe"
+        TrayTip("滑鼠連點工具", "偵測到Python 3.13: " . parentProcessName, 16)
+    }
     else if (ProcessExist("python3.12.exe")) {
         parentProcessName := "python3.12.exe"
         TrayTip("滑鼠連點工具", "偵測到Python 3.12: " . parentProcessName, 16)

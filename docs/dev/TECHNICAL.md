@@ -2,7 +2,7 @@
 
 ## 環境
 
-- Python 3.12（開發機）；`pyproject.toml` target-version `py310`（相容下限）
+- Python 3.13（開發機）；`pyproject.toml` target-version `py310`（相容下限）
 - 打包：PyInstaller onedir（`tools/build.py`，exe + `_internal/` 樹）
 - Lint/格式：ruff（line-length 200、select E/F/W/C90、mccabe 20）
 - 型別檢查：pyright（僅 `src/health_monitor.py`）
