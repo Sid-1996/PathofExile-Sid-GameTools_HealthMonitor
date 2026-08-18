@@ -742,6 +742,8 @@ class HealthMonitor:
             # 保存當前分頁到配置中
             self.config["last_selected_tab"] = tab_index
 
+            self._tab_transition()
+
             try:
                 if tab_index == 1:
                     self.window_key_sender._focus_watcher_interval = 200
@@ -754,6 +756,33 @@ class HealthMonitor:
 
         except Exception as e:
             print(f"{self.get_text('tab_switch_resize_error')} {e}")
+
+    def _tab_transition(self):
+        """分頁切換的視窗淡入特效：alpha 0.88→1.0 逐格步進（~200ms），失敗靜默降級。"""
+        if self._startup_phase:
+            return
+        after_id = getattr(self, "_tab_fade_after", None)
+        if after_id is not None:
+            try:
+                self.root.after_cancel(after_id)
+            except Exception:
+                pass
+        steps = 6
+        delay = 30
+
+        def _step(i):
+            try:
+                self.root.attributes("-alpha", 0.88 + 0.12 * i / steps)
+            except Exception:
+                self._tab_fade_after = None
+                return
+            if i < steps:
+                self._tab_fade_after = self.root.after(delay, lambda: _step(i + 1))
+            else:
+                self._tab_fade_after = None
+
+        self._tab_fade_after = None
+        _step(0)
 
     def adjust_window_for_tab(self, tab_index):
         """確保視窗不小於最小尺寸；不再隨分頁縮放（固定統一尺寸策略）"""

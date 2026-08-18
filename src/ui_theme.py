@@ -1,11 +1,14 @@
 """統一的深色 UI theme — 全應用唯一樣式來源。
 
-集中定義字型、配色、ttk Style，並提供分頁共用的佈局 helper
-（頁首標題、卡片、滾動容器），取代各 tab 檔內散落的硬編值。
+以 ttkbootstrap 的 dracula-dark 為基底主題，集中定義字型、配色、ttk Style，
+並提供分頁共用的佈局 helper（頁首標題、卡片、滾動容器），
+取代各 tab 檔內散落的硬編值。
 """
 
 import tkinter as tk
 from tkinter import ttk
+
+import ttkbootstrap as ttkb
 
 # ── 字型 ──────────────────────────────────────────────
 FONT_FAMILY = "Microsoft YaHei"
@@ -17,25 +20,25 @@ BODY_FONT = (FONT_FAMILY, 10)
 SMALL_FONT = (FONT_FAMILY, 9)
 MONO_FONT = (MONO_FAMILY, 10)
 
-# ── 深色 palette ──────────────────────────────────────
-BG = "#1e1e1e"  # 視窗/分頁底色
-CARD_BG = "#252526"  # 卡片底色
-INPUT_BG = "#2d2d30"  # 輸入框底色
-BORDER = "#3c3c3c"  # 邊框/分隔線
-FG = "#d4d4d4"  # 主文字
-FG_MUTED = "#9d9d9d"  # 次要文字
-FG_DARK = "#6e6e6e"  # 更弱的文字
-ACCENT = "#0e639c"  # 強調色（按鈕、選取）
-ACCENT_ACTIVE = "#1177bb"
-SELECT_BG = "#264f78"  # 選取背景
+# ── dracula-dark 色系（與 ttkbootstrap 主題對齊，供 tk 原生 widget 使用）──
+BG = "#282a36"  # 視窗/分頁底色
+CARD_BG = "#2f313d"  # 卡片底色（比背景亮一階）
+INPUT_BG = "#3b3d4a"  # 輸入框底色
+BORDER = "#44475a"  # 邊框/分隔線
+FG = "#f8f8f2"  # 主文字
+FG_MUTED = "#b8b8c8"  # 次要文字
+FG_DARK = "#6272a4"  # 更弱的文字
+ACCENT = "#bd93f9"  # 強調色（dracula 紫，按鈕、選取）
+ACCENT_ACTIVE = "#cba6f7"
+SELECT_BG = "#44475a"  # 選取背景
 SELECT_FG = "#ffffff"
 
 # 狀態色（log tag、健康/魔力指示）
-SUCCESS = "#4CAF50"
-WARNING = "#FF9800"
-ERROR = "#F44336"
-INFO = "#2196F3"
-HOTKEY = "#9C27B0"
+SUCCESS = "#50fa7b"
+WARNING = "#f1fa8c"
+ERROR = "#ff5555"
+INFO = "#8be9fd"
+HOTKEY = "#bd93f9"
 MONITOR = "#00BCD4"
 
 # tk 原生 widget（不受 ttk theme 影響）預設底色
@@ -45,22 +48,10 @@ TK_BG = BG
 def setup_theme(root):
     """在 root 建立後、所有 ttk widget 產生前呼叫一次。"""
     root.configure(bg=BG)
-    style = ttk.Style(root)
-    style.theme_use("clam")
+    style = ttkb.Style(theme="dracula-dark")
 
-    # 全域基底
-    style.configure(
-        ".",
-        background=BG,
-        foreground=FG,
-        fieldbackground=INPUT_BG,
-        troughcolor=BG,
-        bordercolor=BORDER,
-        lightcolor=BORDER,
-        darkcolor=BORDER,
-        selectbackground=SELECT_BG,
-        selectforeground=SELECT_FG,
-    )
+    # 全域基底：只設定字型，顏色交由 dracula-dark 主題主導
+    style.configure(".", font=BODY_FONT)
 
     # Frame / 卡片
     style.configure("TFrame", background=BG)
@@ -79,84 +70,33 @@ def setup_theme(root):
     style.configure("TLabelframe", background=BG, bordercolor=BORDER, borderwidth=1, relief="solid")
     style.configure("TLabelframe.Label", background=BG, foreground=FG, font=SMALL_FONT)
 
-    # Button
-    style.configure(
-        "TButton",
-        background=INPUT_BG,
-        foreground=FG,
-        bordercolor=BORDER,
-        focuscolor=ACCENT,
-        lightcolor=INPUT_BG,
-        darkcolor=INPUT_BG,
-        padding=(10, 5),
-    )
-    style.map(
-        "TButton",
-        background=[("pressed", ACCENT_ACTIVE), ("active", CARD_BG), ("disabled", BG)],
-        foreground=[("disabled", FG_DARK)],
-    )
+    # Button —— 顏色由 dracula-dark 主題繪製（圓角/現代），只調整間距
+    style.configure("TButton", padding=(10, 5))
     style.configure(
         "Accent.TButton",
         background=ACCENT,
         foreground=SELECT_FG,
-        bordercolor=ACCENT,
         focuscolor=ACCENT_ACTIVE,
-        lightcolor=ACCENT,
-        darkcolor=ACCENT,
+        padding=(10, 5),
     )
     style.map("Accent.TButton", background=[("pressed", ACCENT_ACTIVE), ("active", ACCENT_ACTIVE), ("disabled", BG)])
 
     # 輸入
-    style.configure(
-        "TEntry",
-        background=INPUT_BG,
-        foreground=FG,
-        fieldbackground=INPUT_BG,
-        insertcolor=FG,
-        bordercolor=BORDER,
-        lightcolor=BORDER,
-        darkcolor=BORDER,
-        padding=(6, 3),
-    )
-    style.configure("TCombobox", background=INPUT_BG, foreground=FG, fieldbackground=INPUT_BG, bordercolor=BORDER, arrowcolor=FG)
-    style.map("TCombobox", fieldbackground=[("readonly", INPUT_BG)], foreground=[("readonly", FG)])
+    style.configure("TEntry", padding=(6, 3))
+    style.configure("TCombobox", padding=(6, 3))
 
     # Checkbutton / Radiobutton
-    style.configure("TCheckbutton", background=BG, foreground=FG, font=BODY_FONT, focuscolor=BG)
-    style.map("TCheckbutton", indicatorcolor=[("selected", ACCENT)], background=[("active", BG)])
-    style.configure("TRadiobutton", background=BG, foreground=FG, font=BODY_FONT, focuscolor=BG)
-    style.map("TRadiobutton", indicatorcolor=[("selected", ACCENT)], background=[("active", BG)])
+    style.configure("TCheckbutton", background=BG, font=BODY_FONT)
+    style.configure("TRadiobutton", background=BG, font=BODY_FONT)
 
-    # Notebook
+    # Notebook —— 選取色由主題 primary 主導，只調整 tab 間距
     style.configure("TNotebook", background=BG, bordercolor=BORDER, borderwidth=1)
-    style.configure(
-        "TNotebook.Tab",
-        background=CARD_BG,
-        foreground=FG_MUTED,
-        font=BODY_FONT,
-        padding=(18, 8),
-    )
-    style.map(
-        "TNotebook.Tab",
-        background=[("selected", ACCENT), ("active", CARD_BG)],
-        foreground=[("selected", SELECT_FG), ("active", FG)],
-    )
+    style.configure("TNotebook.Tab", padding=(18, 8))
 
     # Treeview
-    style.configure(
-        "Treeview",
-        background=INPUT_BG,
-        fieldbackground=INPUT_BG,
-        foreground=FG,
-        bordercolor=BORDER,
-        rowheight=24,
-    )
-    style.configure("Treeview.Heading", background=CARD_BG, foreground=FG, font=SMALL_FONT, relief="flat")
+    style.configure("Treeview", rowheight=24)
+    style.configure("Treeview.Heading", font=SMALL_FONT, relief="flat")
     style.map("Treeview", background=[("selected", SELECT_BG)], foreground=[("selected", SELECT_FG)])
-
-    # Scrollbar
-    style.configure("Vertical.TScrollbar", background=CARD_BG, troughcolor=BG, bordercolor=BG, arrowcolor=FG)
-    style.map("Vertical.TScrollbar", background=[("active", ACCENT)])
 
 
 class ScrollArea:

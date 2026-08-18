@@ -186,6 +186,11 @@ class GameToolBuilder:
                 "tkinter.messagebox",
                 "--hidden-import",
                 "_tkinter",
+                # ttkbootstrap（深色主題；assets 為 theme 圖像/icon font）
+                "--hidden-import",
+                "ttkbootstrap",
+                "--collect-data",
+                "ttkbootstrap",
                 # Misc
                 "--hidden-import",
                 "webbrowser",
