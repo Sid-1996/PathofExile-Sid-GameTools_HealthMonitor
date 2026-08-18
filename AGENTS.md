@@ -275,6 +275,8 @@ GitHub API `/releases/latest` **只回傳非 pre-release、非 draft 的 release
 
 ## Future Refactor 筆記
 
+- **GUI 換血：tkinter/ttkbootstrap → PySide6 + qfluentwidgets（進行中）。** 動機：tk 單執行緒軟渲染，捲動掉幀無法根治；決策結論為 PySide6+qfluentwidgets（Qt 原生效能、透明 overlay/topmost 原生支援），Flet 已評估放棄（JSON bridge 架構不適合本 app 的 overlay 與高頻影像）。遷移策略：只重寫 GUI 層，`config_manager`/`monitor_analyzer`/`capture_utils`/`inventory_utils`/`image_utils`/`window_key_sender`/`usage_tracker`/`updater_core`/`language_system` 全保留。tk 與 Qt 無法共存於同一 process，故為整套 GUI 重寫。
+- **PyInstaller + PySide6 打包地雷（Phase 1 實測結論）：** 只要 `--collect-all qfluentwidgets` 就夠，**絕不加 `--exclude-module PySide6.*`**——那會打斷 PySide6 hook 的 plugin/qt.conf 處理導致啟動掛住。plugin 由 hook 收進 `PySide6/plugins/`（位於 Qt DLL 相對路徑，Qt 自動找得到，不需 qt.conf）。onedir 包約 179MB（Phase 9 可再瘦身：剔 unused plugins/translations）。EXE 啟動約 3-4s（PySide6 import 較重）。
 - `health_monitor.py`（~2,185 行，從 ~9,842 降下來）是主要 refactor 目標。剩 11 個 `C901` 是既有複雜函式。
 - Inventory exclusion：`excluded_inventory_slots`（set of ints），存 config JSON、preview 上畫藍色 overlay、F3 清理路徑都尊重。
 - `_on_preview_click()` 處理 Canvas click → toggle exclusion → re-render。

@@ -9,3 +9,5 @@ psutil
 requests
 ttkbootstrap
 pywin32
+PySide6
+PySide6-Fluent-Widgets
