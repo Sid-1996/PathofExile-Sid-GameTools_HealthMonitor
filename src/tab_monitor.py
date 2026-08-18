@@ -28,7 +28,7 @@ from capture_utils import (
 from utils import Tooltip, get_app_dir
 from custom_dialogs import CustomMessageBox
 from monitor_analyzer import get_main_color
-from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER, ERROR
+from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER, ERROR, SUCCESS, WARNING, INFO
 
 
 def _validate_float_input(P):
@@ -368,12 +368,12 @@ class MonitorTab:
 
         self.current_health_label = ttk.Label(self.real_time_status_frame, text=self._app.get_text("current_health"), font=("Arial", 10, "bold"))
         self.current_health_label.grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.health_label = ttk.Label(self.real_time_status_frame, text="--", font=("Arial", 12, "bold"), foreground="red", width=8, anchor="w")
+        self.health_label = ttk.Label(self.real_time_status_frame, text="--", font=("Arial", 12, "bold"), foreground=ERROR, width=8, anchor="w")
         self.health_label.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         self.current_mana_label = ttk.Label(self.real_time_status_frame, text=self._app.get_text("current_mana"), font=("Arial", 10, "bold"))
         self.current_mana_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.mana_label = ttk.Label(self.real_time_status_frame, text="--", font=("Arial", 12, "bold"), foreground="blue", width=8, anchor="w")
+        self.mana_label = ttk.Label(self.real_time_status_frame, text="--", font=("Arial", 12, "bold"), foreground=INFO, width=8, anchor="w")
         self.mana_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         self.main_color_label = ttk.Label(self.real_time_status_frame, text=self._app.get_text("main_color"))
@@ -420,7 +420,7 @@ class MonitorTab:
         self.interface_ui_preview_canvas = tk.Canvas(interface_ui_preview_frame, width=150, height=100, bg=BG, highlightthickness=1, highlightbackground=BORDER, relief="sunken")
         self.interface_ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
-        self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"), font=("", 7), foreground="gray")
+        self.interface_ui_preview_hint = ttk.Label(interface_ui_preview_frame, text=self._app.get_text("interface_ui_preview_hint"), font=("", 7), foreground=FG_MUTED)
         self.interface_ui_preview_hint.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
 
         right_frame.rowconfigure(1, weight=1)
@@ -1265,7 +1265,7 @@ class MonitorTab:
         health_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(health_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_health_label = ttk.Label(health_frame, text=f"{self._app.health_threshold}", font=("Arial", 9, "bold"), foreground="blue")
+        current_health_label = ttk.Label(health_frame, text=f"{self._app.health_threshold}", font=("Arial", 9, "bold"), foreground=INFO)
         current_health_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(health_frame, text=self._app.get_text("new_value_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1274,13 +1274,13 @@ class MonitorTab:
         health_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         health_explanation = self._app.get_text("health_pixel_ratio_explanation")
-        ttk.Label(health_frame, text=health_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(health_frame, text=health_explanation, font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         color_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("color_range_settings"), padding="10")
         color_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(color_frame, text=self._app.get_text("red_h_range_label")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_red_label = ttk.Label(color_frame, text=f"{self._app.red_h_range}", font=("Arial", 9, "bold"), foreground="red")
+        current_red_label = ttk.Label(color_frame, text=f"{self._app.red_h_range}", font=("Arial", 9, "bold"), foreground=ERROR)
         current_red_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_0_20")).grid(row=1, column=0, sticky=tk.W, pady=(5, 2))
@@ -1289,10 +1289,10 @@ class MonitorTab:
         red_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         red_explanation = self._app.get_text("red_h_range_explanation")
-        ttk.Label(color_frame, text=red_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=red_explanation, font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=700).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         ttk.Label(color_frame, text=self._app.get_text("green_h_range_label")).grid(row=3, column=0, sticky=tk.W, pady=(15, 2))
-        current_green_label = ttk.Label(color_frame, text=f"{self._app.green_h_range}", font=("Arial", 9, "bold"), foreground="green")
+        current_green_label = ttk.Label(color_frame, text=f"{self._app.green_h_range}", font=("Arial", 9, "bold"), foreground=SUCCESS)
         current_green_label.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(15, 2))
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_30_90")).grid(row=4, column=0, sticky=tk.W, pady=(5, 2))
@@ -1301,13 +1301,13 @@ class MonitorTab:
         green_entry.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         green_explanation = self._app.get_text("green_h_range_explanation")
-        ttk.Label(color_frame, text=green_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=green_explanation, font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=700).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         hsv_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("hsv_fine_tuning"), padding="10")
         hsv_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(hsv_frame, text=self._app.get_text("red_min_saturation")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_red_sat_label = ttk.Label(hsv_frame, text=f"{self._app.red_saturation_min}", font=("Arial", 9, "bold"), foreground="red")
+        current_red_sat_label = ttk.Label(hsv_frame, text=f"{self._app.red_saturation_min}", font=("Arial", 9, "bold"), foreground=ERROR)
         current_red_sat_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=1, column=0, sticky=tk.W, pady=(5, 2))
@@ -1316,7 +1316,7 @@ class MonitorTab:
         red_sat_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("red_min_brightness")).grid(row=2, column=0, sticky=tk.W, pady=(10, 2))
-        current_red_val_label = ttk.Label(hsv_frame, text=f"{self._app.red_value_min}", font=("Arial", 9, "bold"), foreground="red")
+        current_red_val_label = ttk.Label(hsv_frame, text=f"{self._app.red_value_min}", font=("Arial", 9, "bold"), foreground=ERROR)
         current_red_val_label.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=3, column=0, sticky=tk.W, pady=(5, 2))
@@ -1324,12 +1324,12 @@ class MonitorTab:
         red_val_entry = ttk.Entry(hsv_frame, textvariable=red_val_var, width=12)
         red_val_entry.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
-        ttk.Label(hsv_frame, text=self._app.get_text("red_hsv_explanation"), font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(
+        ttk.Label(hsv_frame, text=self._app.get_text("red_hsv_explanation"), font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=700).grid(
             row=4, column=0, columnspan=2, sticky=tk.W, pady=(5, 0)
         )
 
         ttk.Label(hsv_frame, text=self._app.get_text("green_min_saturation")).grid(row=0, column=2, sticky=tk.W, padx=(30, 0), pady=2)
-        current_green_sat_label = ttk.Label(hsv_frame, text=f"{self._app.green_saturation_min}", font=("Arial", 9, "bold"), foreground="green")
+        current_green_sat_label = ttk.Label(hsv_frame, text=f"{self._app.green_saturation_min}", font=("Arial", 9, "bold"), foreground=SUCCESS)
         current_green_sat_label.grid(row=0, column=3, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=1, column=2, sticky=tk.W, padx=(30, 0), pady=(5, 2))
@@ -1338,7 +1338,7 @@ class MonitorTab:
         green_sat_entry.grid(row=1, column=3, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("green_min_brightness")).grid(row=2, column=2, sticky=tk.W, padx=(30, 0), pady=(10, 2))
-        current_green_val_label = ttk.Label(hsv_frame, text=f"{self._app.green_value_min}", font=("Arial", 9, "bold"), foreground="green")
+        current_green_val_label = ttk.Label(hsv_frame, text=f"{self._app.green_value_min}", font=("Arial", 9, "bold"), foreground=SUCCESS)
         current_green_val_label.grid(row=2, column=3, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         ttk.Label(hsv_frame, text=self._app.get_text("new_value_range")).grid(row=3, column=2, sticky=tk.W, padx=(30, 0), pady=(5, 2))
@@ -1346,7 +1346,7 @@ class MonitorTab:
         green_val_entry = ttk.Entry(hsv_frame, textvariable=green_val_var, width=12)
         green_val_entry.grid(row=3, column=3, sticky=tk.W, padx=(10, 0), pady=(5, 2))
 
-        ttk.Label(hsv_frame, text=self._app.get_text("green_hsv_explanation"), font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=700).grid(
+        ttk.Label(hsv_frame, text=self._app.get_text("green_hsv_explanation"), font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=700).grid(
             row=4, column=2, columnspan=2, sticky=tk.W, pady=(5, 0)
         )
 
@@ -1482,7 +1482,7 @@ class MonitorTab:
         mse_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(mse_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_mse_label = ttk.Label(mse_frame, text=f"{self._app.interface_ui_mse_threshold}", font=("Arial", 9, "bold"), foreground="blue")
+        current_mse_label = ttk.Label(mse_frame, text=f"{self._app.interface_ui_mse_threshold}", font=("Arial", 9, "bold"), foreground=INFO)
         current_mse_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(mse_frame, text=self._app.get_text("new_value_mse_suggested")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1491,13 +1491,13 @@ class MonitorTab:
         mse_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
         mse_explanation = self._app.get_text("mse_explanation")
-        ttk.Label(mse_frame, text=mse_explanation, font=("", 9), foreground="gray", justify=tk.LEFT, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(mse_frame, text=mse_explanation, font=("", 9), foreground=FG_MUTED, justify=tk.LEFT, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         ssim_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("ssim_threshold_title"), padding="10")
         ssim_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(ssim_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_ssim_label = ttk.Label(ssim_frame, text=f"{self._app.interface_ui_ssim_threshold}", font=("Arial", 9, "bold"), foreground="green")
+        current_ssim_label = ttk.Label(ssim_frame, text=f"{self._app.interface_ui_ssim_threshold}", font=("Arial", 9, "bold"), foreground=SUCCESS)
         current_ssim_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(ssim_frame, text=self._app.get_text("new_value_range_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1505,13 +1505,13 @@ class MonitorTab:
         ssim_entry = ttk.Entry(ssim_frame, textvariable=ssim_var, width=12)
         ssim_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(ssim_frame, text=self._app.get_text("ssim_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(ssim_frame, text=self._app.get_text("ssim_explanation"), font=("Arial", 9), foreground=FG_MUTED, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         hist_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("histogram_threshold_title"), padding="10")
         hist_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(hist_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_hist_label = ttk.Label(hist_frame, text=f"{self._app.interface_ui_hist_threshold}", font=("Arial", 9, "bold"), foreground="orange")
+        current_hist_label = ttk.Label(hist_frame, text=f"{self._app.interface_ui_hist_threshold}", font=("Arial", 9, "bold"), foreground=WARNING)
         current_hist_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(hist_frame, text=self._app.get_text("new_value_range_0_1")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1519,13 +1519,13 @@ class MonitorTab:
         hist_entry = ttk.Entry(hist_frame, textvariable=hist_var, width=12)
         hist_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(hist_frame, text=self._app.get_text("histogram_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(hist_frame, text=self._app.get_text("histogram_explanation"), font=("Arial", 9), foreground=FG_MUTED, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         color_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("color_diff_threshold_title"), padding="10")
         color_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(color_frame, text=self._app.get_text("current_value")).grid(row=0, column=0, sticky=tk.W, pady=2)
-        current_color_label = ttk.Label(color_frame, text=f"{self._app.interface_ui_color_threshold}", font=("Arial", 9, "bold"), foreground="red")
+        current_color_label = ttk.Label(color_frame, text=f"{self._app.interface_ui_color_threshold}", font=("Arial", 9, "bold"), foreground=ERROR)
         current_color_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
 
         ttk.Label(color_frame, text=self._app.get_text("new_value_suggested")).grid(row=1, column=0, sticky=tk.W, pady=(10, 2))
@@ -1533,7 +1533,7 @@ class MonitorTab:
         color_entry = ttk.Entry(color_frame, textvariable=color_var, width=12)
         color_entry.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 2))
 
-        ttk.Label(color_frame, text=self._app.get_text("color_diff_explanation"), font=("Arial", 9), foreground="#666666", wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        ttk.Label(color_frame, text=self._app.get_text("color_diff_explanation"), font=("Arial", 9), foreground=FG_MUTED, wraplength=320).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         def apply_settings():
             try:

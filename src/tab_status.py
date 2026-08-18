@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 from utils import Tooltip
+from ui_theme import BG, FG, SELECT_BG, SUCCESS, WARNING, ERROR, INFO, HOTKEY, MONITOR
 
 
 class StatusTab:
@@ -40,7 +41,7 @@ class StatusTab:
         text_frame = ttk.Frame(main_frame)
         text_frame.pack(fill="both", expand=True, pady=(10, 0))
 
-        self.status_text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10), bg="#1e1e1e", fg="#ffffff", insertbackground="#ffffff", selectbackground="#264f78")
+        self.status_text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10), bg=BG, fg=FG, insertbackground=FG, selectbackground=SELECT_BG)
 
         status_scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.status_text_widget.yview)
         self.status_text_widget.configure(yscrollcommand=status_scrollbar.set)
@@ -55,12 +56,12 @@ class StatusTab:
         self.add_status_message(self._app.get_text("tool_started_successfully"), "success")
 
     def configure_status_text_tags(self):
-        self.status_text_widget.tag_config("success", foreground="#4CAF50")
-        self.status_text_widget.tag_config("warning", foreground="#FF9800")
-        self.status_text_widget.tag_config("error", foreground="#F44336")
-        self.status_text_widget.tag_config("info", foreground="#2196F3")
-        self.status_text_widget.tag_config("hotkey", foreground="#9C27B0")
-        self.status_text_widget.tag_config("monitor", foreground="#00BCD4")
+        self.status_text_widget.tag_config("success", foreground=SUCCESS)
+        self.status_text_widget.tag_config("warning", foreground=WARNING)
+        self.status_text_widget.tag_config("error", foreground=ERROR)
+        self.status_text_widget.tag_config("info", foreground=INFO)
+        self.status_text_widget.tag_config("hotkey", foreground=HOTKEY)
+        self.status_text_widget.tag_config("monitor", foreground=MONITOR)
 
     def add_status_message(self, message, msg_type="info"):
         if self._state._is_closing:

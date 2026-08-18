@@ -53,8 +53,10 @@ except ImportError:
 _MIN_MS = 50  # 最低間隔 ms
 _MAX_SLOTS = 8  # 最多技能槽
 _MODIFIERS = ["none", "ctrl", "shift", "alt"]
-_COLOR_ON = "#2ecc71"  # 執行中（綠）
-_COLOR_OFF = "#e74c3c"  # 停止（紅）
+_COLOR_ON = "#50fa7b"  # 執行中（綠）＝ ui_theme SUCCESS
+_COLOR_OFF = "#ff5555"  # 停止（紅）＝ ui_theme ERROR
+_COLOR_HEADER = "#b8b8c8"  # 表頭（灰）＝ ui_theme FG_MUTED
+_COLOR_WARN = "#f1fa8c"  # 警告（黃）＝ ui_theme WARNING
 
 
 # ══════════════════════════════════════════════════════════
@@ -215,7 +217,7 @@ class SkillTimerModule:
         ]
         widths = [4, 7, 9, 8, 10, 10, 5]
         for col, (h, w) in enumerate(zip(headers, widths)):
-            ttk.Label(f, text=h, width=w, anchor="center", foreground="#555555").grid(row=0, column=col, padx=3, pady=(6, 2), sticky="ew")
+            ttk.Label(f, text=h, width=w, anchor="center", foreground=_COLOR_HEADER).grid(row=0, column=col, padx=3, pady=(6, 2), sticky="ew")
 
         # 分隔線（用空 Frame 模擬）
         ttk.Separator(f, orient="horizontal").grid(row=1, column=0, columnspan=len(headers), sticky="ew", padx=3, pady=2)
@@ -265,7 +267,7 @@ class SkillTimerModule:
 
         # pyautogui 缺失警告
         if not _PYAUTOGUI_OK:
-            warn = tk.Label(f, text=self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"), fg="#e67e22", font=("Consolas", 8))
+            warn = tk.Label(f, text=self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"), fg=_COLOR_WARN, font=("Consolas", 8))
             warn.grid(row=ctrl_row + 2, column=0, columnspan=7, sticky="w", padx=6, pady=(0, 4))
 
     # ────────────────────────────────────────────────────

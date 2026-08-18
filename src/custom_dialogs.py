@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import ttk, font as tkfont
 import ctypes
 
+from ui_theme import WARNING, ERROR
+
 
 # Windows API 函數用於更好的窗口管理
 user32 = ctypes.windll.user32
@@ -153,7 +155,7 @@ class CustomMessageBox:
             message,
             buttons=[{"text": "OK (Enter)", "result": True, "default": True}],
             parent=parent,
-            accent="#8a6d00",
+            accent=WARNING,
             close_result=True,
         )
         return True
@@ -166,7 +168,7 @@ class CustomMessageBox:
             message,
             buttons=[{"text": "OK (Enter)", "result": True, "default": True}],
             parent=parent,
-            accent="#b00020",
+            accent=ERROR,
             close_result=True,
         )
         return True

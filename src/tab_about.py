@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from _version import __version__
 from utils import format_usage_time
-from ui_theme import BG, CARD_BG, FG, FG_MUTED
+from ui_theme import BG, CARD_BG, FG, FG_MUTED, SUCCESS, INFO, ERROR
 
 CURRENT_VERSION = f"v{__version__}"
 
@@ -55,10 +55,10 @@ class AboutTab:
         info_card.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(info_card, text=self._app.get_text("version_display").format(version=CURRENT_VERSION), font=("Microsoft YaHei", 14, "bold")).pack(anchor=tk.W, pady=(0, 8))
-        ttk.Label(info_card, text=self._app.get_text("status_display"), font=("Microsoft YaHei", 12), foreground="#27ae60").pack(anchor=tk.W, pady=(0, 8))
+        ttk.Label(info_card, text=self._app.get_text("status_display"), font=("Microsoft YaHei", 12), foreground=SUCCESS).pack(anchor=tk.W, pady=(0, 8))
 
         usage_time_text = format_usage_time(self._app.total_usage_time, lang=self._app.current_language)
-        usage_time_label = ttk.Label(info_card, text=self._app.get_text("total_usage_time").format(time=usage_time_text), font=("Microsoft YaHei", 12), foreground="#1976D2")
+        usage_time_label = ttk.Label(info_card, text=self._app.get_text("total_usage_time").format(time=usage_time_text), font=("Microsoft YaHei", 12), foreground=INFO)
         usage_time_label.pack(anchor=tk.W, pady=(0, 8))
         self._app.usage_time_label = usage_time_label
 
@@ -110,7 +110,7 @@ class AboutTab:
         support_card = ttk.LabelFrame(right_frame, text=self._app.get_text("support_developer"), padding="20")
         support_card.pack(fill=tk.BOTH, expand=True)
 
-        support_text = ttk.Label(support_card, text=self._app.get_text("support_text"), font=("Microsoft YaHei", 12), foreground="#2E7D32", justify=tk.CENTER)
+        support_text = ttk.Label(support_card, text=self._app.get_text("support_text"), font=("Microsoft YaHei", 12), foreground=SUCCESS, justify=tk.CENTER)
         support_text.pack(pady=(0, 15))
 
         sponsor_frame = ttk.Frame(support_card)
@@ -157,7 +157,7 @@ class AboutTab:
 
         disclaimer_text = self._app.get_text("disclaimer_text")
 
-        disclaimer_label = ttk.Label(disclaimer_frame, text=disclaimer_text, wraplength=800, font=("Microsoft YaHei", 11), justify=tk.LEFT, foreground="#d32f2f")
+        disclaimer_label = ttk.Label(disclaimer_frame, text=disclaimer_text, wraplength=800, font=("Microsoft YaHei", 11), justify=tk.LEFT, foreground=ERROR)
         disclaimer_label.pack(anchor=tk.W)
 
     def update_language(self):

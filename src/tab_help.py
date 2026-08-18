@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from _version import __version__
-from ui_theme import BG, CARD_BG, FG, FG_MUTED
+from ui_theme import BG, CARD_BG, FG, FG_MUTED, SUCCESS, WARNING, ERROR, INFO, HOTKEY
 
 CURRENT_VERSION = f"v{__version__}"
 
@@ -55,7 +55,7 @@ class HelpTab:
         video_button = ttk.Button(video_frame, text=self._app.get_text("watch_demo_video"), command=lambda: self._app.open_video_link("https://dai.ly/xa9cau2"))
         video_button.pack()
 
-        video_note_label = ttk.Label(video_frame, text=self._app.get_text("video_recommendation"), font=("Microsoft YaHei", 9), foreground="#e74c3c")
+        video_note_label = ttk.Label(video_frame, text=self._app.get_text("video_recommendation"), font=("Microsoft YaHei", 9), foreground=ERROR)
         video_note_label.pack(pady=(5, 0))
 
         content_frame = ttk.Frame(scrollable_frame, style="Card.TFrame")
@@ -72,13 +72,13 @@ class HelpTab:
             content_frame,
             self._app.get_text("global_hotkeys_title"),
             [
-                ("F3", self._app.get_text("hotkey_f3_desc"), "#e74c3c"),
-                ("F5", self._app.get_text("hotkey_f5_desc"), "#3498db"),
-                ("F6", self._app.get_text("hotkey_f6_desc"), "#2ecc71"),
-                ("F9", self._app.get_text("hotkey_f9_desc"), "#f39c12"),
-                ("F10", self._app.get_text("hotkey_f10_desc"), "#9b59b6"),
-                ("F12", self._app.get_text("hotkey_f12_desc"), "#95a5a6"),
-                ("CTRL+Click", self._app.get_text("hotkey_ctrl_click_desc"), "#1abc9c"),
+                ("F3", self._app.get_text("hotkey_f3_desc"), ERROR),
+                ("F5", self._app.get_text("hotkey_f5_desc"), INFO),
+                ("F6", self._app.get_text("hotkey_f6_desc"), SUCCESS),
+                ("F9", self._app.get_text("hotkey_f9_desc"), WARNING),
+                ("F10", self._app.get_text("hotkey_f10_desc"), HOTKEY),
+                ("F12", self._app.get_text("hotkey_f12_desc"), FG_MUTED),
+                ("CTRL+Click", self._app.get_text("hotkey_ctrl_click_desc"), INFO),
             ],
         )
         hotkey_card.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10), pady=(0, 10))
@@ -104,19 +104,19 @@ class HelpTab:
         left_features = ttk.Frame(features_container)
         left_features.pack(side="left", fill="both", expand=True, padx=(0, 15))
 
-        ttk.Label(left_features, text=self._app.get_text("health_monitor_system"), font=("Microsoft YaHei", 12, "bold"), foreground="#e74c3c").pack(anchor="w", pady=(0, 5))
+        ttk.Label(left_features, text=self._app.get_text("health_monitor_system"), font=("Microsoft YaHei", 12, "bold"), foreground=ERROR).pack(anchor="w", pady=(0, 5))
         ttk.Label(left_features, text=self._app.get_text("health_monitor_desc"), font=("Microsoft YaHei", 9), justify="left").pack(anchor="w", pady=(0, 15))
 
-        ttk.Label(left_features, text=self._app.get_text("smart_inventory_system"), font=("Microsoft YaHei", 12, "bold"), foreground="#3498db").pack(anchor="w", pady=(0, 5))
+        ttk.Label(left_features, text=self._app.get_text("smart_inventory_system"), font=("Microsoft YaHei", 12, "bold"), foreground=INFO).pack(anchor="w", pady=(0, 5))
         ttk.Label(left_features, text=self._app.get_text("smart_inventory_desc"), font=("Microsoft YaHei", 9), justify="left").pack(anchor="w", pady=(0, 15))
 
         right_features = ttk.Frame(features_container)
         right_features.pack(side="right", fill="both", expand=True, padx=(15, 0))
 
-        ttk.Label(right_features, text=self._app.get_text("skill_combo_system"), font=("Microsoft YaHei", 12, "bold"), foreground="#2ecc71").pack(anchor="w", pady=(0, 5))
+        ttk.Label(right_features, text=self._app.get_text("skill_combo_system"), font=("Microsoft YaHei", 12, "bold"), foreground=SUCCESS).pack(anchor="w", pady=(0, 5))
         ttk.Label(right_features, text=self._app.get_text("skill_combo_desc"), font=("Microsoft YaHei", 9), justify="left").pack(anchor="w", pady=(0, 15))
 
-        ttk.Label(right_features, text=self._app.get_text("automation_tools"), font=("Microsoft YaHei", 12, "bold"), foreground="#9b59b6").pack(anchor="w", pady=(0, 5))
+        ttk.Label(right_features, text=self._app.get_text("automation_tools"), font=("Microsoft YaHei", 12, "bold"), foreground=HOTKEY).pack(anchor="w", pady=(0, 5))
         ttk.Label(right_features, text=self._app.get_text("automation_tools_desc"), font=("Microsoft YaHei", 9), justify="left").pack(anchor="w")
 
         setup_card = ttk.LabelFrame(content_frame, text=self._app.get_text("detailed_setup_guide"), padding="15")
@@ -144,7 +144,7 @@ class HelpTab:
         left_info.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 20))
 
         ttk.Label(left_info, text=self._app.get_text("github_repo_label"), font=("Microsoft YaHei", 11, "bold")).pack(anchor="w")
-        ttk.Label(left_info, text="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor", font=("Consolas", 9), foreground="#3498db").pack(anchor="w", pady=(0, 5))
+        ttk.Label(left_info, text="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor", font=("Consolas", 9), foreground=INFO).pack(anchor="w", pady=(0, 5))
 
         github_button = ttk.Button(
             left_info, text=self._app.get_text("visit_github_button"), command=lambda: self._app.open_video_link("https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor")
@@ -179,7 +179,7 @@ class HelpTab:
             item_frame = ttk.Frame(card)
             item_frame.pack(fill="x", pady=(0, 8))
 
-            key_label = ttk.Label(item_frame, text=f" {item[0]} ", font=("Consolas", 10, "bold"), background=item[2], foreground="white", padding=(5, 2))
+            key_label = ttk.Label(item_frame, text=f" {item[0]} ", font=("Consolas", 10, "bold"), background=item[2], foreground="black", padding=(5, 2))
             key_label.pack(side="left")
 
             desc_label = ttk.Label(item_frame, text=f" {item[1]}", font=("Microsoft YaHei", 10))

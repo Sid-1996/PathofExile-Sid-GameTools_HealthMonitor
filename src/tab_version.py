@@ -16,6 +16,7 @@ import requests
 import updater_core
 from _version import __version__
 from utils import Tooltip
+from ui_theme import FG_MUTED, SUCCESS, ERROR, INFO
 
 CURRENT_VERSION = f"v{__version__}"
 GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
@@ -55,7 +56,7 @@ class VersionTab:
         current_frame.pack(fill=tk.X, pady=(0, 20))
 
         ttk.Label(current_frame, text=self._app.get_text("current_version_label"), font=("Microsoft YaHei", 12, "bold")).pack(anchor=tk.W)
-        current_version_label = ttk.Label(current_frame, text=CURRENT_VERSION, font=("Microsoft YaHei", 14, "bold"), foreground="blue")
+        current_version_label = ttk.Label(current_frame, text=CURRENT_VERSION, font=("Microsoft YaHei", 14, "bold"), foreground=INFO)
         current_version_label.pack(anchor=tk.W, pady=(5, 0))
 
         remote_frame = ttk.LabelFrame(main_frame, text=self._app.get_text("latest_version_info"), padding="20")
@@ -63,7 +64,7 @@ class VersionTab:
 
         self.latest_version_var = tk.StringVar(value=self._app.get_text("checking_version"))
         ttk.Label(remote_frame, text=self._app.get_text("latest_version_label"), font=("Microsoft YaHei", 12, "bold")).pack(anchor=tk.W)
-        self.latest_version_label = ttk.Label(remote_frame, textvariable=self.latest_version_var, font=("Microsoft YaHei", 14, "bold"), foreground="green")
+        self.latest_version_label = ttk.Label(remote_frame, textvariable=self.latest_version_var, font=("Microsoft YaHei", 14, "bold"), foreground=SUCCESS)
         self.latest_version_label.pack(anchor=tk.W, pady=(5, 10))
 
         self.version_status_var = tk.StringVar(value=self._app.get_text("checking_version_status"))
@@ -72,7 +73,7 @@ class VersionTab:
 
         ttk.Label(remote_frame, text=self._app.get_text("update_notes_label"), font=("Microsoft YaHei", 11, "bold")).pack(anchor=tk.W, pady=(5, 5))
 
-        self.release_notes_text = tk.Text(remote_frame, height=6, wrap=tk.WORD, font=("Microsoft YaHei", 10), foreground="gray", bg=self._app.root.cget("bg"), relief="flat", borderwidth=0)
+        self.release_notes_text = tk.Text(remote_frame, height=6, wrap=tk.WORD, font=("Microsoft YaHei", 10), foreground=FG_MUTED, bg=self._app.root.cget("bg"), relief="flat", borderwidth=0)
         self.release_notes_text.insert(1.0, self._app.get_text("loading_text"))
         self.release_notes_text.config(state="disabled")
         self.release_notes_text.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=(0, 10))
@@ -117,12 +118,12 @@ class VersionTab:
                 def _update_ui():
                     if info is None:
                         self.latest_version_var.set(self._app.get_text("using_latest_version"))
-                        self.latest_version_label.config(foreground="green")
+                        self.latest_version_label.config(foreground=SUCCESS)
                         self.version_status_var.set(self._app.get_text("using_latest_version"))
                         self.download_btn.config(state="disabled")
                     else:
                         self.latest_version_var.set(f"v{info.version}")
-                        self.latest_version_label.config(foreground="red")
+                        self.latest_version_label.config(foreground=ERROR)
                         self.version_status_var.set(self._app.get_text("new_version_found"))
                         self.download_btn.config(state="normal")
                         self._pending_update_info = info
@@ -147,7 +148,7 @@ class VersionTab:
         if error:
             msg = msg.format(error=error)
         self.version_status_var.set(msg)
-        self.latest_version_label.config(foreground="red")
+        self.latest_version_label.config(foreground=ERROR)
 
     def silent_version_check(self):
         self._silent_version_check_after_id = None
@@ -161,7 +162,7 @@ class VersionTab:
                 def _update_ui():
                     if info is None:
                         self.latest_version_var.set(self._app.get_text("using_latest_version"))
-                        self.latest_version_label.config(foreground="green")
+                        self.latest_version_label.config(foreground=SUCCESS)
                         self.version_status_var.set(self._app.get_text("using_latest_version"))
                         self.download_btn.config(state="disabled")
                         return
@@ -170,7 +171,7 @@ class VersionTab:
                         return
 
                     self.latest_version_var.set(f"v{info.version}")
-                    self.latest_version_label.config(foreground="red")
+                    self.latest_version_label.config(foreground=ERROR)
                     self.version_status_var.set(self._app.get_text("new_version_found"))
                     self.download_btn.config(state="normal")
                     self._pending_update_info = info
@@ -378,13 +379,13 @@ class VersionTab:
 
         title_frame = ttk.Frame(update_window)
         title_frame.pack(fill=tk.X, padx=20, pady=20)
-        ttk.Label(title_frame, text=self._app.get_text("new_version_found_title_2"), font=("Arial", 16, "bold"), foreground="green").pack()
+        ttk.Label(title_frame, text=self._app.get_text("new_version_found_title_2"), font=("Arial", 16, "bold"), foreground=SUCCESS).pack()
 
         info_frame = ttk.LabelFrame(update_window, text=self._app.get_text("version_information"), padding="15")
         info_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
 
         ttk.Label(info_frame, text=self._app.get_text("current_version_display").format(version=CURRENT_VERSION), font=("Arial", 10)).pack(anchor=tk.W, pady=(0, 5))
-        ttk.Label(info_frame, text=self._app.get_text("latest_version_display").format(version=f"v{info.version}"), font=("Arial", 10, "bold"), foreground="red").pack(anchor=tk.W, pady=(0, 10))
+        ttk.Label(info_frame, text=self._app.get_text("latest_version_display").format(version=f"v{info.version}"), font=("Arial", 10, "bold"), foreground=ERROR).pack(anchor=tk.W, pady=(0, 10))
 
         button_frame = ttk.Frame(update_window)
         button_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
@@ -407,7 +408,7 @@ class VersionTab:
         def view_details():
             self._app.notebook.select(self.parent_frame)
             self.latest_version_var.set(f"v{info.version}")
-            self.latest_version_label.config(foreground="red")
+            self.latest_version_label.config(foreground=ERROR)
             self.version_status_var.set(self._app.get_text("new_version_found"))
             self.download_btn.config(state="normal")
             self._pending_update_info = info

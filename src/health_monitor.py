@@ -37,7 +37,7 @@ from utils import set_app_instance, setup_signal_handlers, setup_exception_handl
 from custom_dialogs import CustomMessageBox, setup_custom_messagebox
 from config_manager import get_config_manager
 from _version import __version__
-from ui_theme import setup_theme, BG as UI_BG
+from ui_theme import setup_theme, BG as UI_BG, SUCCESS, ERROR
 from app_state import AppState
 from auto_click_manager import AutoClickManager
 from usage_tracker import UsageTracker
@@ -1506,9 +1506,9 @@ class HealthMonitor:
         """更新暫停狀態顯示"""
         if self.pause_status_label:
             if self.is_global_pause():
-                self.pause_status_label.config(text=self.get_text("global_pause_status_active"), foreground="red", font=("Microsoft YaHei", 10, "bold"))
+                self.pause_status_label.config(text=self.get_text("global_pause_status_active"), foreground=ERROR, font=("Microsoft YaHei", 10, "bold"))
             else:
-                self.pause_status_label.config(text=self.get_text("normal_operation"), foreground="green", font=("Microsoft YaHei", 10, "normal"))
+                self.pause_status_label.config(text=self.get_text("normal_operation"), foreground=SUCCESS, font=("Microsoft YaHei", 10, "normal"))
 
     def _get_game_window_rect(self):
         window_title = self.monitor_tab.window_var.get()

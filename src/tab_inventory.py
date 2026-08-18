@@ -16,7 +16,7 @@ from image_utils import resize_and_center_image, get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, should_clear_inventory, find_inventory_items
 from capture_utils import _mss_singleton, capture_region_to_cv2
 from custom_dialogs import CustomMessageBox
-from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER
+from ui_theme import ScrollArea, BG, INPUT_BG, FG, FG_MUTED, BORDER, SUCCESS, INFO, ERROR
 
 # F3 清包期間 GUI 縮小尺寸（與主視窗 minsize 分離，僅清包流程使用）
 CLEAR_MIN_MINSIZE = (400, 350)
@@ -108,13 +108,13 @@ class InventoryTab:
             if hasattr(self, "inventory_ui_status_label"):
                 self.inventory_ui_status_label.config(text=self._app.get_text("inventory_ui_status"))
             if hasattr(self, "inventory_status_label"):
-                self.inventory_status_label.config(text=self._app.get_text("ready"), foreground="green")
+                self.inventory_status_label.config(text=self._app.get_text("ready"), foreground=SUCCESS)
             if hasattr(self, "inventory_f3_label"):
                 self.inventory_f3_label.config(text=self._app.get_text("f3_hotkey"))
             if hasattr(self, "pause_status_label_title"):
                 self.pause_status_label_title.config(text=self._app.get_text("global_pause"))
             if hasattr(self, "pause_status_label"):
-                self.pause_status_label.config(text=self._app.get_text("normal_operation"), foreground="green")
+                self.pause_status_label.config(text=self._app.get_text("normal_operation"), foreground=SUCCESS)
             if hasattr(self, "coordinates_set_label"):
                 self.coordinates_set_label.config(text=self._app.get_text("coordinates_set"))
             if hasattr(self, "pickup_coords_label"):
@@ -123,7 +123,7 @@ class InventoryTab:
             if hasattr(self, "pickup_f6_label"):
                 self.pickup_f6_label.config(text=self._app.get_text("f6_hotkey"))
             if hasattr(self, "pickup_status_label"):
-                self.pickup_status_label.config(text=self._app.get_text("ready"), foreground="green")
+                self.pickup_status_label.config(text=self._app.get_text("ready"), foreground=SUCCESS)
             if hasattr(self, "occupied_label_title"):
                 self.occupied_label_title.config(text=self._app.get_text("occupied_slots"))
             if hasattr(self, "grid_adjustment_label"):
@@ -941,12 +941,12 @@ class InventoryTab:
 
         self.inventory_f3_label = ttk.Label(self.status_frame, text=self._app.get_text("f3_hotkey"))
         self.inventory_f3_label.grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.inventory_status_label = ttk.Label(self.status_frame, text=self._app.get_text("ready"), foreground="green")
+        self.inventory_status_label = ttk.Label(self.status_frame, text=self._app.get_text("ready"), foreground=SUCCESS)
         self.inventory_status_label.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         self.pause_status_label_title = ttk.Label(self.status_frame, text=self._app.get_text("global_pause"))
         self.pause_status_label_title.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.pause_status_label = ttk.Label(self.status_frame, text=self._app.get_text("normal_operation"), foreground="green")
+        self.pause_status_label = ttk.Label(self.status_frame, text=self._app.get_text("normal_operation"), foreground=SUCCESS)
         self.pause_status_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # F6取物座標設定
@@ -963,13 +963,13 @@ class InventoryTab:
         # 座標狀態顯示
         self.coordinates_set_label = ttk.Label(self.pickup_frame, text=self._app.get_text("coordinates_set"))
         self.coordinates_set_label.grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.pickup_coords_label = ttk.Label(self.pickup_frame, text=self._app.get_text("coordinates_count"), foreground="gray")
+        self.pickup_coords_label = ttk.Label(self.pickup_frame, text=self._app.get_text("coordinates_count"), foreground=FG_MUTED)
         self.pickup_coords_label.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # F6狀態顯示
         self.pickup_f6_label = ttk.Label(self.pickup_frame, text=self._app.get_text("f6_hotkey"))
         self.pickup_f6_label.grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.pickup_status_label = ttk.Label(self.pickup_frame, text=self._app.get_text("ready"), foreground="green")
+        self.pickup_status_label = ttk.Label(self.pickup_frame, text=self._app.get_text("ready"), foreground=SUCCESS)
         self.pickup_status_label.grid(row=2, column=1, sticky=tk.W, pady=2, padx=(10, 0))
 
         # UI截圖顯示區域
@@ -981,7 +981,7 @@ class InventoryTab:
         self.ui_preview_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
         # 添加說明文字
-        self.ui_preview_hint_label = ttk.Label(self.ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"), font=("", 8), foreground="gray")
+        self.ui_preview_hint_label = ttk.Label(self.ui_preview_frame, text=self._app.get_text("inventory_ui_screenshot_hint"), font=("", 8), foreground=FG_MUTED)
         self.ui_preview_hint_label.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
 
         # === 右側區域：背包預覽 ===
@@ -995,7 +995,7 @@ class InventoryTab:
 
         self.occupied_label_title = ttk.Label(stats_frame, text=self._app.get_text("occupied_slots"))
         self.occupied_label_title.grid(row=0, column=0, sticky=tk.W)
-        self.occupied_label = ttk.Label(stats_frame, text=self._app.get_text("slots_count"), foreground="blue", font=("", 10, "bold"))
+        self.occupied_label = ttk.Label(stats_frame, text=self._app.get_text("slots_count"), foreground=INFO, font=("", 10, "bold"))
         self.occupied_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
 
         # 偏移調整區域
@@ -1031,7 +1031,7 @@ class InventoryTab:
         self.inventory_preview_label.bind("<Configure>", self._on_preview_resize)
         self._preview_has_image = False
 
-        self.inventory_exclude_hint = ttk.Label(self.preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground="gray")
+        self.inventory_exclude_hint = ttk.Label(self.preview_frame, text=self._app.get_text("inventory_exclude_hint"), foreground=FG_MUTED)
         self.inventory_exclude_hint.grid(row=3, column=0, sticky=tk.W, pady=(2, 5))
 
         # 設定預覽區域大小
@@ -3307,7 +3307,7 @@ class InventoryTab:
             self.coord_display_labels.append(coord_label)
 
             # 狀態指示器
-            status_label = ttk.Label(frame, text=self._app.get_text("coordinate_not_set"), foreground="gray", width=10)
+            status_label = ttk.Label(frame, text=self._app.get_text("coordinate_not_set"), foreground=FG_MUTED, width=10)
             status_label.pack(side="left", padx=5)
             self.coord_display_labels.append(status_label)  # 將狀態標籤也加入列表
 
@@ -3485,9 +3485,9 @@ class InventoryTab:
                     if (i * 2 + 1) < len(self.coord_display_labels):
                         status_label = self.coord_display_labels[i * 2 + 1]
                         if self.pickup_coordinates[i][0] != 0 or self.pickup_coordinates[i][1] != 0:
-                            status_label.config(text=self._app.get_text("coordinate_set"), foreground="green")
+                            status_label.config(text=self._app.get_text("coordinate_set"), foreground=SUCCESS)
                         else:
-                            status_label.config(text=self._app.get_text("coordinate_not_set"), foreground="gray")
+                            status_label.config(text=self._app.get_text("coordinate_not_set"), foreground=FG_MUTED)
 
         # 更新主界面狀態
         self.update_pickup_status()
@@ -3585,9 +3585,9 @@ class InventoryTab:
             self.pickup_coords_label.config(text=f"{valid_coords}/5")
 
             if valid_coords > 0:
-                self.pickup_coords_label.config(foreground="green")
+                self.pickup_coords_label.config(foreground=SUCCESS)
             else:
-                self.pickup_coords_label.config(foreground="gray")
+                self.pickup_coords_label.config(foreground=FG_MUTED)
 
     # Duplicate on_closing removed; actual on_closing is defined later.
     def check_inventory_ui_exists(self, game_window):

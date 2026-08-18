@@ -153,7 +153,7 @@ class Tooltip:
         self._tip = tk.Toplevel(self.widget)
         self._tip.wm_overrideredirect(True)
         self._tip.wm_geometry(f"+{x}+{y}")
-        label = ttk.Label(self._tip, text=self.text, background="#ffffcc", relief="solid", borderwidth=1, padding=2)
+        label = ttk.Label(self._tip, text=self.text, background="#2f313d", foreground="#f8f8f2", relief="solid", borderwidth=1, padding=2)
         label.pack()
 
     def update_text(self, new_text):
@@ -215,9 +215,9 @@ def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):
         y = py + 60
     toast.geometry(f"{tw}x{th}+{x}+{y}")
 
-    frame = tk.Frame(toast, bg="black", highlightthickness=0)
+    frame = tk.Frame(toast, bg="#282a36", highlightthickness=0)
     frame.pack(fill="both", expand=True)
-    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"), bg="black", fg="white", anchor="center", justify="center")
+    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"), bg="#282a36", fg="#f8f8f2", anchor="center", justify="center")
     label.pack(fill="both", expand=True, padx=16, pady=8)
 
     if not persistent:

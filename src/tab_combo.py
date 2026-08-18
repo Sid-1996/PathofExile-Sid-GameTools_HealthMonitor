@@ -10,7 +10,7 @@ import keyboard
 from ctypes import windll
 from skill_timer import SkillTimerModule
 from utils import Tooltip
-from ui_theme import BG
+from ui_theme import BG, FG_MUTED, SUCCESS, ERROR
 
 SendMessageW = windll.user32.SendMessageW
 WM_KEYDOWN = 0x0100
@@ -100,7 +100,7 @@ class ComboTab:
         status_frame.pack(fill=tk.X, pady=(5, 0))
 
         ttk.Label(status_frame, text=self._app.get_text("system_status"), font=("Microsoft YaHei", 12, "bold")).pack(side=tk.LEFT)
-        self.combo_status_label = ttk.Label(status_frame, text=self._app.get_text("not_started"), foreground="red", font=("Microsoft YaHei", 12))
+        self.combo_status_label = ttk.Label(status_frame, text=self._app.get_text("not_started"), foreground=ERROR, font=("Microsoft YaHei", 12))
         self.combo_status_label.pack(side=tk.LEFT, padx=(8, 0))
 
         # === 右欄：技能計時器 + 使用提示 ===
@@ -113,7 +113,7 @@ class ComboTab:
         help_frame.pack(fill=tk.X, pady=(10, 0))
 
         help_text = self._app.get_text("skill_combo_usage_title") + "\n\n" + self._app.get_text("skill_combo_usage_content")
-        help_label = ttk.Label(help_frame, text=help_text, justify=tk.LEFT, font=("Arial", 9), foreground="gray", wraplength=400)
+        help_label = ttk.Label(help_frame, text=help_text, justify=tk.LEFT, font=("Arial", 9), foreground=FG_MUTED, wraplength=400)
         help_label.pack(anchor=tk.W)
 
     def initialize_combo_sets(self):
@@ -234,7 +234,7 @@ class ComboTab:
             stationary_check.grid(row=i, column=4, sticky=tk.W, padx=(15, 0), pady=3)
             Tooltip(stationary_check, self._app.get_text("stationary_attack_tip"))
 
-            ttk.Label(skills_frame, text=self._app.get_text("shift_skill_note"), font=("Arial", 8), foreground="gray").grid(row=i, column=5, sticky=tk.W, padx=(5, 0), pady=3)
+            ttk.Label(skills_frame, text=self._app.get_text("shift_skill_note"), font=("Arial", 8), foreground=FG_MUTED).grid(row=i, column=5, sticky=tk.W, padx=(5, 0), pady=3)
 
             if "key_vars" not in self.combo_ui_refs[set_index]:
                 self.combo_ui_refs[set_index]["key_vars"] = []
@@ -371,7 +371,7 @@ class ComboTab:
 
         self.combo_start_btn.config(state=tk.DISABLED)
         self.combo_stop_btn.config(state=tk.NORMAL)
-        self.combo_status_label.config(text=self._app.get_text("combo_running"), foreground="green")
+        self.combo_status_label.config(text=self._app.get_text("combo_running"), foreground=SUCCESS)
 
         enabled_count = len(enabled_sets)
         self._app.status_tab.add_status_message(self._app.get_text("combo_system_started").format(count=enabled_count), "success")
@@ -395,7 +395,7 @@ class ComboTab:
 
         self.combo_start_btn.config(state=tk.NORMAL)
         self.combo_stop_btn.config(state=tk.DISABLED)
-        self.combo_status_label.config(text=self._app.get_text("combo_stopped"), foreground="red")
+        self.combo_status_label.config(text=self._app.get_text("combo_stopped"), foreground=ERROR)
 
         self._app.status_tab.add_status_message(self._app.get_text("combo_system_stopped"), "info")
         print("[STOP] 連段系統已完全停止")
@@ -426,7 +426,7 @@ class ComboTab:
             if self.combo_stop_btn:
                 self.combo_stop_btn.config(state=tk.NORMAL)
             if self.combo_status_label:
-                self.combo_status_label.config(text=self._app.get_text("combo_running"), foreground="green")
+                self.combo_status_label.config(text=self._app.get_text("combo_running"), foreground=SUCCESS)
         except Exception:
             pass
 
