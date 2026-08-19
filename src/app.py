@@ -177,6 +177,10 @@ def main(argv=None) -> int:
             print("SMOKE PHASE9 HOTKEYS OK")
 
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
+            # （先 seed config，讓 start_monitoring 的 region/settings guard 通過，
+            #   避免打包後的乾淨 config 環境下監控無法啟動）
+            window.config["region"] = [0, 0, 50, 50]
+            window.config["settings"] = [{"type": "HP", "percent": 60, "key": "1", "cooldown": 1500}]
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
             window.start_monitoring()
             assert window.is_monitoring() and window._monitor_thread is not None and window._monitor_thread.is_alive(), "monitor thread not running"
