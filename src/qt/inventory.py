@@ -32,7 +32,7 @@ from qfluentwidgets import CheckBox, PushButton, RadioButton
 
 from capture_utils import _mss_singleton, capture_region_to_cv2, capture_region_to_pil, load_screenshot_from_file, save_screenshot
 from image_utils import get_interface_ui_region_text
-from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, should_clear_inventory
+from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
 
 # ── 色票（與 qt.monitor 對齊）──
@@ -222,12 +222,12 @@ class InventoryTab(QWidget):
 
     def _load_config(self):
         cfg = self._app.config
-        self.inventory_region = cfg.get("inventory_region")
+        self.inventory_region = normalize_region(cfg.get("inventory_region"))
         self.empty_inventory_colors = [tuple(c) for c in cfg.get("empty_inventory_colors", [])]
         self.grid_offset_x = cfg.get("grid_offset_x", 0)
         self.grid_offset_y = cfg.get("grid_offset_y", 0)
         self.excluded_inventory_slots = set(cfg.get("excluded_inventory_slots", []))
-        self.inventory_ui_region = cfg.get("inventory_ui_region")
+        self.inventory_ui_region = normalize_region(cfg.get("inventory_ui_region"))
         self.pickup_coordinates = cfg.get("pickup_coordinates")
         self.clear_click_mode = cfg.get("inventory_clear_click_mode", "left")
         positions = [tuple(p) for p in cfg.get("inventory_grid_positions", [])]
@@ -694,6 +694,9 @@ class InventoryTab(QWidget):
             QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("selection_failed").format(error=str(e)))
 
     def _on_region_selection_done(self, kind, region):
+        # overlay 回傳 tuple (x,y,w,h)，本子系統一律用 dict 存取 → 在此正規化
+        if isinstance(region, (tuple, list)) and len(region) == 4:
+            region = {"x": region[0], "y": region[1], "width": region[2], "height": region[3]}
         try:
             if kind == "inventory":
                 self.inventory_region = region

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QW
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
 from auto_click_manager import AutoClickManager
+from inventory_utils import normalize_region
 from monitor_analyzer import (
     analyze_health,
     analyze_mana,
@@ -113,7 +114,8 @@ class MainWindow(FluentWindow):
 
     def _load_monitor_config(self) -> None:
         cfg = self.config
-        self.interface_ui_region = cfg.get("interface_ui_region")
+        # 相容 tk 世代以 positional list 儲存的 legacy config → 一律正規化為 dict
+        self.interface_ui_region = normalize_region(cfg.get("interface_ui_region"))
         self.health_threshold = cfg.get("health_threshold", 0.8)
         self.red_h_range = cfg.get("red_h_range", 5)
         self.green_h_range = cfg.get("green_h_range", 40)

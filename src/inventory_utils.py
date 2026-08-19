@@ -11,9 +11,21 @@ All functions are pure (no tkinter dependency).
 import numpy as np
 
 
+def normalize_region(region):
+    """把 region 正規化為 dict {x, y, width, height}（容錯 tuple/list/dict，None 保留）。"""
+    if region is None:
+        return None
+    if isinstance(region, dict):
+        return region
+    if isinstance(region, (tuple, list)) and len(region) == 4:
+        return {"x": region[0], "y": region[1], "width": region[2], "height": region[3]}
+    return None
+
+
 def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots=None, current_slot=None):
     """檢查背包是否需要清空 - 檢查60個格子，可選擇跳過指定格子和之前的格子"""
-    if not empty_inventory_colors or not inventory_grid_positions:
+    inventory_region = normalize_region(inventory_region)
+    if not empty_inventory_colors or not inventory_grid_positions or not inventory_region:
         return False, []
 
     occupied_slots = []
@@ -52,6 +64,7 @@ def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions
 
 def find_inventory_items(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots=None, current_slot=None):
     """分析圖片並找到有物品的格子位置"""
+    inventory_region = normalize_region(inventory_region)
     _, occupied_indices = should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots, current_slot)
     occupied_positions = []
     for index in occupied_indices:
@@ -62,6 +75,7 @@ def find_inventory_items(img, empty_inventory_colors, inventory_grid_positions, 
 
 def calculate_inventory_grid_positions(inventory_region, grid_offset_x=0, grid_offset_y=0):
     """計算背包格子位置 (5x12 布局，總共60個格子)"""
+    inventory_region = normalize_region(inventory_region)
     if not inventory_region:
         return []
 
@@ -97,4 +111,8 @@ if __name__ == "__main__":
     assert positions[0] == (5, 5), f"first slot {positions[0]}"
     assert positions[59] == (115, 45), f"last slot {positions[59]}"
     assert calculate_inventory_grid_positions(None) == [], "None region -> []"
+    assert normalize_region((0, 0, 120, 50)) == region, "tuple -> dict"
+    assert normalize_region([0, 0, 120, 50]) == region, "list -> dict"
+    assert normalize_region(region) is region, "dict passthrough"
+    assert normalize_region(None) is None, "None passthrough"
     print("inventory_utils self-check OK")

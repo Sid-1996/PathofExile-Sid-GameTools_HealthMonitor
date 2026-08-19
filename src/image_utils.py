@@ -186,16 +186,20 @@ def get_interface_ui_region_text(interface_ui_region, get_text=None):
     """Format the interface UI region as a display string.
 
     Args:
-        interface_ui_region: Dict with keys 'x', 'y', 'width', 'height', or None.
+        interface_ui_region: Dict with keys 'x', 'y', 'width', 'height', positional
+            tuple/list (x, y, w, h), or None.
         get_text: Optional language lookup callable; used for the not-recorded placeholder.
 
     Returns:
         Formatted string or not-recorded placeholder.
     """
     if interface_ui_region:
-        x = interface_ui_region["x"]
-        y = interface_ui_region["y"]
-        w = interface_ui_region["width"]
-        h = interface_ui_region["height"]
+        if isinstance(interface_ui_region, (tuple, list)):
+            x, y, w, h = interface_ui_region
+        else:
+            x = interface_ui_region["x"]
+            y = interface_ui_region["y"]
+            w = interface_ui_region["width"]
+            h = interface_ui_region["height"]
         return f"x={x}, y={y}, w={w}, h={h}"
     return get_text("not_recorded") if get_text else "尚未記錄"
