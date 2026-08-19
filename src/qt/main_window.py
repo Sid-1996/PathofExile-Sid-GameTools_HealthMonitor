@@ -1,17 +1,17 @@
 """MainWindow — PySide6 FluentWindow 主外殼。
 
-已移植 StatusTab / MonitorTab / InventoryTab，其餘為 stub。
-逐一移植各 tab 時，把對應 stub 換成真實 QWidget 即可。
+已移植 StatusTab / MonitorTab / InventoryTab / ComboTab / HelpTab / AboutTab / VersionTab。
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
 import threading
 import time
+import webbrowser
 from datetime import datetime
 
 import pygetwindow as gw
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
@@ -27,43 +27,19 @@ from monitor_analyzer import (
     is_mana_color,
     trigger_actions,
 )
+from qt.about import AboutTab
 from qt.combo import ComboTab
+from qt.help import HelpTab
 from qt.inventory import InventoryTab
 from qt.monitor import MonitorTab
 from qt.status import StatusTab
+from qt.version import VersionTab
+from usage_tracker import UsageTracker
 from window_key_sender import WindowKeySender
 
 # ── 主題常數（與舊 dracula 色系對齊）──
 ACCENT = "#bd93f9"
 MUTED = "#b8b8c8"
-
-# ── 分頁清單：(language key, FluentIcon, 該 tab 未來涵蓋的功能說明) ──
-# tab_status / tab_health_monitor / tab_inventory_clear / tab_skill_combo 已移植，不在此 stub 清單中。
-STUB_TABS = [
-    ("tab_help", FluentIcon.HELP, "使用說明"),
-    ("tab_version", FluentIcon.UPDATE, "版本檢查、下載與套用更新"),
-    ("tab_about", FluentIcon.INFO, "關於本工具"),
-]
-
-
-class StubTab(QWidget):
-    """遷移前的佔位 tab：顯示該分頁未來涵蓋的功能。"""
-
-    def __init__(self, title: str, scope: str, parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
-
-        title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
-        scope_label = QLabel(f"尚未移植 — 未來涵蓋：{scope}")
-        scope_label.setWordWrap(True)
-        scope_label.setStyleSheet(f"font-size: 13px; color: {MUTED};")
-
-        layout.addWidget(title_label)
-        layout.addWidget(scope_label)
-        layout.addStretch(1)
 
 
 class MainWindow(FluentWindow):
@@ -82,6 +58,12 @@ class MainWindow(FluentWindow):
         # ── 全域暫停 / F3 清包中斷旗標（InventoryTab F3/F6 流程用）──
         self._global_pause = False
         self.inventory_clear_interrupt = False
+
+        # ── 使用時間統計（沿用 usage_tracker 保留模組：registry 載入/儲存）──
+        self._usage_tracker = UsageTracker(self)  # 設定 self.total_usage_time
+        self._usage_timer = QTimer(self)
+        self._usage_timer.timeout.connect(self._on_usage_tick)
+        self._usage_timer.start(60000)
 
         # ── config / 語言（沿用既有非 GUI 模組）──
         self.config_manager = self.config_manager_factory()  # 取得 singleton
@@ -437,13 +419,26 @@ class MainWindow(FluentWindow):
             self.inventory_tab.update_inventory_tab_language()
         if hasattr(self, "combo_tab"):
             self.combo_tab.update_combo_tab_language()
+        if hasattr(self, "help_tab"):
+            self.help_tab.update_language()
+        if hasattr(self, "version_tab"):
+            self.version_tab.update_language()
+        if hasattr(self, "about_tab"):
+            self.about_tab.update_language()
+
+    def _on_usage_tick(self) -> None:
+        self.total_usage_time += 60
+        if hasattr(self, "about_tab"):
+            self.about_tab.refresh_usage_time()
+
+    def open_video_link(self, url: str) -> None:
+        """打開影片/外部連結"""
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            QMessageBox.critical(self, self.get_text("error"), self.get_text("browser_open_failed").format(error=e))
 
     def _build_tabs(self) -> None:
-        for key, icon, scope in STUB_TABS:
-            tab = StubTab(self.get_text(key), scope)
-            tab.setObjectName(key)
-            self.addSubInterface(tab, icon, self.get_text(key), NavigationItemPosition.TOP)
-
         # ── MonitorTab（已移植：Phase 4a UI + 觸發列表 + 預覽）──
         self.monitor_tab = MonitorTab(self)
         self.monitor_tab.setObjectName("tab_health_monitor")
@@ -464,6 +459,21 @@ class MainWindow(FluentWindow):
         self.status_tab.setObjectName("tab_status")
         self.addSubInterface(self.status_tab, FluentIcon.HISTORY, self.get_text("tab_status"), NavigationItemPosition.TOP)
 
+        # ── HelpTab（已移植：Phase 7 使用說明）──
+        self.help_tab = HelpTab(self)
+        self.help_tab.setObjectName("tab_help")
+        self.addSubInterface(self.help_tab, FluentIcon.HELP, self.get_text("tab_help"), NavigationItemPosition.TOP)
+
+        # ── VersionTab（已移植：Phase 7 版本檢查/下載/更新）──
+        self.version_tab = VersionTab(self)
+        self.version_tab.setObjectName("tab_version")
+        self.addSubInterface(self.version_tab, FluentIcon.UPDATE, self.get_text("tab_version"), NavigationItemPosition.TOP)
+
+        # ── AboutTab（已移植：Phase 7 關於本工具）──
+        self.about_tab = AboutTab(self)
+        self.about_tab.setObjectName("tab_about")
+        self.addSubInterface(self.about_tab, FluentIcon.INFO, self.get_text("tab_about"), NavigationItemPosition.TOP)
+
     def _center_on_screen(self) -> None:
         screen = QApplication.primaryScreen()
         if screen:
@@ -471,7 +481,12 @@ class MainWindow(FluentWindow):
             self.move(geo.center() - self.rect().center())
 
     def _shutdown(self) -> None:
-        """關閉清理。後續階段加入：usage_tracker。"""
+        """關閉清理。"""
+        self._usage_timer.stop()
+        try:
+            self._usage_tracker.stop()  # 計算本次使用時間並寫回 registry
+        except Exception:
+            pass
         for timer in self._pending_timers:
             timer.stop()
         self._pending_timers.clear()
@@ -481,6 +496,11 @@ class MainWindow(FluentWindow):
                     self.combo_tab.stop_combo_system()
                 if self.combo_tab.skill_timer:
                     self.combo_tab.skill_timer.stop_all()
+        except Exception:
+            pass
+        try:
+            if hasattr(self, "version_tab"):
+                self.version_tab.shutdown_cleanup()
         except Exception:
             pass
         try:

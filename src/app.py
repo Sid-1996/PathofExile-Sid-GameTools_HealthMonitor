@@ -145,6 +145,18 @@ def main(argv=None) -> int:
             assert st.slots[0].start() is False, "empty key start should fail"
             print("SMOKE COMBO TAB OK")
 
+            # Phase 7：Help/About/Version tabs
+            assert hasattr(window, "help_tab") and hasattr(window, "about_tab") and hasattr(window, "version_tab"), "phase7 tabs missing"
+            assert window.help_tab._scroll is not None, "help scroll missing"
+            assert window.about_tab.usage_time_label is not None, "about usage label missing"
+            window.about_tab.refresh_usage_time()
+            assert window.about_tab.usage_time_label.text(), "usage time refresh failed"
+            vt = window.version_tab
+            assert callable(vt.check_for_updates) and callable(vt.silent_version_check) and callable(vt.test_github_connection), "version entries missing"
+            assert vt.latest_version_label is not None and vt.release_notes_text is not None, "version ui missing"
+            assert vt.format_release_notes("## header\n- item\n**bold**") == "◆ header\n• item\nbold", "format_release_notes failed"
+            print("SMOKE PHASE7 TABS OK")
+
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
             window.start_monitoring()
