@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import CheckBox, ComboBox, EditableComboBox, LineEdit, PrimaryPushButton, PushButton
 
 from capture_utils import build_game_window_monitor, capture_region_to_pil, save_screenshot
+from inventory_utils import normalize_region
 from image_utils import (
     draw_health_indicator,
     draw_mana_indicator,
@@ -214,8 +215,9 @@ class MonitorTab(QWidget):
 
         self.window_title = ""
         self.window_var = _VarShim(self)
-        self.selected_region = None
-        self.selected_mana_region = None
+        # 從 config 回復已框選區域（legacy list → dict 正規化），供預覽/測試擷取使用
+        self.selected_region = normalize_region(self._app.config.get("region"))
+        self.selected_mana_region = normalize_region(self._app.config.get("mana_region"))
         self.preview_size = (380, 280)
         self.monitor_interval_ms = int(self._app.config.get("monitor_interval", 0.1) * 1000)
         self.multi_trigger = bool(self._app.config.get("multiple_triggers", True))

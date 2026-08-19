@@ -1,5 +1,6 @@
 """skill_timer.py（Qt 版）SkillSlot 計時迴圈測試。"""
 
+import os
 import time
 
 
@@ -43,3 +44,26 @@ def test_skill_slot_loop_sends_keys(monkeypatch):
         assert pressed[0] == "q"
     finally:
         slot.stop()
+
+
+def test_skill_timer_module_config_roundtrip():
+    """skill_timer config 寫入→讀回：load_config 能把儲存值同步回 slot state 與 UI。"""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication([])
+    try:
+        from qt.skill_timer import SkillTimerModule
+
+        module = SkillTimerModule(max_slots=2)
+        config = [
+            {"enabled": True, "key": "a", "modifier": "ctrl", "interval_ms": 1200},
+            {"enabled": False, "key": "b", "modifier": "shift", "interval_ms": 800},
+        ]
+        module.load_config(config)
+        assert [s.enabled for s in module.slots] == [True, False]
+        assert [s.key for s in module.slots] == ["a", "b"]
+        assert [s.interval_ms for s in module.slots] == [1200, 800]
+        assert module.get_config() == config
+    finally:
+        app.processEvents()

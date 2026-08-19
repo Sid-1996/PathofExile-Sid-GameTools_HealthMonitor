@@ -390,6 +390,10 @@ class ComboTab(QWidget):
                 refs["key_combos"][i].setCurrentText(combo_set["combo_keys"][i] if combo_set["combo_keys"][i] else "off")
                 refs["delay_entries"][i].setText(str(combo_set["delays"][i]) if combo_set["delays"][i] else "")
                 refs["stationary_checks"][i].setChecked(bool(combo_set["stationary_attacks"][i]))
+        # 技能計時器：還原已儲存的 skill_timer config（save_combo_config 會寫入此鍵）
+        cfg_st = self._app.config.get("skill_timer")
+        if cfg_st and self.skill_timer:
+            self.skill_timer.load_config(cfg_st)
 
     # ────────────────────────────────────────────────────
     #  連段系統控制
