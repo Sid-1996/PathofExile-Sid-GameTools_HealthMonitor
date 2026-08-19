@@ -1,7 +1,6 @@
-"""InventoryTab（Qt 版）— 一鍵清包分頁（Phase 5b：框選 + 預覽 + exclusion）。
+"""InventoryTab（Qt 版）— 一鍵清包分頁（Phase 5c 完成：F3 清包 / F6 拾取 / 介面UI偵測）。
 
-對應 tk 版 `tab_inventory.py`。Phase 5c 將移植 F3 清包 / F6 拾取與介面UI偵測。
-worker thread 的 UI 更新一律走 Signal（延續 MonitorTab/StatusTab 模式）。
+對應 tk 版 `tab_inventory.py`。worker thread 的 UI 更新一律走 Signal（延續 MonitorTab/StatusTab 模式）。
 """
 
 import threading

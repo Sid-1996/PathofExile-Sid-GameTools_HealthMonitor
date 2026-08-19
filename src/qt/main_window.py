@@ -447,7 +447,7 @@ class MainWindow(FluentWindow):
         self.monitor_tab.setObjectName("tab_health_monitor")
         self.addSubInterface(self.monitor_tab, FluentIcon.HEART, self.get_text("tab_health_monitor"), NavigationItemPosition.TOP)
 
-        # ── InventoryTab（已移植：Phase 5a UI 骨架）──
+        # ── InventoryTab（已移植：Phase 5 UI 骨架 + 框選/預覽/排除/F3/F6）──
         self.inventory_tab = InventoryTab(self)
         self.inventory_tab.setObjectName("tab_inventory_clear")
         self.addSubInterface(self.inventory_tab, FluentIcon.SHOPPING_CART, self.get_text("tab_inventory_clear"), NavigationItemPosition.TOP)
