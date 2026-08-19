@@ -122,6 +122,29 @@ def main(argv=None) -> int:
             assert window.inventory_clear_interrupt is False, "inventory_clear_interrupt init failed"
             print("SMOKE INVENTORY 5C OK")
 
+            # ComboTab Phase 6：3 套組 UI 接線 + 技能計時器
+            assert hasattr(window, "combo_tab"), "combo_tab missing"
+            ct = window.combo_tab
+            assert len(ct.combo_sets) == 3 and len(ct.combo_enabled) == 3, "combo sets init failed"
+            assert ct.combo_notebook.count() == 3, "combo notebook pages failed"
+            assert len(ct.combo_ui_refs) == 3, "combo ui refs failed"
+            refs0 = ct.combo_ui_refs[0]
+            assert len(refs0["key_combos"]) == 5 and len(refs0["delay_entries"]) == 5 and len(refs0["stationary_checks"]) == 5, "combo skill rows failed"
+            refs0["trigger_combo"].setCurrentText("R")
+            assert ct.combo_sets[0]["trigger_key"] == "R", "trigger key binding failed"
+            refs0["key_combos"][0].setCurrentText("W")
+            assert ct.combo_sets[0]["combo_keys"][0] == "W", "combo key binding failed"
+            refs0["stationary_checks"][0].setChecked(True)
+            assert ct.combo_sets[0]["stationary_attacks"][0] is True, "stationary binding failed"
+            refs0["enabled_check"].setChecked(True)
+            assert ct.combo_enabled[0] is True, "enabled binding failed"
+            assert hasattr(ct, "skill_timer"), "skill_timer missing"
+            st = ct.skill_timer
+            assert len(st.slots) == 4, "skill timer slots failed"
+            assert len(st.get_config()) == 4, "skill timer get_config failed"
+            assert st.slots[0].start() is False, "empty key start should fail"
+            print("SMOKE COMBO TAB OK")
+
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
             window.start_monitoring()

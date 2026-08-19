@@ -27,6 +27,7 @@ from monitor_analyzer import (
     is_mana_color,
     trigger_actions,
 )
+from qt.combo import ComboTab
 from qt.inventory import InventoryTab
 from qt.monitor import MonitorTab
 from qt.status import StatusTab
@@ -37,9 +38,8 @@ ACCENT = "#bd93f9"
 MUTED = "#b8b8c8"
 
 # ── 分頁清單：(language key, FluentIcon, 該 tab 未來涵蓋的功能說明) ──
-# tab_status / tab_health_monitor / tab_inventory_clear 已移植，不在此 stub 清單中。
+# tab_status / tab_health_monitor / tab_inventory_clear / tab_skill_combo 已移植，不在此 stub 清單中。
 STUB_TABS = [
-    ("tab_skill_combo", FluentIcon.GAME, "技能連招編排與週期送鍵"),
     ("tab_help", FluentIcon.HELP, "使用說明"),
     ("tab_version", FluentIcon.UPDATE, "版本檢查、下載與套用更新"),
     ("tab_about", FluentIcon.INFO, "關於本工具"),
@@ -435,6 +435,8 @@ class MainWindow(FluentWindow):
             self.monitor_tab.update_monitor_tab_language()
         if hasattr(self, "inventory_tab"):
             self.inventory_tab.update_inventory_tab_language()
+        if hasattr(self, "combo_tab"):
+            self.combo_tab.update_combo_tab_language()
 
     def _build_tabs(self) -> None:
         for key, icon, scope in STUB_TABS:
@@ -452,6 +454,11 @@ class MainWindow(FluentWindow):
         self.inventory_tab.setObjectName("tab_inventory_clear")
         self.addSubInterface(self.inventory_tab, FluentIcon.SHOPPING_CART, self.get_text("tab_inventory_clear"), NavigationItemPosition.TOP)
 
+        # ── ComboTab（已移植：Phase 6 連段套組 + 技能計時器）──
+        self.combo_tab = ComboTab(self)
+        self.combo_tab.setObjectName("tab_skill_combo")
+        self.addSubInterface(self.combo_tab, FluentIcon.GAME, self.get_text("tab_skill_combo"), NavigationItemPosition.TOP)
+
         # ── StatusTab（已移植）──
         self.status_tab = StatusTab(self)
         self.status_tab.setObjectName("tab_status")
@@ -468,6 +475,14 @@ class MainWindow(FluentWindow):
         for timer in self._pending_timers:
             timer.stop()
         self._pending_timers.clear()
+        try:
+            if hasattr(self, "combo_tab"):
+                if self.combo_tab.is_combo_running():
+                    self.combo_tab.stop_combo_system()
+                if self.combo_tab.skill_timer:
+                    self.combo_tab.skill_timer.stop_all()
+        except Exception:
+            pass
         try:
             import keyboard
 
