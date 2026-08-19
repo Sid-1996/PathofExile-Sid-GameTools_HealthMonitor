@@ -14,8 +14,8 @@ import pygetwindow as gw
 
 from PIL import Image
 
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtCore import QObject, QRect, Qt, Signal, QTimer
+from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -137,6 +137,74 @@ class _MonitorSignals(QObject):
     restore_window = Signal()
 
 
+class _SelectionOverlay(QWidget):
+    """半透明全螢幕框選 overlay：拖曳繪製矩形，右鍵或 ESC 取消。
+
+    置於遊戲視窗 screen 座標之上；回呼都在主執行緒（滑鼠事件）執行。
+    """
+
+    def __init__(self, rect, kind, instruction, on_done, on_cancel):
+        super().__init__()
+        self._kind = kind  # "health"（紅框）或 "mana"（青框）
+        self._instruction = instruction
+        self._on_done = on_done
+        self._on_cancel = on_cancel
+        self._start = None
+        self._end = None
+
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setGeometry(rect)
+        self.setCursor(Qt.CursorShape.CrossCursor)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(128, 128, 128, 96))
+        if self._start is not None and self._end is not None:
+            color = "cyan" if self._kind == "mana" else "red"
+            painter.setPen(QPen(QColor(color), 2))
+            painter.drawRect(QRect(self._start, self._end).normalized())
+        painter.setPen(QColor("white"))
+        font = QFont()
+        font.setPointSize(14)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._instruction)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            self._finish(self._on_cancel)
+            return
+        self._start = event.position().toPoint()
+        self._end = self._start
+
+    def mouseMoveEvent(self, event):
+        if self._start is not None:
+            self._end = event.position().toPoint()
+            self.update()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton or self._start is None:
+            return
+        rect = QRect(self._start, event.position().toPoint()).normalized()
+        self._start = None
+        self._end = None
+        if rect.width() >= 2 and rect.height() >= 2:
+            self._finish(lambda: self._on_done((rect.x(), rect.y(), rect.width(), rect.height())))
+        else:
+            self._finish(self._on_cancel)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self._finish(self._on_cancel)
+        else:
+            super().keyPressEvent(event)
+
+    def _finish(self, callback):
+        self.close()
+        callback()
+
+
 class MonitorTab(QWidget):
     def __init__(self, app, parent=None):
         super().__init__(parent)
@@ -224,8 +292,12 @@ class MonitorTab(QWidget):
     def _region_label(self):
         label = QLabel("--")
         label.setWordWrap(True)
-        label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; padding: 4px 8px; color: {MUTED};")
+        label.setStyleSheet(self._region_label_style(color=MUTED))
         return label
+
+    @staticmethod
+    def _region_label_style(color):
+        return f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; padding: 4px 8px; color: {color};"
 
     def _build_window_group(self, layout):
         self.window_frame = self._styled_group(self._app.get_text("game_window_settings"))
@@ -269,12 +341,12 @@ class MonitorTab(QWidget):
         row.setSpacing(8)
         self.select_health_region_btn = PushButton(self._app.get_text("select_health_region"))
         self.select_health_region_btn.setToolTip(self._app.get_text("select_health_region_tip"))
-        self.select_health_region_btn.clicked.connect(self._not_portable_yet)
+        self.select_health_region_btn.clicked.connect(self.start_selection)
         row.addWidget(self.select_health_region_btn)
 
         self.select_mana_region_btn = PushButton(self._app.get_text("select_mana_region"))
         self.select_mana_region_btn.setToolTip(self._app.get_text("select_mana_region_tip"))
-        self.select_mana_region_btn.clicked.connect(self._not_portable_yet)
+        self.select_mana_region_btn.clicked.connect(self.start_mana_selection)
         row.addWidget(self.select_mana_region_btn)
 
         self.select_interface_ui_btn = PushButton(self._app.get_text("select_interface_ui"))
@@ -849,6 +921,72 @@ class MonitorTab(QWidget):
             QMessageBox.information(self, self._app.get_text("settings_applied"), self._app.get_text("preview_test_completed").format(success_count=success_count))
         else:
             QMessageBox.warning(self, self._app.get_text("important_reminder"), self._app.get_text("no_testable_regions"))
+
+    # ────────────────────────── 框選 overlay（Phase 4b） ──────────────────────────
+
+    def start_selection(self):
+        self._start_selection(is_mana=False)
+
+    def start_mana_selection(self):
+        self._start_selection(is_mana=True)
+
+    def _start_selection(self, is_mana):
+        if not self.window_title:
+            QMessageBox.warning(self, self._app.get_text("error"), self._app.get_text("select_game_window_first"))
+            return
+        if self._app.check_game_window_minimized(self.window_title):
+            return
+        if getattr(self._app, "_monitoring", False):
+            self._app.stop_monitoring()
+            QMessageBox.information(self, self._app.get_text("important_reminder"), self._app.get_text("monitoring_auto_stopped_for_selection"))
+        try:
+            windows = gw.getWindowsWithTitle(self.window_title)
+            if not windows:
+                return
+            game_window = windows[0]
+            game_window.activate()
+            time.sleep(0.1)
+
+            self.window().hide()
+
+            rect = QRect(game_window.left, game_window.top, game_window.width, game_window.height)
+            instruction_key = "select_mana_bar_instruction" if is_mana else "select_health_bar_instruction"
+            self._overlay = _SelectionOverlay(
+                rect,
+                "mana" if is_mana else "health",
+                self._app.get_text(instruction_key),
+                on_done=lambda region: self._on_selection_done(region, is_mana),
+                on_cancel=self._finalize_selection_restore_gui,
+            )
+            self._overlay.show()
+            self._overlay.raise_()
+            self._overlay.activateWindow()
+        except Exception as e:
+            self._finalize_selection_restore_gui()
+            error_key = "mana_selection_start_failed" if is_mana else "selection_start_failed"
+            QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text(error_key).format(error=str(e)))
+
+    def _on_selection_done(self, region, is_mana):
+        if is_mana:
+            self.selected_mana_region = region
+            self._app.config["mana_region"] = region
+            self.mana_region_label.setText(get_mana_region_text(self._app.config, self._app.get_text))
+            self.mana_region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
+            QTimer.singleShot(100, self.capture_mana_preview_async)
+        else:
+            self.selected_region = region
+            self._app.config["region"] = region
+            self.region_label.setText(get_region_text(self._app.config, self._app.get_text))
+            self.region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
+            QTimer.singleShot(100, self.capture_preview_async)
+        self._finalize_selection_restore_gui()
+
+    def _finalize_selection_restore_gui(self):
+        win = self.window()
+        win.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self._app.always_on_top)
+        win.show()
+        win.raise_()
+        win.activateWindow()
 
     # ────────────────────────── 控制項回呼 ──────────────────────────
 
