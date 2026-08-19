@@ -43,6 +43,7 @@ from image_utils import (
     get_region_text,
     resize_and_center_image,
 )
+from qt.monitor_dialogs import AdjustColorsDialog, AdjustInterfaceUiDialog
 from utils import get_app_dir
 
 # ── 色票（與 tk 版 ui_theme 對齊）──
@@ -412,12 +413,12 @@ class MonitorTab(QWidget):
 
         self.adjust_colors_btn = PushButton(self._app.get_text("adjust_colors"))
         self.adjust_colors_btn.setToolTip(self._app.get_text("adjust_colors_tip"))
-        self.adjust_colors_btn.clicked.connect(self._not_portable_yet)
+        self.adjust_colors_btn.clicked.connect(self.open_adjust_colors)
         options_row.addWidget(self.adjust_colors_btn)
 
         self.adjust_interface_ui_btn = PushButton(self._app.get_text("adjust_interface_ui"))
         self.adjust_interface_ui_btn.setToolTip(self._app.get_text("adjust_interface_ui_tip"))
-        self.adjust_interface_ui_btn.clicked.connect(self._not_portable_yet)
+        self.adjust_interface_ui_btn.clicked.connect(self.open_adjust_interface_ui)
         options_row.addWidget(self.adjust_interface_ui_btn)
 
         self.multi_trigger_check = CheckBox(self._app.get_text("multiple_triggers"))
@@ -1004,6 +1005,12 @@ class MonitorTab(QWidget):
             self._app.preview_interval = int(text)
         except ValueError:
             pass
+
+    def open_adjust_colors(self):
+        AdjustColorsDialog(self._app, self).exec()
+
+    def open_adjust_interface_ui(self):
+        AdjustInterfaceUiDialog(self._app, self).exec()
 
     def _not_portable_yet(self):
         QMessageBox.information(self, self._app.get_text("important_reminder"), "此功能將於後續階段移植（tk 版仍可使用）")
