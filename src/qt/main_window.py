@@ -4,6 +4,7 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
+import sys
 import threading
 import time
 import webbrowser
@@ -15,6 +16,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
+from auto_click_manager import AutoClickManager
 from monitor_analyzer import (
     analyze_health,
     analyze_mana,
@@ -35,6 +37,7 @@ from qt.monitor import MonitorTab
 from qt.status import StatusTab
 from qt.version import VersionTab
 from usage_tracker import UsageTracker
+from utils import set_app_instance, global_f12_handler
 from window_key_sender import WindowKeySender
 
 # ── 主題常數（與舊 dracula 色系對齊）──
@@ -48,6 +51,7 @@ class MainWindow(FluentWindow):
         self._is_closing = False
         self._pending_timers = []
         self.start_time = datetime.now()
+        set_app_instance(self)  # F12 緊急關閉（utils）
 
         # ── 監控狀態（worker thread 用；bool + Lock）──
         self._monitoring = False
@@ -97,6 +101,12 @@ class MainWindow(FluentWindow):
         self._build_tabs()
         self.window_key_sender = WindowKeySender(self)
         self.setup_hotkeys()
+
+        # ── 自動點擊（AHK，沿用 auto_click_manager 保留模組）──
+        self.auto_click_manager = AutoClickManager(self)
+        if "--smoke" not in sys.argv:
+            self.auto_click_manager.setup_auto_click_listener()
+
         self.resize(1280, 800)
         self.setMinimumSize(1000, 700)
         self._center_on_screen()
@@ -379,15 +389,47 @@ class MainWindow(FluentWindow):
         self._global_pause = bool(state)
 
     def setup_hotkeys(self) -> None:
-        """註冊 F3/F6 全局熱鍵（F9 全域暫停等後續階段補齊）。"""
+        """註冊全局熱鍵：F3 清包 / F5 回藏身處 / F6 拾取 / F9 全域暫停 / F10 監控切換 / F12 緊急關閉。"""
         try:
             import keyboard
 
             keyboard.add_hotkey("f3", self.inventory_tab.request_f3)
             keyboard.add_hotkey("f6", self.inventory_tab.request_f6)
-            print("已註冊 F3/F6 全局熱鍵")
+            if hasattr(self.inventory_tab, "return_to_hideout"):
+                keyboard.add_hotkey("f5", self.inventory_tab.return_to_hideout)
+            keyboard.add_hotkey("f9", self.toggle_global_pause)
+            keyboard.add_hotkey("f10", self.toggle_monitoring)
+            keyboard.add_hotkey("f12", global_f12_handler)
+            print("已註冊 F3/F5/F6/F9/F10/F12 全局熱鍵")
         except Exception as e:
             print(f"註冊熱鍵失敗: {e}")
+
+    def toggle_global_pause(self) -> None:
+        """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
+        self._global_pause = not self._global_pause
+        if self._global_pause:
+            self.add_status_message(self.get_text("global_pause_activated"), "warning")
+        else:
+            self.add_status_message(self.get_text("global_pause_deactivated"), "success")
+
+    def toggle_monitoring(self) -> None:
+        """F10：血魔監控開關（安全網）。"""
+        if self._global_pause:
+            print("[STOP] 全域暫停中，跳過 F10 熱鍵")
+            self.add_status_message(self.get_text("f10_skip_global_pause"), "warning")
+            return
+        if self.is_monitoring():
+            self.add_status_message(self.get_text("f10_stop_monitoring"), "hotkey")
+            self.stop_monitoring()
+        else:
+            self.add_status_message(self.get_text("f10_start_monitoring"), "hotkey")
+            self.start_monitoring()
+
+    def close_app(self) -> None:
+        """F12 緊急關閉：觸發正常關閉流程。"""
+        if self._is_closing:
+            return
+        self.close()  # 觸發 closeEvent → _shutdown
 
     def check_game_window_minimized(self, window_title) -> bool:
         """遊戲視窗最小化時顯示提醒並回傳 True（對應 tk 版）。"""
@@ -507,6 +549,10 @@ class MainWindow(FluentWindow):
             import keyboard
 
             keyboard.unhook_all()
+        except Exception:
+            pass
+        try:
+            self.auto_click_manager.stop_auto_click_ahk()
         except Exception:
             pass
         for timer in self._pending_timers:

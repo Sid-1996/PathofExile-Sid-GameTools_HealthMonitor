@@ -36,4 +36,4 @@ jobs:
       run: python -m pytest --no-cov -q
 
     - name: pyright
-      run: pyright src/health_monitor.py
+      run: pyright src/app.py src/qt/

@@ -33,13 +33,13 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    python -c "import tkinter, cv2" 2>nul
+    python -c "import PySide6, cv2" 2>nul
     if errorlevel 1 (
         echo [ERROR] Missing dependencies. Please run scripts\install_dependencies.bat first.
         pause
         exit /b 1
     )
-    python "%~dp0src\health_monitor.py"
+    python "%~dp0src\app.py"
     if errorlevel 1 echo [WARN] Script exited with code %ERRORLEVEL%
     goto check_restart
 )
@@ -53,13 +53,13 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    py -3.13 -c "import tkinter, cv2" 2>nul
+    py -3.13 -c "import PySide6, cv2" 2>nul
     if errorlevel 1 (
         echo [ERROR] Missing dependencies. Please run scripts\install_dependencies.bat first.
         pause
         exit /b 1
     )
-    py -3.13 "%~dp0src\health_monitor.py"
+    py -3.13 "%~dp0src\app.py"
     if errorlevel 1 echo [WARN] Script exited with code %ERRORLEVEL%
     goto check_restart
 )

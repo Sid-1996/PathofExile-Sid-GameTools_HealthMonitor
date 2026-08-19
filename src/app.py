@@ -37,6 +37,12 @@ def _install_exception_hook():
     def hook(exc_type, exc_value, exc_tb):
         print(f"\n[ERROR] 未捕獲的異常: {exc_type.__name__}: {exc_value}")
         traceback.print_exception(exc_type, exc_value, exc_tb)
+        try:
+            from utils import emergency_exit_handler
+
+            emergency_exit_handler()
+        except Exception:
+            os._exit(1)
 
     sys.excepthook = hook
 
@@ -156,6 +162,19 @@ def main(argv=None) -> int:
             assert vt.latest_version_label is not None and vt.release_notes_text is not None, "version ui missing"
             assert vt.format_release_notes("## header\n- item\n**bold**") == "◆ header\n• item\nbold", "format_release_notes failed"
             print("SMOKE PHASE7 TABS OK")
+
+            # Phase 9：刪 tk 後的熱鍵與自動點擊接線
+            mw = window
+            assert callable(mw.toggle_global_pause) and callable(mw.toggle_monitoring) and callable(mw.close_app), "hotkey handlers missing"
+            assert hasattr(mw, "auto_click_manager"), "auto_click_manager missing"
+            assert callable(mw.auto_click_manager.stop_auto_click_ahk), "auto_click_manager stop missing"
+            assert callable(mw.inventory_tab.return_to_hideout), "return_to_hideout missing"
+            assert callable(mw.setup_hotkeys), "setup_hotkeys missing"
+            mw.toggle_global_pause()
+            assert mw.is_global_pause() is True, "global pause toggle on failed"
+            mw.toggle_global_pause()
+            assert mw.is_global_pause() is False, "global pause toggle off failed"
+            print("SMOKE PHASE9 HOTKEYS OK")
 
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"

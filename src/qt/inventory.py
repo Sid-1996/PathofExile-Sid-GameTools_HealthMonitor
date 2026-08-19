@@ -1095,6 +1095,45 @@ class InventoryTab(QWidget):
     def request_f3(self):
         self._signals.f3_request.emit()
 
+    def return_to_hideout(self):
+        """F5 返回藏身處（送出 /hideout 指令）"""
+        if self._app.is_global_pause():
+            print("[STOP] 全域暫停中，跳過 F5 熱鍵")
+            self._app.add_status_message(self._app.get_text("f5_skip_global_pause"), "warning")
+            return
+
+        self._app.add_status_message(self._app.get_text("f5_hotkey_pressed"), "hotkey")
+
+        try:
+            window_title = self._app.monitor_tab.window_var.get()
+            if not window_title:
+                print("F5: 未設定遊戲視窗，無法使用返回藏身處")
+                self._app.add_status_message(self._app.get_text("f5_fail_game_window_not_set"), "error")
+                return
+
+            if not self._app.window_key_sender.is_game_window_foreground(window_title):
+                print(f"F5: 遊戲視窗 '{window_title}' 不在前景，取消返回藏身處操作")
+                self._app.add_status_message(self._app.get_text("f5_cancel_game_window_not_foreground"), "warning")
+                return
+
+            self._app.add_status_message(self._app.get_text("f5_processing_return_to_hideout"), "info")
+            print("F5: 執行返回藏身處")
+
+            import pyperclip
+
+            pyautogui.press("enter")
+            time.sleep(0.025)
+            pyperclip.copy("/hideout")
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(0.025)
+            pyautogui.press("enter")
+
+            print("F5: 返回藏身處指令已送出")
+            self._app.add_status_message(self._app.get_text("f5_success_hide_command_sent"), "success")
+        except Exception as e:
+            print(f"F5: 返回藏身處失敗: {str(e)}")
+            self._app.add_status_message(self._app.get_text("f5_fail_with_error").format(error=str(e)), "error")
+
     def _validate_f3(self):
         if self._app.is_global_pause():
             print("[STOP] 全域暫停中，跳過F3熱鍵")

@@ -125,49 +125,6 @@ def setup_exception_handler():
     sys.excepthook = global_exception_handler
 
 
-class Tooltip:
-    """可重複使用的 Tooltip：懸浮 widget 顯示說明文字，支援延遲"""
-
-    def __init__(self, widget, text, delay=300):
-        self.widget = widget
-        self.text = text
-        self.delay = delay
-        self._tip = None
-        self._after_id = None
-        widget.bind("<Enter>", self._schedule, add="+")
-        widget.bind("<Leave>", self._hide, add="+")
-
-    def _schedule(self, event):
-        if self._tip:
-            return
-        self._after_id = self.widget.after(self.delay, self._show)
-
-    def _show(self):
-        if self._tip:
-            return
-        import tkinter as tk
-        from tkinter import ttk
-
-        x = self.widget.winfo_rootx() + 20
-        y = self.widget.winfo_rooty() + 25
-        self._tip = tk.Toplevel(self.widget)
-        self._tip.wm_overrideredirect(True)
-        self._tip.wm_geometry(f"+{x}+{y}")
-        label = ttk.Label(self._tip, text=self.text, background="#2f313d", foreground="#f8f8f2", relief="solid", borderwidth=1, padding=2)
-        label.pack()
-
-    def update_text(self, new_text):
-        self.text = new_text
-
-    def _hide(self, event=None):
-        if self._after_id:
-            self.widget.after_cancel(self._after_id)
-            self._after_id = None
-        if self._tip:
-            self._tip.destroy()
-            self._tip = None
-
-
 def format_usage_time(seconds, lang="zh"):
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -186,40 +143,3 @@ def format_usage_time(seconds, lang="zh"):
             return f"{minutes}分鐘{secs}秒"
         else:
             return f"{secs}秒"
-
-
-def show_toast(parent, text, duration=1000, target_rect=None, persistent=False):
-    """黑底白字半透明提示視窗。
-    persistent=True: 不自動銷毀，回傳 Toplevel 供外部管理。
-    persistent=False: duration 毫秒後自動消失。
-    target_rect: (x, y, w, h) 定位目標，None 時退回落 parent。"""
-    import tkinter as tk
-    from tkinter import ttk
-
-    toast = tk.Toplevel(parent)
-    toast.wm_overrideredirect(True)
-    toast.attributes("-topmost", True)
-    toast.attributes("-alpha", 0.85)
-
-    is_multiline = "\n" in text
-    tw, th = (320, 80) if is_multiline else (320, 56)
-    if target_rect:
-        tx, ty, tw_win, th_win = target_rect
-        x = tx + (tw_win - tw) // 2
-        y = ty + 60
-    else:
-        parent.update_idletasks()
-        px, py = parent.winfo_rootx(), parent.winfo_rooty()
-        pw = parent.winfo_width()
-        x = px + (pw - tw) // 2
-        y = py + 60
-    toast.geometry(f"{tw}x{th}+{x}+{y}")
-
-    frame = tk.Frame(toast, bg="#282a36", highlightthickness=0)
-    frame.pack(fill="both", expand=True)
-    label = tk.Label(frame, text=text, font=("Arial", 12, "bold"), bg="#282a36", fg="#f8f8f2", anchor="center", justify="center")
-    label.pack(fill="both", expand=True, padx=16, pady=8)
-
-    if not persistent:
-        toast.after(duration, toast.destroy)
-    return toast

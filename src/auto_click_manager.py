@@ -139,7 +139,7 @@ class AutoClickManager:
         except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
             if isinstance(self.auto_click_process, psutil.Process):
                 self.auto_click_process.kill()
-            else:
+            elif self.auto_click_process is not None:
                 self.auto_click_process.kill()
             print("[STOP] AHK自動點擊已強制停止")
         except Exception as e:

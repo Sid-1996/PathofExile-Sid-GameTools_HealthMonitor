@@ -52,6 +52,6 @@ echo ========================================
 echo  安裝完成!
 echo.
 echo 運行方法:
-echo   python src/health_monitor.py
+echo   python src/app.py
 echo ========================================
 pause

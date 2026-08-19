@@ -86,9 +86,9 @@ class GameToolBuilder:
 
     def build_main_tool(self):
         """Build the main GameTools_HealthMonitor executable."""
-        source_file = os.path.join(self.src_dir, "health_monitor.py")
+        source_file = os.path.join(self.src_dir, "app.py")
         if not os.path.exists(source_file):
-            self.log("health_monitor.py not found")
+            self.log("app.py not found")
             return False
 
         language_pack_file = os.path.join(self.src_dir, "language_packs.json")
@@ -128,8 +128,6 @@ class GameToolBuilder:
                 "--hidden-import",
                 "PIL.Image",
                 "--hidden-import",
-                "PIL.ImageTk",
-                "--hidden-import",
                 "PIL.ImageDraw",
                 "--hidden-import",
                 "PIL._imaging",
@@ -150,6 +148,8 @@ class GameToolBuilder:
                 "pygetwindow",
                 "--hidden-import",
                 "pyautogui",
+                "--hidden-import",
+                "pyperclip",
                 "--hidden-import",
                 "psutil",
                 "--hidden-import",
@@ -177,20 +177,10 @@ class GameToolBuilder:
                 "pyscreeze",
                 "--hidden-import",
                 "mouseinfo",
-                # Tkinter
-                "--hidden-import",
-                "tkinter",
-                "--hidden-import",
-                "tkinter.ttk",
-                "--hidden-import",
-                "tkinter.messagebox",
-                "--hidden-import",
-                "_tkinter",
-                # ttkbootstrap（深色主題；assets 為 theme 圖像/icon font）
-                "--hidden-import",
-                "ttkbootstrap",
-                "--collect-data",
-                "ttkbootstrap",
+                # PySide6 + qfluentwidgets（Phase 1 實測：只需 --collect-all qfluentwidgets，
+                # 絕不加 --exclude-module PySide6.*，會打斷 hook 的 plugin/qt.conf 處理）
+                "--collect-all",
+                "qfluentwidgets",
                 # Misc
                 "--hidden-import",
                 "webbrowser",
@@ -263,19 +253,6 @@ class GameToolBuilder:
     def _add_binary_dependencies(self, cmd):
         """Collect binary dependencies (DLLs, pyds)"""
         try:
-            # Tkinter DLL
-            python_home = os.path.normpath(sys.exec_prefix)
-            dlls_dir = os.path.join(python_home, "DLLs")
-            for dll in ["tcl86t.dll", "tk86t.dll", "_tkinter.pyd"]:
-                dll_path = os.path.join(dlls_dir, dll)
-                if os.path.exists(dll_path):
-                    cmd.extend(["--add-binary", f"{dll_path};."])
-
-            # Tcl libs
-            tcl_base = os.path.join(python_home, "tcl")
-            if os.path.exists(tcl_base):
-                cmd.extend(["--add-data", f"{tcl_base};tcl"])
-
             # Pillow binary modules
             try:
                 import PIL
@@ -283,7 +260,7 @@ class GameToolBuilder:
 
                 pil_dir = os.path.dirname(PIL.__file__)
                 ext_suffix = sysconfig.get_config_var("EXT_SUFFIX") or ".cp312-win_amd64.pyd"
-                pillow_pyds = [f"_imaging{ext_suffix}", f"_imagingtk{ext_suffix}", f"_imagingmath{ext_suffix}", f"_imagingft{ext_suffix}", f"_imagingcms{ext_suffix}", f"_imagingmorph{ext_suffix}"]
+                pillow_pyds = [f"_imaging{ext_suffix}", f"_imagingmath{ext_suffix}", f"_imagingft{ext_suffix}", f"_imagingcms{ext_suffix}", f"_imagingmorph{ext_suffix}"]
                 for pyd in pillow_pyds:
                     pyd_path = os.path.join(pil_dir, pyd)
                     if os.path.exists(pyd_path):
