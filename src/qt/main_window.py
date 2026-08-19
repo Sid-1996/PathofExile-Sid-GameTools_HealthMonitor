@@ -1,6 +1,6 @@
 """MainWindow — PySide6 FluentWindow 主外殼。
 
-7 個 navigation 分頁：已移植 StatusTab 與 MonitorTab，其餘為 stub。
+已移植 StatusTab / MonitorTab / InventoryTab，其餘為 stub。
 逐一移植各 tab 時，把對應 stub 換成真實 QWidget 即可。
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
@@ -79,6 +79,10 @@ class MainWindow(FluentWindow):
         self._monitor_thread = None
         self._last_trigger_times = {}
 
+        # ── 全域暫停 / F3 清包中斷旗標（InventoryTab F3/F6 流程用）──
+        self._global_pause = False
+        self.inventory_clear_interrupt = False
+
         # ── config / 語言（沿用既有非 GUI 模組）──
         self.config_manager = self.config_manager_factory()  # 取得 singleton
         self.config_manager.load_config()
@@ -110,6 +114,7 @@ class MainWindow(FluentWindow):
 
         self._build_tabs()
         self.window_key_sender = WindowKeySender(self)
+        self.setup_hotkeys()
         self.resize(1280, 800)
         self.setMinimumSize(1000, 700)
         self._center_on_screen()
@@ -247,7 +252,9 @@ class MainWindow(FluentWindow):
         self._monitor_thread = None  # daemon 執行緒會在下次 interruptible_sleep 檢查時退出
 
     def _is_interface_ui_visible(self, game_window) -> bool:
-        """介面UI偵測由 InventoryTab 移植後提供；目前回傳 False（未在戰鬥狀態）。"""
+        """介面UI（戰鬥狀態）偵測 — 委派給 InventoryTab 的移植版實作。"""
+        if hasattr(self, "inventory_tab"):
+            return self.inventory_tab.is_interface_ui_visible(game_window)
         return False
 
     def press_key_sequence(self, key_sequence, health_percent=None):
@@ -379,6 +386,27 @@ class MainWindow(FluentWindow):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
         self.show()
 
+    def should_keep_topmost(self) -> bool:
+        """GUI 是否保持在最上方（對應 tk 版同名方法）。"""
+        return bool(self.always_on_top)
+
+    def is_global_pause(self) -> bool:
+        return bool(self._global_pause)
+
+    def set_global_pause(self, state: bool) -> None:
+        self._global_pause = bool(state)
+
+    def setup_hotkeys(self) -> None:
+        """註冊 F3/F6 全局熱鍵（F9 全域暫停等後續階段補齊）。"""
+        try:
+            import keyboard
+
+            keyboard.add_hotkey("f3", self.inventory_tab.request_f3)
+            keyboard.add_hotkey("f6", self.inventory_tab.request_f6)
+            print("已註冊 F3/F6 全局熱鍵")
+        except Exception as e:
+            print(f"註冊熱鍵失敗: {e}")
+
     def check_game_window_minimized(self, window_title) -> bool:
         """遊戲視窗最小化時顯示提醒並回傳 True（對應 tk 版）。"""
         try:
@@ -436,7 +464,16 @@ class MainWindow(FluentWindow):
             self.move(geo.center() - self.rect().center())
 
     def _shutdown(self) -> None:
-        """關閉清理。後續階段加入：usage_tracker、keyboard.unhook_all。"""
+        """關閉清理。後續階段加入：usage_tracker。"""
+        for timer in self._pending_timers:
+            timer.stop()
+        self._pending_timers.clear()
+        try:
+            import keyboard
+
+            keyboard.unhook_all()
+        except Exception:
+            pass
         for timer in self._pending_timers:
             timer.stop()
         self._pending_timers.clear()

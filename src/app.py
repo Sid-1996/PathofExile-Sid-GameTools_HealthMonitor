@@ -103,6 +103,7 @@ def main(argv=None) -> int:
             assert it._preview_has_image, "preview render failed"
             assert it.occupied_slots_cache == {0, 59}, f"occupied slots wrong: {it.occupied_slots_cache}"
             meta = it._preview_meta
+            assert meta is not None, "preview meta missing"
             cx = meta["canvas_x"] + meta["offset_x"] + int(5.5 * meta["cell_w"])
             cy = meta["canvas_y"] + meta["offset_y"] + int(0.5 * meta["cell_h"])
             it._on_preview_click(QPoint(cx, cy))
@@ -110,6 +111,16 @@ def main(argv=None) -> int:
             it._on_preview_click(QPoint(cx, cy))
             assert 5 not in it.excluded_inventory_slots, "exclusion toggle off failed"
             print(f"SMOKE INVENTORY PREVIEW OK (meta cell={meta['cell_w']}x{meta['cell_h']})")
+
+            # InventoryTab Phase 5c：清包進度預覽渲染 + F3/F6 入口與 hotkey 註冊
+            it.update_inventory_preview_with_progress(img, [0, 59], "smoke progress")
+            assert it._preview_has_image, "progress preview render failed"
+            assert callable(it.quick_clear_inventory) and callable(it.f6_pickup_items), "F3/F6 entry missing"
+            assert callable(it.request_f3) and callable(it.request_f6), "F3/F6 signal entry missing"
+            assert callable(window.setup_hotkeys), "setup_hotkeys missing"
+            assert callable(window.should_keep_topmost), "should_keep_topmost missing"
+            assert window.inventory_clear_interrupt is False, "inventory_clear_interrupt init failed"
+            print("SMOKE INVENTORY 5C OK")
 
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
