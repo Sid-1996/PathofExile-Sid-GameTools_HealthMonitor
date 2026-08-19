@@ -83,6 +83,17 @@ def main(argv=None) -> int:
             assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
             print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
 
+            # InventoryTab：grid offset 調整 → 標籤 + 格子位置重算
+            assert hasattr(window, "inventory_tab"), "inventory_tab missing"
+            it = window.inventory_tab
+            start_x, start_y = it.grid_offset_x, it.grid_offset_y
+            it.adjust_grid_offset(3, -2)
+            assert (it.grid_offset_x, it.grid_offset_y) == (start_x + 3, start_y - 2), "grid offset adjust failed"
+            assert it.offset_x_label.text() == str(start_x + 3) and it.offset_y_label.text() == str(start_y - 2), "offset label failed"
+            it.reset_grid_offset()
+            assert (it.grid_offset_x, it.grid_offset_y) == (0, 0), "reset offset failed"
+            print(f"SMOKE INVENTORY TAB OK (region={'set' if it.inventory_region else 'none'}, slots={len(it.inventory_grid_positions)})")
+
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
             window.start_monitoring()
