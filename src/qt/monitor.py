@@ -226,6 +226,7 @@ class MonitorTab(QWidget):
         self.last_mana_preview_update = 0
         self.last_status_update = 0
         self.status_update_interval = 100
+        self._preview_placeholder_shown = False
 
         self._signals = _MonitorSignals()
         self._signals.status_updated.connect(self._on_status_updated)
@@ -452,6 +453,7 @@ class MonitorTab(QWidget):
         self.start_btn.clicked.connect(self._app.start_monitoring)
         buttons_row.addWidget(self.start_btn)
         self.stop_btn = PushButton(self._app.get_text("stop_monitoring"))
+        self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._app.stop_monitoring)
         buttons_row.addWidget(self.stop_btn)
         self.save_btn = PushButton(self._app.get_text("save_settings"))
@@ -937,7 +939,7 @@ class MonitorTab(QWidget):
             return
         if self._app.check_game_window_minimized(self.window_title):
             return
-        if getattr(self._app, "_monitoring", False):
+        if self._app.is_monitoring():
             self._app.stop_monitoring()
             QMessageBox.information(self, self._app.get_text("important_reminder"), self._app.get_text("monitoring_auto_stopped_for_selection"))
         try:

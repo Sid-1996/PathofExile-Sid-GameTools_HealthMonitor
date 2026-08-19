@@ -5,6 +5,8 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
+import threading
+import time
 from datetime import datetime
 
 import pygetwindow as gw
@@ -13,6 +15,18 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
+from monitor_analyzer import (
+    analyze_health,
+    analyze_mana,
+    check_triggers,
+    get_health_color_ratio,
+    get_main_color,
+    get_mana_color_ratio,
+    interruptible_sleep,
+    is_health_color,
+    is_mana_color,
+    trigger_actions,
+)
 from qt.monitor import MonitorTab
 from qt.status import StatusTab
 from window_key_sender import WindowKeySender
@@ -58,6 +72,12 @@ class MainWindow(FluentWindow):
         self._is_closing = False
         self._pending_timers = []
         self.start_time = datetime.now()
+
+        # ── 監控狀態（worker thread 用；bool + Lock）──
+        self._monitoring = False
+        self._monitoring_lock = threading.Lock()
+        self._monitor_thread = None
+        self._last_trigger_times = {}
 
         # ── config / 語言（沿用既有非 GUI 模組）──
         self.config_manager = self.config_manager_factory()  # 取得 singleton
@@ -171,12 +191,189 @@ class MainWindow(FluentWindow):
         except Exception as e:
             self.add_status_message(self.get_text("save_failed").format(error=str(e)), "error")
 
-    # ── 監控迴圈（Phase 4d 移植完整迴圈；目前為佔位）──
+    # ── 血魔監控迴圈（Phase 4d：worker thread，UI 更新一律走 MonitorTab 的 signal）──
+
+    def is_monitoring(self) -> bool:
+        with self._monitoring_lock:
+            return self._monitoring
+
+    def set_monitoring(self, state: bool) -> None:
+        with self._monitoring_lock:
+            self._monitoring = state
+
     def start_monitoring(self):
-        self.add_status_message(self.get_text("start_monitoring") + "（迴圈將於 Phase 4d 移植）", "warning")
+        if self.is_monitoring():
+            print("[WARN] 監控已在運行中，跳過重複啟動")
+            return
+        mt = self.monitor_tab
+        if not mt.window_title:
+            QMessageBox.warning(self, self.get_text("error"), self.get_text("select_game_window_first"))
+            return
+        if self.check_game_window_minimized(mt.window_title):
+            return
+        if not self.config.get("region"):
+            QMessageBox.warning(self, self.get_text("error"), self.get_text("select_health_bar_region_first"))
+            return
+        if not self.config.get("settings"):
+            QMessageBox.warning(self, self.get_text("error"), self.get_text("set_at_least_one_trigger"))
+            return
+
+        try:
+            windows = gw.getWindowsWithTitle(mt.window_title)
+            if windows:
+                windows[0].activate()
+                time.sleep(0.1)
+        except Exception as e:
+            print(f"激活遊戲視窗失敗: {e}")
+
+        self.set_monitoring(True)
+        mt.start_btn.setEnabled(False)
+        mt.stop_btn.setEnabled(True)
+        self.add_status_message(self.get_text("health_monitor_started"), "success")
+        self.setWindowOpacity(0.8)  # 非干擾模式
+
+        self._monitor_thread = threading.Thread(target=self.monitor_health, daemon=True)
+        self._monitor_thread.start()
 
     def stop_monitoring(self):
-        self.add_status_message(self.get_text("stop_monitoring"), "info")
+        if not self.is_monitoring():
+            return
+        print("[STOP] 正在停止監控")
+        self.set_monitoring(False)
+        self.monitor_tab.start_btn.setEnabled(True)
+        self.monitor_tab.stop_btn.setEnabled(False)
+        self.add_status_message(self.get_text("health_monitor_stopped"), "info")
+        self.setWindowOpacity(1.0)
+        self._monitor_thread = None  # daemon 執行緒會在下次 interruptible_sleep 檢查時退出
+
+    def _is_interface_ui_visible(self, game_window) -> bool:
+        """介面UI偵測由 InventoryTab 移植後提供；目前回傳 False（未在戰鬥狀態）。"""
+        return False
+
+    def press_key_sequence(self, key_sequence, health_percent=None):
+        """多鍵序列依序送出（keyboard 庫 + 防重複），並記錄冷卻時間。"""
+        import keyboard
+
+        keys = [key.strip() for key in key_sequence.split("-")]
+        game_hwnd = self.window_key_sender.get_game_window_handle()
+        if game_hwnd:
+            for i, key in enumerate(keys):
+                vk_code = self.window_key_sender.map_key_to_vk_code(key)
+                if vk_code:
+                    self.window_key_sender.send_key_to_window(game_hwnd, vk_code)
+                if i < len(keys) - 1:
+                    time.sleep(0.025)
+        else:
+            for i, key in enumerate(keys):
+                keyboard.press_and_release(self.window_key_sender.map_key_name(key))
+                if i < len(keys) - 1:
+                    time.sleep(0.025)
+
+        if health_percent is not None:
+            if isinstance(health_percent, str) and health_percent.startswith("mana_"):
+                self._last_trigger_times[f"mana_{int(health_percent.split('_')[1])}"] = time.time()
+            else:
+                self._last_trigger_times[health_percent] = time.time()
+
+    def monitor_health(self):
+        from capture_utils import _mss_singleton, capture_region_to_cv2
+
+        with _mss_singleton:
+            while self.is_monitoring():
+                try:
+                    windows = gw.getWindowsWithTitle(self.monitor_tab.window_title)
+                    if not windows:
+                        self.monitor_tab.update_status("--", "--", self.get_text("window_not_found"), "")
+                        self.add_status_message(self.get_text("game_window_closed"), "warning")
+                        interruptible_sleep(1.0, self.is_monitoring)
+                        continue
+
+                    window = windows[0]
+
+                    if window.isMinimized or not window.isActive:
+                        if window.isMinimized:
+                            self.monitor_tab.update_status("--", "--", self.get_text("game_window_minimized"), "")
+                        else:
+                            self.monitor_tab.update_status("--", "--", self.get_text("waiting_for_game_window"), "")
+                        if not self.monitor_tab._preview_placeholder_shown:
+                            self.monitor_tab._preview_placeholder_shown = True
+                            msg_key = "game_window_minimized" if window.isMinimized else "game_window_lost_focus"
+                            self.add_status_message(self.get_text(msg_key), "warning")
+                            self.monitor_tab._show_health_preview_placeholder()
+                            self.monitor_tab._show_mana_preview_placeholder()
+                        interruptible_sleep(0.5, self.is_monitoring)
+                        continue
+                    if self.monitor_tab._preview_placeholder_shown:
+                        self.monitor_tab._preview_placeholder_shown = False
+                        self.add_status_message(self.get_text("game_window_regained_focus"), "success")
+
+                    x, y, w, h = self.config["region"]
+                    monitor = {"top": window.top + y, "left": window.left + x, "width": w, "height": h}
+                    img = capture_region_to_cv2(monitor)
+
+                    health_percent = analyze_health(
+                        img,
+                        lambda seg: is_health_color(
+                            seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min, self.health_threshold
+                        ),
+                        lambda seg: get_health_color_ratio(seg, self.red_saturation_min, self.red_value_min, self.red_h_range, self.green_h_range, self.green_saturation_min, self.green_value_min),
+                        self.health_threshold,
+                    )
+                    main_color = get_main_color(img)
+
+                    mana_percent = "--"
+                    if self.config.get("mana_region"):
+                        try:
+                            mx, my, mw, mh = self.config["mana_region"]
+                            mana_monitor = {"top": window.top + my, "left": window.left + mx, "width": mw, "height": mh}
+                            mana_img = capture_region_to_cv2(mana_monitor)
+                            mana_percent = analyze_mana(mana_img, is_mana_color, get_mana_color_ratio)
+                            self.monitor_tab.update_live_mana_preview(mana_img, mana_percent)
+                        except Exception as e:
+                            print(f"魔力分析錯誤: {e}")
+                            mana_percent = "--"
+
+                    mana_value = int(mana_percent) if mana_percent != "--" else None
+                    self.monitor_tab.update_status(
+                        f"{health_percent}%",
+                        f"{mana_percent}%",
+                        main_color,
+                        check_triggers(
+                            health_percent,
+                            mana_value,
+                            self.config,
+                            self._last_trigger_times,
+                            self.get_text,
+                            self._is_interface_ui_visible,
+                            self.monitor_tab.window_title,
+                            self.interface_ui_region,
+                            None,
+                        ),
+                    )
+
+                    self.monitor_tab.update_live_preview(img, health_percent)
+
+                    trigger_actions(
+                        health_percent,
+                        mana_value,
+                        self.config,
+                        self._last_trigger_times,
+                        self.monitor_tab.multi_trigger,
+                        self.add_status_message,
+                        self.get_text,
+                        self._is_interface_ui_visible,
+                        self.press_key_sequence,
+                        self.monitor_tab.window_title,
+                        self.interface_ui_region,
+                        None,
+                    )
+
+                    interruptible_sleep(self.monitor_tab.monitor_interval_ms / 1000.0, self.is_monitoring)
+
+                except Exception as e:
+                    print(f"監控錯誤: {e}")
+                    self.monitor_tab.update_status("--", "--", "--", self.get_text("error_prefix").format(error=str(e)))
+                    interruptible_sleep(1.0, self.is_monitoring)
 
     def toggle_always_on_top(self) -> None:
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
@@ -232,14 +429,17 @@ class MainWindow(FluentWindow):
             self.move(geo.center() - self.rect().center())
 
     def _shutdown(self) -> None:
-        """關閉清理。後續階段加入：usage_tracker、keyboard.unhook_all、背景 thread join。"""
+        """關閉清理。後續階段加入：usage_tracker、keyboard.unhook_all。"""
         for timer in self._pending_timers:
             timer.stop()
         self._pending_timers.clear()
+        thread = getattr(self, "_monitor_thread", None)
         try:
             self.stop_monitoring()
         except Exception:
             pass
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=1.0)
         try:
             self.save_config()
         except Exception:

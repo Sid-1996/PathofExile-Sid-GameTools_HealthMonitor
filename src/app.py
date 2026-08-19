@@ -75,16 +75,28 @@ def main(argv=None) -> int:
     if smoke:
         _smoke_thread_test(window)
 
-        def _verify_and_close():
+        def _verify_signal_path():
             n = len(window.status_tab.status_log)
             assert n >= 5, f"expected >=5 log entries, got {n}"
             print(f"SMOKE STATUS THREAD OK ({n} entries)")
             assert hasattr(window, "monitor_tab"), "monitor_tab missing"
             assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
             print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
+
+            # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
+            window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
+            window.start_monitoring()
+            assert window.is_monitoring() and window._monitor_thread is not None and window._monitor_thread.is_alive(), "monitor thread not running"
+            QTimer.singleShot(1200, _verify_loop)
+
+        def _verify_loop():
+            assert window.monitor_tab.health_label.text() == "--", f"loop status update failed: {window.monitor_tab.health_label.text()!r}"
+            window.stop_monitoring()
+            assert not window.is_monitoring(), "monitoring should be stopped"
+            print("SMOKE MONITOR LOOP OK")
             window.close()
 
-        QTimer.singleShot(1000, _verify_and_close)
+        QTimer.singleShot(1000, _verify_signal_path)
 
     code = app.exec()
     print(f"APP EXIT {code}")
