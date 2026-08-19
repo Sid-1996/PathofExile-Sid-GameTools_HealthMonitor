@@ -42,11 +42,13 @@ def _install_exception_hook():
 
 
 def _smoke_thread_test(window: MainWindow) -> None:
-    """背景 thread 連發訊息驗證 StatusTab 的 thread-safe signal 路徑。"""
+    """背景 thread 連發訊息，驗證 StatusTab / MonitorTab 的 thread-safe signal 路徑。"""
 
     def emit():
         for i in range(5):
             window.add_status_message(f"smoke thread message {i}", "info" if i % 2 == 0 else "success")
+        if hasattr(window, "monitor_tab"):
+            window.monitor_tab.update_status("100%", "50%", "#ff0000", "none")
 
     threading.Thread(target=emit, daemon=True).start()
 
@@ -77,6 +79,9 @@ def main(argv=None) -> int:
             n = len(window.status_tab.status_log)
             assert n >= 5, f"expected >=5 log entries, got {n}"
             print(f"SMOKE STATUS THREAD OK ({n} entries)")
+            assert hasattr(window, "monitor_tab"), "monitor_tab missing"
+            assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
+            print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
             window.close()
 
         QTimer.singleShot(1000, _verify_and_close)
