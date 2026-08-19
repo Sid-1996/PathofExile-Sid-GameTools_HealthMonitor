@@ -1,25 +1,36 @@
-"""InventoryTab（Qt 版）— 一鍵清包分頁（Phase 5a：UI 骨架 + 語言 + config 載入/儲存）。
+"""InventoryTab（Qt 版）— 一鍵清包分頁（Phase 5b：框選 + 預覽 + exclusion）。
 
-對應 tk 版 `tab_inventory.py`。Phase 5b 將補上三種 region 框選、預覽渲染與
-exclusion click；Phase 5c 移植 F3 清包 / F6 拾取與介面UI偵測。
+對應 tk 版 `tab_inventory.py`。Phase 5c 將移植 F3 清包 / F6 拾取與介面UI偵測。
 worker thread 的 UI 更新一律走 Signal（延續 MonitorTab/StatusTab 模式）。
 """
 
-from PySide6.QtCore import QObject, Qt, Signal
+import time
+
+import cv2
+import numpy as np
+import pygetwindow as gw
+
+from PIL import Image
+
+from PySide6.QtCore import QObject, QPoint, QRect, Qt, Signal
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 from qfluentwidgets import CheckBox, PushButton, RadioButton
 
-from inventory_utils import calculate_inventory_grid_positions
-from qt.monitor import _pil_to_qpixmap
+from capture_utils import capture_region_to_cv2, capture_region_to_pil, load_screenshot_from_file, save_screenshot
+from image_utils import get_interface_ui_region_text
+from inventory_utils import calculate_inventory_grid_positions, should_clear_inventory
+from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
 
 # ── 色票（與 qt.monitor 對齊）──
 ERROR = "#f38ba8"
@@ -30,8 +41,24 @@ INPUT_BG = "#1e1e2e"
 GROUP_BORDER = "#3d3d5c"
 
 
+class _ClickableLabel(QLabel):
+    """可點擊 + 可監聽 resize 的預覽標籤（排除格 toggle 與 resize 重繪）。"""
+
+    clicked = Signal(QPoint)
+    resized = Signal()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(event.position().toPoint())
+        super().mousePressEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.resized.emit()
+
+
 class _InventorySignals(QObject):
-    """worker → UI 更新（Phase 5b/c 使用；先定義避免 __init__ 重構）。"""
+    """worker → UI 更新（Phase 5c 使用；先定義避免 __init__ 重構）。"""
 
     status_message = Signal(str, str)
     preview_ready = Signal(object)
@@ -69,6 +96,8 @@ class InventoryTab(QWidget):
         self._load_config()
         self._build_ui()
         self._apply_config_to_ui()
+        self.load_ui_screenshot_from_file()
+        self.load_interface_ui_screenshot_from_file()
 
     # ────────────────────────── config ──────────────────────────
 
@@ -192,17 +221,17 @@ class InventoryTab(QWidget):
         row.setSpacing(8)
         self.select_inventory_region_btn = PushButton(self._app.get_text("select_inventory_region"))
         self.select_inventory_region_btn.setToolTip(self._app.get_text("select_inventory_region_tip"))
-        self.select_inventory_region_btn.clicked.connect(self._not_implemented)
+        self.select_inventory_region_btn.clicked.connect(self.start_inventory_selection)
         row.addWidget(self.select_inventory_region_btn)
 
         self.record_empty_color_btn = PushButton(self._app.get_text("record_empty_color"))
         self.record_empty_color_btn.setToolTip(self._app.get_text("record_empty_color_tip"))
-        self.record_empty_color_btn.clicked.connect(self._not_implemented)
+        self.record_empty_color_btn.clicked.connect(self.record_empty_inventory_color)
         row.addWidget(self.record_empty_color_btn)
 
         self.select_inventory_ui_btn = PushButton(self._app.get_text("select_inventory_ui"))
         self.select_inventory_ui_btn.setToolTip(self._app.get_text("select_inventory_ui_tip"))
-        self.select_inventory_ui_btn.clicked.connect(self._not_implemented)
+        self.select_inventory_ui_btn.clicked.connect(self.start_inventory_ui_selection)
         row.addWidget(self.select_inventory_ui_btn)
 
         row.addStretch(1)
@@ -410,10 +439,12 @@ class InventoryTab(QWidget):
         offset_grid.setColumnStretch(4, 1)
         vbox.addLayout(offset_grid)
 
-        self.inventory_preview_label = QLabel(self._app.get_text("select_inventory_region_first"))
+        self.inventory_preview_label = _ClickableLabel(self._app.get_text("select_inventory_region_first"))
         self.inventory_preview_label.setMinimumSize(300, 200)
         self.inventory_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.inventory_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+        self.inventory_preview_label.clicked.connect(self._on_preview_click)
+        self.inventory_preview_label.resized.connect(self._on_preview_resize)
         vbox.addWidget(self.inventory_preview_label, 1)
 
         self.inventory_exclude_hint = QLabel(self._app.get_text("inventory_exclude_hint"))
@@ -462,6 +493,7 @@ class InventoryTab(QWidget):
 
     def _set_click_mode(self, mode):
         self.clear_click_mode = mode
+        self._app.save_config()
 
     def _on_always_on_top_toggled(self, checked):
         self._app.always_on_top = checked
@@ -488,9 +520,421 @@ class InventoryTab(QWidget):
 
     def _recompute_grid_positions(self):
         self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
+        if self._preview_has_image:
+            self.update_inventory_preview_from_current()
+        self.update_ui_preview()
 
     def _not_implemented(self):
         self._app.add_status_message(self._app.get_text("inventory_setup_incomplete"), "warning")
+
+    # ────────────────────────── 框選 overlay（Phase 5b） ──────────────────────────
+
+    def start_inventory_selection(self):
+        self._start_region_selection("inventory")
+
+    def start_inventory_ui_selection(self):
+        self._start_region_selection("inventory_ui")
+
+    def start_interface_ui_selection(self):
+        self._start_region_selection("interface_ui")
+
+    def _start_region_selection(self, kind):
+        window_title = self._app.monitor_tab.window_var.get()
+        if not window_title:
+            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
+            return
+        if self._app.check_game_window_minimized(window_title):
+            return
+        if self._app.is_monitoring():
+            self._app.stop_monitoring()
+        try:
+            windows = gw.getWindowsWithTitle(window_title)
+            if not windows:
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found"))
+                return
+            game_window = windows[0]
+            game_window.activate()
+            time.sleep(0.1)
+            self.window().hide()
+
+            instruction_key = {
+                "inventory": "drag_select_inventory_region",
+                "inventory_ui": "select_inventory_ui_instruction",
+                "interface_ui": "select_interface_ui_instruction",
+            }[kind]
+            rect = QRect(game_window.left, game_window.top, game_window.width, game_window.height)
+            self._overlay = _SelectionOverlay(
+                rect,
+                "inventory",
+                self._app.get_text(instruction_key),
+                on_done=lambda region: self._on_region_selection_done(kind, region),
+                on_cancel=self._finalize_selection_restore_gui,
+            )
+            self._overlay.show()
+            self._overlay.raise_()
+            self._overlay.activateWindow()
+        except Exception as e:
+            self._finalize_selection_restore_gui()
+            QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("selection_failed").format(error=str(e)))
+
+    def _on_region_selection_done(self, kind, region):
+        try:
+            if kind == "inventory":
+                self.inventory_region = region
+                self._recompute_grid_positions()
+                self.set_preview_placeholder(self._app.get_text("select_inventory_region_first"))
+                self._app.add_status_message(self._app.get_text("inventory_region_set"), "success")
+            elif kind == "inventory_ui":
+                self.inventory_ui_region = region
+                self._capture_ui_screenshot("inventory_ui")
+            elif kind == "interface_ui":
+                self._app.interface_ui_region = region
+                self._capture_ui_screenshot("interface_ui")
+        finally:
+            self._finalize_selection_restore_gui()
+
+    def _capture_ui_screenshot(self, kind):
+        window_title = self._app.monitor_tab.window_var.get()
+        windows = gw.getWindowsWithTitle(window_title)
+        if not windows:
+            return
+        game_window = windows[0]
+        region = self.inventory_ui_region if kind == "inventory_ui" else self._app.interface_ui_region
+        if region is None:
+            return
+        monitor = {
+            "top": game_window.top + region["y"],
+            "left": game_window.left + region["x"],
+            "width": region["width"],
+            "height": region["height"],
+        }
+        img = capture_region_to_pil(monitor)
+        if kind == "inventory_ui":
+            save_screenshot(img, "inventory_ui.png")
+            self.inventory_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.refresh_config_display()
+            self.update_ui_preview()
+            self._app.add_status_message(self._app.get_text("inventory_ui_recorded"), "success")
+        else:
+            save_screenshot(img, "interface_ui.png")
+            self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.update_interface_ui_preview()
+            self._app.add_status_message(
+                self._app.get_text("interface_ui_region_set").format(x=region["x"], y=region["y"], width=region["width"], height=region["height"]),
+                "success",
+            )
+            if hasattr(self._app, "monitor_tab") and hasattr(self._app.monitor_tab, "interface_ui_label"):
+                self._app.monitor_tab.interface_ui_label.setText(get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text))
+                self._app.monitor_tab.interface_ui_label.setStyleSheet(self._app.monitor_tab._region_label_style(color=SUCCESS))
+
+    def _finalize_selection_restore_gui(self):
+        win = self.window()
+        win.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self._app.always_on_top)
+        win.show()
+        win.raise_()
+        win.activateWindow()
+
+    # ────────────────────────── 空格顏色記錄 ──────────────────────────
+
+    def record_empty_inventory_color(self):
+        if not self.inventory_region:
+            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("select_inventory_region_first"))
+            return
+        region = self.inventory_region
+        window_title = self._app.monitor_tab.window_var.get()
+        if not window_title:
+            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
+            return
+        if self._app.check_game_window_minimized(window_title):
+            return
+        try:
+            self.window().hide()
+            time.sleep(0.5)
+            windows = gw.getWindowsWithTitle(window_title)
+            if not windows:
+                self._finalize_selection_restore_gui()
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found"))
+                return
+            game_window = windows[0]
+            game_window.activate()
+            time.sleep(0.5)
+
+            self.inventory_grid_positions = calculate_inventory_grid_positions(region, self.grid_offset_x, self.grid_offset_y)
+            if not self.inventory_grid_positions:
+                self._finalize_selection_restore_gui()
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("inventory_grid_position_calc_failed"))
+                return
+
+            monitor = {
+                "top": game_window.top + region["y"],
+                "left": game_window.left + region["x"],
+                "width": region["width"],
+                "height": region["height"],
+            }
+            img = capture_region_to_cv2(monitor)
+
+            self.empty_inventory_colors = []
+            for pos_x, pos_y in self.inventory_grid_positions:
+                img_x = pos_x - region["x"]
+                img_y = pos_y - region["y"]
+                if 0 <= img_x < img.shape[1] and 0 <= img_y < img.shape[0]:
+                    x1 = max(0, img_x - 10)
+                    y1 = max(0, img_y - 10)
+                    x2 = min(img.shape[1], img_x + 10)
+                    y2 = min(img.shape[0], img_y + 10)
+                    cell_pixels = img[y1:y2, x1:x2]
+                    if cell_pixels.size > 0:
+                        avg_color = np.mean(cell_pixels, axis=(0, 1))
+                        self.empty_inventory_colors.append((int(avg_color[2]), int(avg_color[1]), int(avg_color[0])))
+                    else:
+                        self.empty_inventory_colors.append((0, 0, 0))
+                else:
+                    self.empty_inventory_colors.append((0, 0, 0))
+
+            self._finalize_selection_restore_gui()
+            self.refresh_config_display()
+            self.update_inventory_preview_from_current()
+            recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
+            QMessageBox.information(self, self._app.get_text("success"), self._app.get_text("empty_color_recorded_message").format(count=recorded_count))
+        except Exception as e:
+            self._finalize_selection_restore_gui()
+            QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
+
+    # ────────────────────────── 預覽渲染 ──────────────────────────
+
+    def update_inventory_preview_from_current(self):
+        """從當前背包區域重新擷取圖片並更新預覽（對應 tk 版同名方法）。"""
+        if not self.inventory_region:
+            return
+        region = self.inventory_region
+        try:
+            if not hasattr(self._app, "window_key_sender") or not self._app.window_key_sender._is_game_window_visible():
+                self.set_preview_placeholder(self._app.get_text("waiting_for_game_window"))
+                return
+            window_title = self._app.monitor_tab.window_var.get()
+            if not window_title:
+                return
+            windows = gw.getWindowsWithTitle(window_title)
+            if not windows:
+                return
+            game_window = windows[0]
+
+            if self.inventory_ui_region and self.inventory_ui_screenshot is not None:
+                if not self.is_inventory_ui_visible(game_window):
+                    self.set_preview_placeholder(self._app.get_text("waiting_inventory_open"))
+                    return
+            elif self.inventory_ui_region and self.inventory_ui_screenshot is None:
+                self.set_preview_placeholder(self._app.get_text("inventory_ui_not_recorded"), "orange")
+                return
+
+            monitor = {
+                "top": game_window.top + region["y"],
+                "left": game_window.left + region["x"],
+                "width": region["width"],
+                "height": region["height"],
+            }
+            img = capture_region_to_cv2(monitor)
+            _, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, region, self.excluded_inventory_slots)
+            self.update_inventory_preview_with_items(img, occupied_slots)
+        except Exception as e:
+            print(f"重新獲取預覽失敗: {e}")
+
+    def update_inventory_preview_with_items(self, img, occupied_slots):
+        """繪製網格/佔用標記/排除疊加層並縮放顯示到預覽標籤（對應 tk 版）。"""
+        try:
+            display_img = img.copy()
+            height, width = display_img.shape[:2]
+            rows, cols = 5, 12
+            cell_width = width // cols
+            cell_height = height // rows
+            offset_x = int(self.grid_offset_x)
+            offset_y = int(self.grid_offset_y)
+
+            for i in range(1, rows):
+                y = i * cell_height + offset_y
+                if 0 <= y < height:
+                    cv2.line(display_img, (0, y), (width, y), (128, 128, 128), 1)
+            for i in range(1, cols):
+                x = i * cell_width + offset_x
+                if 0 <= x < width:
+                    cv2.line(display_img, (x, 0), (x, height), (128, 128, 128), 1)
+
+            occupied_count = 0
+            for row in range(rows):
+                for col in range(cols):
+                    center_x = col * cell_width + cell_width // 2 + offset_x
+                    center_y = row * cell_height + cell_height // 2 + offset_y
+                    if not (0 <= center_x < width and 0 <= center_y < height):
+                        continue
+                    grid_index = row * cols + col
+                    if grid_index in occupied_slots:
+                        occupied_count += 1
+                        size = 6
+                        cv2.line(display_img, (center_x - size, center_y - size), (center_x + size, center_y + size), (0, 0, 255), 2)
+                        cv2.line(display_img, (center_x + size, center_y - size), (center_x - size, center_y + size), (0, 0, 255), 2)
+                    else:
+                        cv2.circle(display_img, (center_x, center_y), 2, (0, 255, 0), -1)
+
+            self._draw_exclusion_overlay(display_img, width, height)
+
+            label = self.inventory_preview_label
+            avail_w = max(label.width(), 300)
+            avail_h = max(label.height(), 200)
+            scale = min(avail_w / width, avail_h / height, 1.0)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            if scale < 1.0:
+                display_img = cv2.resize(display_img, (new_width, new_height))
+            s_offset_x = int(offset_x * scale) if scale < 1.0 else offset_x
+            s_offset_y = int(offset_y * scale) if scale < 1.0 else offset_y
+
+            rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
+            pix = _pil_to_qpixmap(Image.fromarray(rgb))
+            label.setPixmap(pix)
+            label.setText("")
+
+            cx = (avail_w - new_width) // 2
+            cy = (avail_h - new_height) // 2
+            self._preview_meta = {
+                "img_w": new_width,
+                "img_h": new_height,
+                "cell_w": new_width // cols,
+                "cell_h": new_height // rows,
+                "offset_x": s_offset_x,
+                "offset_y": s_offset_y,
+                "canvas_x": cx,
+                "canvas_y": cy,
+            }
+            self._last_preview_img = img
+            self._last_occupied_slots = occupied_slots
+            self._preview_has_image = True
+            self.occupied_slots_cache = set(occupied_slots)
+            self.occupied_label.setText(self._app.get_text("slots_count").format(count=occupied_count))
+        except Exception as e:
+            print(f"更新預覽失敗: {e}")
+
+    def _draw_exclusion_overlay(self, img, width, height):
+        rows, cols = 5, 12
+        cell_w = width // cols
+        cell_h = height // rows
+        offset_x = int(self.grid_offset_x)
+        offset_y = int(self.grid_offset_y)
+        for idx in self.excluded_inventory_slots:
+            row = idx // 12
+            col = idx % 12
+            x1 = col * cell_w + offset_x
+            y1 = row * cell_h + offset_y
+            x2 = x1 + cell_w
+            y2 = y1 + cell_h
+            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cv2.line(img, (x1, y1), (x2, y2), (255, 0, 0), 1)
+            cv2.line(img, (x2, y1), (x1, y2), (255, 0, 0), 1)
+
+    def _on_preview_click(self, pos):
+        if not self._preview_has_image or not self._preview_meta:
+            self._app.add_status_message(self._app.get_text("inventory_exclusion_toggle_unavailable"), "warning")
+            return
+        meta = self._preview_meta
+        click_x = pos.x() - meta["canvas_x"] - meta["offset_x"]
+        click_y = pos.y() - meta["canvas_y"] - meta["offset_y"]
+        if click_x < 0 or click_y < 0 or click_x >= meta["img_w"] or click_y >= meta["img_h"]:
+            return
+        col = click_x // meta["cell_w"]
+        row = click_y // meta["cell_h"]
+        if col < 0 or col >= 12 or row < 0 or row >= 5:
+            return
+        idx = row * 12 + col
+        if idx in self.excluded_inventory_slots:
+            self.excluded_inventory_slots.discard(idx)
+        else:
+            self.excluded_inventory_slots.add(idx)
+        self._render_preview_resize()
+        self._app.add_status_message(
+            self._app.get_text("inventory_slot_exclusion_toggled").format(
+                index=idx,
+                state=self._app.get_text("excluded") if idx in self.excluded_inventory_slots else self._app.get_text("included"),
+            ),
+            "info",
+        )
+        self._app.save_config()
+
+    def _on_preview_resize(self):
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(150, self._render_preview_resize)
+
+    def _render_preview_resize(self):
+        if self._preview_has_image and hasattr(self, "_last_preview_img"):
+            self.update_inventory_preview_with_items(self._last_preview_img, self._last_occupied_slots)
+
+    # ────────────────────────── UI / 介面UI 預覽 ──────────────────────────
+
+    def update_ui_preview(self):
+        if self.inventory_ui_screenshot is None:
+            self.set_ui_preview_placeholder(self._app.get_text("ui_preview_empty"))
+            return
+        rgb = cv2.cvtColor(self.inventory_ui_screenshot, cv2.COLOR_BGR2RGB)
+        self.set_ui_preview_pil(Image.fromarray(rgb))
+
+    def update_interface_ui_preview(self):
+        label = getattr(self._app.monitor_tab, "interface_ui_preview_label", None)
+        if label is None:
+            return
+        if self.interface_ui_screenshot is None:
+            label.setPixmap(QPixmap())
+            label.setText(self._app.get_text("interface_ui_preview_empty"))
+            label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+            return
+        rgb = cv2.cvtColor(self.interface_ui_screenshot, cv2.COLOR_BGR2RGB)
+        pix = _pil_to_qpixmap(Image.fromarray(rgb))
+        scaled = pix.scaled(label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        label.setPixmap(scaled)
+        label.setText("")
+
+    def load_ui_screenshot_from_file(self):
+        img = load_screenshot_from_file("inventory_ui.png")
+        if img is not None:
+            self.inventory_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.update_ui_preview()
+            self.refresh_config_display()
+            return True
+        return False
+
+    def load_interface_ui_screenshot_from_file(self):
+        img = load_screenshot_from_file("interface_ui.png")
+        if img is not None:
+            self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.update_interface_ui_preview()
+            return True
+        return False
+
+    # ────────────────────────── UI 可見性（Phase 5c 前先用於預覽 gating） ──────────────────────────
+
+    def is_inventory_ui_visible(self, game_window):
+        """檢查背包UI是否可見（MSE + 主色比較，對應 tk 版）。"""
+        if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
+            return False
+        try:
+            monitor = {
+                "top": game_window.top + self.inventory_ui_region["y"],
+                "left": game_window.left + self.inventory_ui_region["x"],
+                "width": self.inventory_ui_region["width"],
+                "height": self.inventory_ui_region["height"],
+            }
+            current_img = capture_region_to_cv2(monitor)
+            if current_img.shape != self.inventory_ui_screenshot.shape:
+                return False
+            mse = np.mean((current_img - self.inventory_ui_screenshot) ** 2)
+            current_main_color = np.mean(current_img, axis=(0, 1))
+            recorded_main_color = np.mean(self.inventory_ui_screenshot, axis=(0, 1))
+            color_diff = np.mean(np.abs(current_main_color - recorded_main_color))
+            return mse < 150 and color_diff < 10
+        except Exception as e:
+            print(f"檢查背包UI可見性失敗: {e}")
+            return False
+
+    def check_inventory_ui_exists(self, game_window):
+        return self.is_inventory_ui_visible(game_window)
 
     # ────────────────────────── 語言 ──────────────────────────
 
@@ -549,3 +993,5 @@ class InventoryTab(QWidget):
         self.always_on_top_check.setChecked(bool(self._app.always_on_top))
         self.update_offset_labels()
         self.refresh_config_display()
+        self.update_ui_preview()
+        self.update_interface_ui_preview()

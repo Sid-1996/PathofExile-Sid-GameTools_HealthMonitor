@@ -12,7 +12,7 @@ import sys
 import threading
 import traceback
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QPoint, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
@@ -93,6 +93,23 @@ def main(argv=None) -> int:
             it.reset_grid_offset()
             assert (it.grid_offset_x, it.grid_offset_y) == (0, 0), "reset offset failed"
             print(f"SMOKE INVENTORY TAB OK (region={'set' if it.inventory_region else 'none'}, slots={len(it.inventory_grid_positions)})")
+
+            # InventoryTab：合成影像預覽渲染 + exclusion 點擊 toggle
+            import numpy as np
+
+            it.excluded_inventory_slots = set()
+            img = np.full((50, 120, 3), 200, dtype=np.uint8)
+            it.update_inventory_preview_with_items(img, [0, 59])
+            assert it._preview_has_image, "preview render failed"
+            assert it.occupied_slots_cache == {0, 59}, f"occupied slots wrong: {it.occupied_slots_cache}"
+            meta = it._preview_meta
+            cx = meta["canvas_x"] + meta["offset_x"] + int(5.5 * meta["cell_w"])
+            cy = meta["canvas_y"] + meta["offset_y"] + int(0.5 * meta["cell_h"])
+            it._on_preview_click(QPoint(cx, cy))
+            assert 5 in it.excluded_inventory_slots, "exclusion toggle on failed"
+            it._on_preview_click(QPoint(cx, cy))
+            assert 5 not in it.excluded_inventory_slots, "exclusion toggle off failed"
+            print(f"SMOKE INVENTORY PREVIEW OK (meta cell={meta['cell_w']}x{meta['cell_h']})")
 
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             window.monitor_tab.window_title = "__SMOKE_NO_SUCH_WINDOW__"
