@@ -51,6 +51,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# uv (global uv workflow: auto-generated skeleton, no per-project value)
+/uv.lock
+.python-version
+
 # IDEs
 .vscode/
 .idea/
