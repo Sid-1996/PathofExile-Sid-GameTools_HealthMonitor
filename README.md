@@ -110,18 +110,18 @@ Run.bat
 
 ```
 src/
-  health_monitor.py          # Main application
-  tab_monitor.py             # Health/mana monitor tab
-  tab_inventory.py           # Inventory clear + pickup tab
-  tab_combo.py               # Skill combo tab
-  tab_version.py             # Version check + auto-update
-  tab_about.py               # About tab
-  config_manager.py          # Config load/save
+  app.py                     # Qt (PySide6) entry point
+  qt/                        # Qt GUI layer (main_window + 7 tabs)
+  monitor_analyzer.py        # Health/mana HSV analysis + triggers
+  capture_utils.py           # Screenshot + mss singleton
+  image_utils.py             # Image drawing/resize/preview
+  inventory_utils.py         # Inventory slot analysis
+  config_manager.py          # Config load/save + backup
   language_system.py         # Translation system
-  custom_dialogs.py          # Shared dialogs
-  skill_timer.py             # Skill timer module
-  app_state.py               # Shared state container
-  utils.py                   # Runtime utilities
+  utils.py                   # Runtime utilities + F12 emergency close
+  auto_click_manager.py      # Auto-click (AHK) manager
+  usage_tracker.py           # Usage time tracking
+  window_key_sender.py       # Window-focus key sending
   updater_core.py            # Update engine
   language_packs.json        # UI strings
 scripts/                     # One-click workflows

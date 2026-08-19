@@ -6,7 +6,7 @@
 - 套件管理：**uv 全域環境**（無專案 venv）——`uv pip install --system -p 3.13`，開發機 `python` 指令統一為 3.13
 - 打包：PyInstaller onedir（`tools/build.py`，exe + `_internal/` 樹）
 - Lint/格式：ruff（line-length 200、select E/F/W/C90、mccabe 20）
-- 型別檢查：pyright（僅 `src/health_monitor.py`）
+- 型別檢查：pyright（`src/app.py` + `src/qt/`）
 - 測試：pytest（`tests/` + 純邏輯模組 `__main__` self-check）
 
 ## 主要依賴
@@ -20,8 +20,9 @@
 | keyboard | 全域熱鍵（F12） |
 | psutil | 子進程管理 |
 | pyautogui / pygetwindow | 按鍵/視窗控制 |
+| pyperclip | F5 返回藏身處剪貼簿指令 |
 | requests | 版本檢查、下載 |
-| ttkbootstrap | 深色主題（dracula-dark）、圓角 UI |
+| PySide6 + PySide6-Fluent-Widgets (qfluentwidgets) | GUI（Qt 原生 + Fluent 深色主題） |
 | pywin32 (win32gui) | 視窗/前景視窗偵測 |
 
 ## 監控分析

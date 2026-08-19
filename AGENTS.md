@@ -36,7 +36,7 @@ Windows 上給 Path of Exile 玩家的日常自動化工具：健康/魔力監�
    ruff check src/ --fix
    ruff format src/
    ```
-   確認無殘留 error 才進下一步。注意：`health_monitor.py` 有 11 個既有 `C901`，是 backlog 非本次新增。
+   確認無殘留 error 才進下一步。
 
 2. **自檢測試**（本次有改非 trivial 邏輯——有分支、迴圈、解析、信任邊界/資料安全路徑——才需要）：
    檢查該檔案是否有 `if __name__ == "__main__":` self-check，有就執行：
@@ -125,12 +125,11 @@ ruff format src/
 ```
 
 - `[*]` = auto-fixable，跑 `ruff check src/ --fix`
-- `C901`（complex-structure）= 既有 backlog（health_monitor.py 11 個），不在此任務處理
 - `[ ]` = manual fix，case by case
 
 ### pyright（`pyright`）
-`pyright src/health_monitor.py` — type-check 主程式。
-碰 `close_app()`、threading、tkinter callbacks 前先跑。
+`pyright src/app.py src/qt/` — type-check 主程式與 GUI 層。
+碰 `close_app()`、threading、Qt signal callbacks 前先跑。
 
 ### py-spy（`py-spy`）
 `py-spy top --pid <PID>` / `py-spy record -o profile.svg --pid <PID>`。
@@ -169,22 +168,15 @@ updater_main.py               # 獨立更新程式（打包為 updater.exe）
 
 | Module | Role | Dependencies |
 |---|---|---|
-| `health_monitor.py` | 主入口、UI 編排、事件迴圈（~2,185 行，主要 refactor 目標） | 全部 |
+| `app.py` | Qt 入口（PySide6）、splash、smoke 模式 | PySide6, qfluentwidgets |
+| `qt/` | GUI 層：`main_window.py`（FluentWindow 主外殼）+ 7 個 tabs（status/monitor/inventory/combo/help/version/about） | 全部 |
 | `monitor_analyzer.py` | 健康/魔力 HSV 分析、觸發邏輯 | cv2, numpy |
 | `capture_utils.py` | 截圖、mss singleton | mss, PIL, numpy |
 | `image_utils.py` | 影像繪製、resize、預覽工具 | PIL |
 | `inventory_utils.py` | 背包格分析、物品偵測 | numpy |
 | `config_manager.py` | JSON config 讀寫 + 備份 | none |
-| `custom_dialogs.py` | 動態尺寸 modal dialog | tkinter |
 | `language_system.py` | 雙語字串查詢 | JSON |
-| `skill_timer.py` | 技能冷卻計時 | tkinter |
-| `utils.py` | 緊急清理、F12 handler、Tooltip | keyboard, psutil |
-| `tab_inventory.py` | 背包清理 + 拾取 UI 與邏輯 | cv2, numpy, PIL, mss, pyautogui |
-| `tab_monitor.py` | 健康/魔力監控 tab UI 與邏輯 | cv2, numpy, PIL, mss, keyboard |
-| `tab_combo.py` | 技能連招 tab | — |
-| `tab_version.py` | 版本檢查 + 應用內下載/更新 | requests, updater_core |
-| `tab_about.py` / `tab_help.py` / `tab_status.py` | 關於/說明/狀態 tab | tkinter |
-| `app_state.py` | 共用應用狀態容器 | none |
+| `utils.py` | 緊急清理、F12 handler、`format_usage_time` | keyboard, psutil |
 | `auto_click_manager.py` | 自動點擊管理（AHK） | subprocess, psutil |
 | `usage_tracker.py` | 使用時間統計 | none |
 | `window_key_sender.py` | 視窗聚焦按鍵發送 | pygetwindow, pyautogui |
@@ -206,7 +198,7 @@ Runtime-generated 檔案（非 source，勿當程式碼改）：
 
 ### 版本資訊
 - 目前：**v1.2.1**；唯一事實來源 `src/_version.py`（`__version__ = "1.2.1"`）
-- `health_monitor.py`: `CURRENT_VERSION = f"v{__version__}"`
+- `qt/version.py`: `CURRENT_VERSION = f"v{__version__}"`
 - `build.py`: `APP_VERSION = __version__`
 - 由 commitizen 管理（`cz bump` 同步 `_version.py` + `CHANGELOG.md`）
 
@@ -276,10 +268,10 @@ GitHub API `/releases/latest` **只回傳非 pre-release、非 draft 的 release
 ## Future Refactor 筆記
 
 - **GUI 換血：tkinter/ttkbootstrap → PySide6 + qfluentwidgets（進行中）。** 動機：tk 單執行緒軟渲染，捲動掉幀無法根治；決策結論為 PySide6+qfluentwidgets（Qt 原生效能、透明 overlay/topmost 原生支援），Flet 已評估放棄（JSON bridge 架構不適合本 app 的 overlay 與高頻影像）。遷移策略：只重寫 GUI 層，`config_manager`/`monitor_analyzer`/`capture_utils`/`inventory_utils`/`image_utils`/`window_key_sender`/`usage_tracker`/`updater_core`/`language_system` 全保留。tk 與 Qt 無法共存於同一 process，故為整套 GUI 重寫。
-- **Qt 遷移進度：** Phase 1-3（deps/skeleton/StatusTab）+ Phase 4 MonitorTab + **Phase 5 InventoryTab** + **Phase 6 ComboTab** + **Phase 7 Help/About/Version** 已完成並 push：`src/qt/monitor.py`（UI+觸發列表+預覽+`_SelectionOverlay` 框選+thread-safe signal 更新）、`src/qt/monitor_dialogs.py`（血條校準/介面UI閾值）、`src/qt/inventory.py`（框選/空格顏色/預覽/排除格、F3 清包、F6 拾取、取物座標設定對話窗、`is_interface_ui_visible`）、`src/qt/combo.py`（3 連段套組 QTabWidget + 全域控制 + 背景 thread 連段執行 + `execute_combo` 視窗送鍵/原地攻擊/延遲）、`src/qt/skill_timer.py`（`SkillSlot` threading.Timer 迴圈 + `SkillTimerModule(QWidget)`，由 ComboTab 右欄內嵌，原 Phase 8 提前至 Phase 6）、`src/qt/help.py`（`HelpTab` 卡片式 QScrollArea）、`src/qt/about.py`（`AboutTab` 資訊/連結/贊助/免責，`refresh_usage_time` 由 main_window QTimer 60s 驅動）、`src/qt/version.py`（`VersionTab`：`_VersionSignals` thread-safe 更新、check/silent check/test connection、下載 QDialog+QProgressBar、更新通知 QDialog、`format_release_notes`、`shutdown_cleanup`；silent check 只在非 `--smoke` 排程）、`src/qt/main_window.py`（`_on_usage_tick` 60s QTimer + `UsageTracker` registry 存取、`open_video_link`、`_shutdown` 停 usage timer + `version_tab.shutdown_cleanup()`；STUB_TABS/StubTab 已全數移除，7 個 tab 全部為真實實作）。smoke 含 `SMOKE MONITOR LOOP OK` / `SMOKE INVENTORY 5C OK` / `SMOKE COMBO TAB OK` / `SMOKE PHASE7 TABS OK`；pytest 14 passed（含 `tests/test_skill_timer.py` 測 SkillSlot 驗證與送鍵迴圈）。待辦：Phase 9 刪 tk + 打包。
+- **Qt 遷移進度：** Phase 1-3（deps/skeleton/StatusTab）+ Phase 4 MonitorTab + **Phase 5 InventoryTab** + **Phase 6 ComboTab** + **Phase 7 Help/About/Version** + **Phase 9 刪 tk + 打包** 已完成並 push：`src/qt/monitor.py`（UI+觸發列表+預覽+`_SelectionOverlay` 框選+thread-safe signal 更新）、`src/qt/monitor_dialogs.py`（血條校準/介面UI閾值）、`src/qt/inventory.py`（框選/空格顏色/預覽/排除格、F3 清包、F6 拾取、F5 返回藏身處、取物座標設定對話窗、`is_interface_ui_visible`）、`src/qt/combo.py`（3 連段套組 QTabWidget + 全域控制 + 背景 thread 連段執行 + `execute_combo` 視窗送鍵/原地攻擊/延遲）、`src/qt/skill_timer.py`（`SkillSlot` threading.Timer 迴圈 + `SkillTimerModule(QWidget)`，由 ComboTab 右欄內嵌，原 Phase 8 提前至 Phase 6）、`src/qt/help.py`（`HelpTab` 卡片式 QScrollArea）、`src/qt/about.py`（`AboutTab` 資訊/連結/贊助/免責，`refresh_usage_time` 由 main_window QTimer 60s 驅動）、`src/qt/version.py`（`VersionTab`：`_VersionSignals` thread-safe 更新、check/silent check/test connection、下載 QDialog+QProgressBar、更新通知 QDialog、`format_release_notes`、`shutdown_cleanup`；silent check 只在非 `--smoke` 排程）、`src/qt/main_window.py`（`_on_usage_tick` 60s QTimer + `UsageTracker` registry 存取、`open_video_link`、`_shutdown` 停 usage timer + `version_tab.shutdown_cleanup()`；STUB_TABS/StubTab 已全數移除，7 個 tab 全部為真實實作；Phase 9 補回 F5/F9/F10/F12 全局熱鍵 + `close_app` + AutoClickManager AHK 啟動/停止 + `set_app_instance`）。smoke 含 `SMOKE MONITOR LOOP OK` / `SMOKE INVENTORY 5C OK` / `SMOKE COMBO TAB OK` / `SMOKE PHASE7 TABS OK` / `SMOKE PHASE9 HOTKEYS OK`；pytest 14 passed（含 `tests/test_skill_timer.py` 測 SkillSlot 驗證與送鍵迴圈）。打包已改為 PySide6：entry `app.py`、`--collect-all qfluentwidgets`、移除 tkinter/ttkbootstrap hidden-import 與 Tk DLL/Tcl 收集。
 - **qfluentwidgets 1.11.3 注意：** `MessageBox` 無 static `warning/information/critical/question`（用原生 `QMessageBox`）；PySide6 6.11 enum 用完整命名空間（如 `Qt.AlignmentFlag.AlignCenter`）否則 pyright 報 `reportAttributeAccessIssue`。
 - **PyInstaller + PySide6 打包地雷（Phase 1 實測結論）：** 只要 `--collect-all qfluentwidgets` 就夠，**絕不加 `--exclude-module PySide6.*`**——那會打斷 PySide6 hook 的 plugin/qt.conf 處理導致啟動掛住。plugin 由 hook 收進 `PySide6/plugins/`（位於 Qt DLL 相對路徑，Qt 自動找得到，不需 qt.conf）。onedir 包約 179MB（Phase 9 可再瘦身：剔 unused plugins/translations）。EXE 啟動約 3-4s（PySide6 import 較重）。
-- `health_monitor.py`（~2,185 行，從 ~9,842 降下來）是主要 refactor 目標。剩 11 個 `C901` 是既有複雜函式。
+- `health_monitor.py`（~2,185 行）已於 Phase 9 刪除；tk 世代 `tab_*.py`/`custom_dialogs.py`/`ui_theme.py`/`app_state.py` 一併移除，Qt 版為唯一 GUI。
 - Inventory exclusion：`excluded_inventory_slots`（set of ints），存 config JSON、preview 上畫藍色 overlay、F3 清理路徑都尊重。
 - `_on_preview_click()` 處理 Canvas click → toggle exclusion → re-render。
 - `_preview_meta` 存渲染影像尺寸供 click coordinate mapping。
