@@ -643,9 +643,6 @@ class InventoryTab(QWidget):
             self.update_inventory_preview_from_current()
         self.update_ui_preview()
 
-    def _not_implemented(self):
-        self._app.add_status_message(self._app.get_text("inventory_setup_incomplete"), "warning")
-
     # ────────────────────────── 框選 overlay（Phase 5b） ──────────────────────────
 
     def start_inventory_selection(self):

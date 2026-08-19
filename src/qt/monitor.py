@@ -2,7 +2,8 @@
 
 對應 tk 版 `tab_monitor.py`。供 worker thread 呼叫的 `update_*` 一律只 emit Signal，
 主執行緒 slot 才碰 widgets（延續 StatusTab 的 thread-safe 模式）。
-框選 overlay（start_selection / start_mana_selection）與血條校準視窗為後續階段。
+框選 overlay（start_selection / start_mana_selection）與血條/介面UI校準視窗皆已實作；
+介面UI框選委派給 InventoryTab（start_interface_ui_selection），避免重複實作。
 """
 
 import os
@@ -353,7 +354,7 @@ class MonitorTab(QWidget):
 
         self.select_interface_ui_btn = PushButton(self._app.get_text("select_interface_ui"))
         self.select_interface_ui_btn.setToolTip(self._app.get_text("select_interface_ui_tip"))
-        self.select_interface_ui_btn.clicked.connect(self._not_portable_yet)
+        self.select_interface_ui_btn.clicked.connect(self._on_select_interface_ui)
         row.addWidget(self.select_interface_ui_btn)
 
         row.addStretch(1)
@@ -1014,8 +1015,9 @@ class MonitorTab(QWidget):
     def open_adjust_interface_ui(self):
         AdjustInterfaceUiDialog(self._app, self).exec()
 
-    def _not_portable_yet(self):
-        QMessageBox.information(self, self._app.get_text("important_reminder"), "此功能將於後續階段移植（tk 版仍可使用）")
+    def _on_select_interface_ui(self):
+        # 委派給 InventoryTab 的完整介面UI框選流程（overlay + 截圖 + 更新 label/preview）
+        self._app.inventory_tab.start_interface_ui_selection()
 
     # ────────────────────────── 語言更新 ──────────────────────────
 

@@ -176,6 +176,12 @@ def main(argv=None) -> int:
             assert mw.is_global_pause() is False, "global pause toggle off failed"
             print("SMOKE PHASE9 HOTKEYS OK")
 
+            # 介面UI框選按鈕須已接上 InventoryTab 流程，不得再有「後續階段」阻攔 stub
+            assert hasattr(window.monitor_tab, "_on_select_interface_ui"), "select_interface_ui button not wired"
+            assert "_not_portable_yet" not in dir(window.monitor_tab), "migration stub still present"
+            assert callable(window.inventory_tab.start_interface_ui_selection), "interface_ui selection missing"
+            print("SMOKE INTERFACE_UI BUTTON OK")
+
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             # （先 seed config，讓 start_monitoring 的 region/settings guard 通過，
             #   避免打包後的乾淨 config 環境下監控無法啟動）
