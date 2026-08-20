@@ -135,8 +135,6 @@ class ConfigManager:
             "preview_enabled": self.config.get("preview_enabled", True),
             "multi_trigger": self.config.get("multi_trigger", False),
             "last_selected_tab": self.config.get("last_selected_tab", 0),
-            "window_geometry": self.config.get("window_geometry"),
-            "window_state": self.config.get("window_state", "normal"),
             "window_title": self.config.get("window_title", ""),
         }
 

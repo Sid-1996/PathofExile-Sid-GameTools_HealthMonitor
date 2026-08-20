@@ -4,7 +4,6 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
-import re
 import sys
 import threading
 import time
@@ -52,7 +51,8 @@ RESTORE_SIZE = (1600, 900)
 
 class MainWindow(FluentWindow):
     def __init__(self):
-        self._initialized = False  # 必須在 super().__init__() 之前，否則建構期的 resizeEvent 會炸
+        self._initialized = False  # 必須在 super().__init__() 之前，避免建構期事件誤觸
+        self._was_maximized = False
         super().__init__()
         self._is_closing = False
         self._pending_timers = []
@@ -118,26 +118,11 @@ class MainWindow(FluentWindow):
         if "--smoke" not in sys.argv:
             self.auto_click_manager.setup_auto_click_listener()
 
-        self.resize(1280, 800)
         self.setMinimumSize(1000, 700)
+        self._snap_to_restore_size()  # 預設 1600×900（小螢幕自動 clamp）
         self._center_on_screen()
 
-        # 視窗幾何還原（不存在則維持上方 resize + 置中）
-        try:
-            geo = self.config.get("window_geometry")
-            if geo:
-                m = re.match(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", str(geo))
-                if m:
-                    w, h, x, y = map(int, m.groups())
-                    self.setGeometry(x, y, w, h)
-                state = str(self.config.get("window_state", ""))
-                if "Maximized" in state:
-                    self.showMaximized()
-        except Exception:
-            pass
-
         self._initialized = True
-        self._was_maximized = self.isMaximized()  # 啟動即最大化時，首次還原也要歸位
 
     def _load_monitor_config(self) -> None:
         cfg = self.config
@@ -560,21 +545,6 @@ class MainWindow(FluentWindow):
             geo = screen.availableGeometry()
             self.move(geo.center() - self.rect().center())
 
-    def _save_window_geometry(self) -> None:
-        """視窗移動/縮放時即時記錄幾何（debounced 寫入）。"""
-        try:
-            geo = self.geometry()
-            self.config["window_geometry"] = f"{geo.width()}x{geo.height()}+{geo.x()}+{geo.y()}"
-            self.config["window_state"] = self.windowState().name
-        except Exception:
-            pass
-        self.schedule_config_save()
-
-    def moveEvent(self, event):
-        super().moveEvent(event)
-        if self._initialized:
-            self._save_window_geometry()
-
     def changeEvent(self, event):
         super().changeEvent(event)
         if event.type() == QEvent.Type.WindowStateChange and self._initialized:
@@ -585,7 +555,7 @@ class MainWindow(FluentWindow):
                 QTimer.singleShot(0, self._snap_to_restore_size)  # 等還原動畫結束再歸位
 
     def _snap_to_restore_size(self) -> None:
-        """由最大化還原時，固定縮到 1600×900（小螢幕自動 clamp 到可用區）。"""
+        """預設/還原尺寸：1600×900（小螢幕自動 clamp 到可用區）。"""
         w, h = RESTORE_SIZE
         screen = QApplication.primaryScreen()
         if screen:
@@ -593,11 +563,6 @@ class MainWindow(FluentWindow):
             w = min(w, avail.width())
             h = min(h, avail.height())
         self.resize(w, h)
-
-    def resizeEvent(self, e):
-        super().resizeEvent(e)
-        if self._initialized:
-            self._save_window_geometry()
 
     def _shutdown(self) -> None:
         """關閉清理。"""
@@ -643,7 +608,6 @@ class MainWindow(FluentWindow):
             pass
         if thread is not None and thread.is_alive():
             thread.join(timeout=1.0)
-        self._save_window_geometry()  # 關閉前最後一次幾何快照（內部不含 popup）
         try:
             self.save_config()
         except Exception:
