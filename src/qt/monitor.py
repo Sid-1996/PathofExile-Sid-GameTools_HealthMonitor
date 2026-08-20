@@ -329,7 +329,7 @@ class MonitorTab(QWidget):
         self.window_combo = _AutoRefreshCombo()
         self.window_combo.setFixedWidth(320)
         self.window_combo.on_refresh = self.refresh_windows
-        self.window_combo.currentTextChanged.connect(lambda text: (setattr(self, "window_title", text), self._app.schedule_config_save()))
+        self.window_combo.currentTextChanged.connect(self._on_window_changed)
         grid.addWidget(self.window_combo, 0, 1)
 
         self.health_bar_region_label = QLabel(self._app.get_text("health_bar_region"))
@@ -641,6 +641,30 @@ class MonitorTab(QWidget):
                 self.window_combo.blockSignals(False)
         except Exception as e:
             print(f"[WARN] 重新整理視窗清單失敗: {e}")
+
+    def _on_window_changed(self, text):
+        """遊戲視窗手動選擇變更：更新標題、排程儲存並刷新預覽佔位文字。"""
+        self.window_title = text
+        self._app.schedule_config_save()
+        if self._app.is_monitoring():
+            return
+        self.refresh_window_placeholders()
+
+    def refresh_window_placeholders(self):
+        """依目前視窗/區域狀態刷新血魔預覽佔位文字（不截圖）。"""
+        cfg = self._app.config
+        for is_mana in (False, True):
+            sig = self._signals.mana_placeholder if is_mana else self._signals.health_placeholder
+            if not self.window_title:
+                text = self._app.get_text("select_game_window_first")
+            elif not cfg.get("mana_region" if is_mana else "region"):
+                key = "select_mana_bar_first" if is_mana else "select_health_bar_first"
+                text = self._app.get_text(key)
+            elif not gw.getWindowsWithTitle(self.window_title):
+                text = self._app.get_text("game_window_not_found").format(window_title=self.window_title)
+            else:
+                text = self._app.get_text("click_test_preview_hint")
+            sig.emit(text)
 
     def auto_load_preview(self):
         if self._app.config.get("region") and self._app.config.get("window_title"):

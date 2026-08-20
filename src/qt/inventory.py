@@ -648,7 +648,7 @@ class InventoryTab(QWidget):
         try:
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
-                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found"))
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
             game_window = windows[0]
             game_window.activate()
@@ -749,7 +749,7 @@ class InventoryTab(QWidget):
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
                 self._finalize_selection_restore_gui()
-                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found"))
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
             game_window = windows[0]
             game_window.activate()
@@ -1624,7 +1624,7 @@ class InventoryTab(QWidget):
         try:
             windows = gw.getWindowsWithTitle(window_title)
             if not windows:
-                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found"))
+                QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
             game_window = windows[0]
             print(f"找到遊戲視窗: {game_window.title}")
