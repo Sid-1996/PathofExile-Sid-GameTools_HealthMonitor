@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import CheckBox, PushButton, RadioButton
 
-from capture_utils import _mss_singleton, capture_region_to_cv2, capture_region_to_pil, load_screenshot_from_file, save_screenshot
+from capture_utils import _mss_singleton, capture_region_to_cv2, capture_window_region_bgr, load_screenshot_from_file, save_screenshot
 from image_utils import get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
@@ -697,29 +697,23 @@ class InventoryTab(QWidget):
 
     def _capture_ui_screenshot(self, kind):
         window_title = self._app.monitor_tab.window_var.get()
-        windows = gw.getWindowsWithTitle(window_title)
-        if not windows:
-            return
-        game_window = windows[0]
         region = self.inventory_ui_region if kind == "inventory_ui" else self._app.interface_ui_region
         if region is None:
             return
-        monitor = {
-            "top": game_window.top + region["y"],
-            "left": game_window.left + region["x"],
-            "width": region["width"],
-            "height": region["height"],
-        }
-        img = capture_region_to_pil(monitor)
+        result = capture_window_region_bgr(window_title, region)
+        if result is None:
+            return
+        img_bgr = np.array(result[1], copy=True)
+        img = Image.fromarray(np.ascontiguousarray(img_bgr[:, :, ::-1]), "RGB")
         if kind == "inventory_ui":
             save_screenshot(img, "inventory_ui.png")
-            self.inventory_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.inventory_ui_screenshot = img_bgr
             self.refresh_config_display()
             self.update_ui_preview()
             self._app.add_status_message(self._app.get_text("inventory_ui_recorded"), "success")
         else:
             save_screenshot(img, "interface_ui.png")
-            self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            self.interface_ui_screenshot = img_bgr
             self.update_interface_ui_preview()
             self._app.add_status_message(
                 self._app.get_text("interface_ui_region_set").format(x=region["x"], y=region["y"], width=region["width"], height=region["height"]),
@@ -811,9 +805,6 @@ class InventoryTab(QWidget):
             return
         region = self.inventory_region
         try:
-            if not hasattr(self._app, "window_key_sender") or not self._app.window_key_sender._is_game_window_visible():
-                self.set_preview_placeholder(self._app.get_text("waiting_for_game_window"))
-                return
             window_title = self._app.monitor_tab.window_var.get()
             if not window_title:
                 return
@@ -830,13 +821,11 @@ class InventoryTab(QWidget):
                 self.set_preview_placeholder(self._app.get_text("inventory_ui_not_recorded"), "orange")
                 return
 
-            monitor = {
-                "top": game_window.top + region["y"],
-                "left": game_window.left + region["x"],
-                "width": region["width"],
-                "height": region["height"],
-            }
-            img = capture_region_to_cv2(monitor)
+            result = capture_window_region_bgr(window_title, region)
+            if result is None:
+                self.set_preview_placeholder(self._app.get_text("waiting_for_game_window"))
+                return
+            img = result[1]
             _, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, region, self.excluded_inventory_slots)
             self.update_inventory_preview_with_items(img, occupied_slots)
         except Exception as e:
@@ -2015,13 +2004,10 @@ class InventoryTab(QWidget):
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
             return False
         try:
-            monitor = {
-                "top": game_window.top + self.inventory_ui_region["y"],
-                "left": game_window.left + self.inventory_ui_region["x"],
-                "width": self.inventory_ui_region["width"],
-                "height": self.inventory_ui_region["height"],
-            }
-            current_img = capture_region_to_cv2(monitor)
+            result = capture_window_region_bgr(game_window.title, self.inventory_ui_region)
+            if result is None:
+                return False
+            current_img = result[1]
             if current_img.shape != self.inventory_ui_screenshot.shape:
                 return False
             mse = np.mean((current_img - self.inventory_ui_screenshot) ** 2)
@@ -2041,13 +2027,10 @@ class InventoryTab(QWidget):
         if not self._app.interface_ui_region or self.interface_ui_screenshot is None:
             return False
         try:
-            monitor = {
-                "top": game_window.top + self._app.interface_ui_region["y"],
-                "left": game_window.left + self._app.interface_ui_region["x"],
-                "width": self._app.interface_ui_region["width"],
-                "height": self._app.interface_ui_region["height"],
-            }
-            current_img = capture_region_to_cv2(monitor)
+            result = capture_window_region_bgr(game_window.title, self._app.interface_ui_region)
+            if result is None:
+                return False
+            current_img = result[1]
             if current_img.shape != self.interface_ui_screenshot.shape:
                 return False
 

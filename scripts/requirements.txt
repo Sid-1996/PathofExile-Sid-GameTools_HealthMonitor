@@ -9,5 +9,6 @@ psutil
 requests
 pyperclip
 pywin32
+windows-capture
 PySide6
 PySide6-Fluent-Widgets

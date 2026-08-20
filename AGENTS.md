@@ -183,5 +183,6 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 ## Known Issues
 
 - `PrintWindow`（GDI）對 Path of Exile 2（DirectX）回傳全黑 frame。
-- `dxcam` / `mss` 都截合成桌面 — 被遮蓋/最小化視窗得到桌面內容而非遊戲內容。
-- Activation guard（`_is_game_window_active()`）是目前 mitigation；沒有 Windows.Graphics.Capture（Win10+）就沒有可靠的 capture-before-activation 方案。
+- 背景截圖已由 Windows.Graphics.Capture（`windows-capture` 套件，Win10 1903+）提供：被遮擋/失焦視窗仍可正確截取；mss 為自動降級（僅前景時正確）。**最小化視窗無法截圖**（Windows 限制，監控會暫停）。
+- 操控一律在前景執行（`game_foreground` gate）：遊戲非前景時只分析、不按鍵，不背景注入。
+- WGC 在「獨佔全螢幕」遊戲或無 frame 情境會降級 mss；mss 需視窗為前景才正確。

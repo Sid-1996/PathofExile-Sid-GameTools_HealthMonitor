@@ -300,23 +300,3 @@ class WindowKeySender:
         except Exception:
             pass
         self._app.root.after(getattr(self, "_focus_watcher_interval", 1000), self._focus_watcher_tick)
-
-    def _is_game_window_active(self):
-        try:
-            windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
-            if not windows:
-                return False
-            w = windows[0]
-            return not w.isMinimized and w.isActive
-        except Exception:
-            return False
-
-    def _is_game_window_visible(self):
-        try:
-            windows = gw.getWindowsWithTitle(self._app.monitor_tab.window_var.get())
-            if not windows:
-                return False
-            w = windows[0]
-            return not w.isMinimized
-        except Exception:
-            return False

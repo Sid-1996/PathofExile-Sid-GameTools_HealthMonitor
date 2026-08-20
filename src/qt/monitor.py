@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import CheckBox, ComboBox, EditableComboBox, LineEdit, PrimaryPushButton, PushButton
 
-from capture_utils import build_game_window_monitor, capture_region_to_pil, save_screenshot
+from capture_utils import capture_window_region_pil, save_screenshot
 from inventory_utils import normalize_region
 from image_utils import (
     draw_health_indicator,
@@ -150,7 +150,6 @@ class _MonitorSignals(QObject):
     health_placeholder = Signal(str)
     mana_placeholder = Signal(str)
     preview_test_result = Signal(int, list)
-    restore_window = Signal()
 
 
 class _SelectionOverlay(QWidget):
@@ -251,7 +250,6 @@ class MonitorTab(QWidget):
         self._signals.health_placeholder.connect(self._on_health_placeholder)
         self._signals.mana_placeholder.connect(self._on_mana_placeholder)
         self._signals.preview_test_result.connect(self._on_preview_test_result)
-        self._signals.restore_window.connect(lambda: self.window().show())
 
         self._build_ui()
         self.refresh_windows()
@@ -708,16 +706,15 @@ class MonitorTab(QWidget):
         return False
 
     def capture_preview_async(self):
-        if not self._app.window_key_sender._is_game_window_active():
-            self._signals.health_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+        if not self.selected_region:
             return
 
         def _capture():
-            if not self.selected_region:
-                return
             try:
-                monitor = build_game_window_monitor(self.window_title, self.selected_region)
-                img = capture_region_to_pil(monitor)
+                _, img = capture_window_region_pil(self.window_title, self.selected_region)
+                if img is None:
+                    self._signals.health_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+                    return
                 img.thumbnail((200, 200))
                 save_screenshot(img, "health_monitor_preview.png")
                 draw_scale_lines(img)
@@ -728,16 +725,15 @@ class MonitorTab(QWidget):
         threading.Thread(target=_capture, daemon=True).start()
 
     def capture_mana_preview_async(self):
-        if not self._app.window_key_sender._is_game_window_active():
-            self._signals.mana_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+        if not self.selected_mana_region:
             return
 
         def _capture():
-            if not self.selected_mana_region:
-                return
             try:
-                monitor = build_game_window_monitor(self.window_title, self.selected_mana_region)
-                img = capture_region_to_pil(monitor)
+                _, img = capture_window_region_pil(self.window_title, self.selected_mana_region)
+                if img is None:
+                    self._signals.mana_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+                    return
                 img.thumbnail((200, 200))
                 save_screenshot(img, "health_monitor_mana_preview.png")
                 draw_scale_lines(img)
@@ -758,15 +754,11 @@ class MonitorTab(QWidget):
             if not windows:
                 QMessageBox.warning(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=self.window_title))
                 return
-            window = windows[0]
-            self.window().hide()
 
             def _perform():
                 success_count = 0
                 errors = []
                 try:
-                    window.activate()
-                    time.sleep(0.2)
                     if self._app.config.get("region"):
                         try:
                             self.capture_preview_async()
@@ -782,7 +774,6 @@ class MonitorTab(QWidget):
                 except Exception as e:
                     errors.append(self._app.get_text("preview_test_failed").format(error=str(e)))
                 finally:
-                    self._signals.restore_window.emit()
                     self._signals.preview_test_result.emit(success_count, errors)
 
             threading.Thread(target=_perform, daemon=True).start()

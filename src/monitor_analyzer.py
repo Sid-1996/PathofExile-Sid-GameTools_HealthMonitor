@@ -276,8 +276,15 @@ def trigger_actions(
     window_title,
     interface_ui_region,
     interface_ui_screenshot,
+    game_foreground=True,
 ):
-    """根據血量/魔力百分比觸發對應的快捷鍵動作，優先處理低百分比設定"""
+    """根據血量/魔力百分比觸發對應的快捷鍵動作，優先處理低百分比設定
+
+    game_foreground=False 時（遊戲非前景）只分析不按鍵，也不記錄冷卻——操控一律在前景進行。
+    """
+    if not game_foreground:
+        print(f"血魔檢查: 遊戲非前景，跳過觸發按鍵 (血量:{health_percent}%, 魔力:{mana_percent}%)")
+        return None
     if interface_ui_region and interface_ui_screenshot is not None:
         try:
             import pygetwindow as gw

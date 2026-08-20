@@ -181,6 +181,9 @@ class GameToolBuilder:
                 # 絕不加 --exclude-module PySide6.*，會打斷 hook 的 plugin/qt.conf 處理）
                 "--collect-all",
                 "qfluentwidgets",
+                # Windows.Graphics.Capture（Rust native extension，背景截圖）
+                "--collect-all",
+                "windows_capture",
                 # Misc
                 "--hidden-import",
                 "webbrowser",
