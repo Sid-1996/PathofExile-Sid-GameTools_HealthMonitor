@@ -28,6 +28,7 @@ from monitor_analyzer import (
     interruptible_sleep,
     is_health_color,
     is_mana_color,
+    reset_battle_debug_state,
     trigger_actions,
 )
 from qt.about import AboutTab
@@ -234,6 +235,8 @@ class MainWindow(FluentWindow):
             QMessageBox.warning(self, self.get_text("error"), self.get_text("set_at_least_one_trigger"))
             return
 
+        reset_battle_debug_state()
+
         self.set_monitoring(True)
         mt.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_started"), "success")
@@ -362,7 +365,7 @@ class MainWindow(FluentWindow):
                         self._is_interface_ui_visible,
                         self.monitor_tab.window_title,
                         self.interface_ui_region,
-                        None,
+                        self.inventory_tab.interface_ui_screenshot,
                     ),
                 )
 
@@ -380,7 +383,7 @@ class MainWindow(FluentWindow):
                     self.press_key_sequence,
                     self.monitor_tab.window_title,
                     self.interface_ui_region,
-                    None,
+                    self.inventory_tab.interface_ui_screenshot,
                     game_foreground,
                 )
 

@@ -263,6 +263,68 @@ def check_triggers(health_percent, mana_percent, config, last_trigger_times, get
     return get_text_fn("normal")
 
 
+_last_battle_debug_state = None  # 上次印出的戰鬥狀態；狀態未變不重複印，避免每輪迴圈洗版
+_ui_check_warned = False  # 「未設定/無截圖」警示每個監控 session 只印一次
+
+
+def reset_battle_debug_state():
+    """監控啟動時呼叫：重設除噪狀態，讓每次監控首輪重新回報戰鬥狀態。"""
+    global _last_battle_debug_state, _ui_check_warned
+    _last_battle_debug_state = None
+    _ui_check_warned = False
+
+
+def _print_battle_state_once(state, message):
+    """狀態轉變時才印出，狀態不變就靜默（避免監控迴圈每輪洗版）。"""
+    global _last_battle_debug_state
+    if _last_battle_debug_state != state:
+        _last_battle_debug_state = state
+        print(message)
+
+
+def _battle_state_gate(
+    game_foreground,
+    health_percent,
+    mana_percent,
+    is_interface_ui_visible_fn,
+    window_title,
+    interface_ui_region,
+    interface_ui_screenshot,
+):
+    """戰鬥狀態閘門：回傳 False 表示應跳過治療動作，True 表示可繼續。
+
+    狀態訊息只在轉變時印出（_print_battle_state_once），「未設定/無截圖」警示每個 session 只印一次。
+    """
+    global _ui_check_warned
+    if not game_foreground:
+        _print_battle_state_once("background", f"血魔檢查: 遊戲非前景，跳過觸發按鍵 (血量:{health_percent}%, 魔力:{mana_percent}%)")
+        return False
+    if interface_ui_region and interface_ui_screenshot is not None:
+        try:
+            import pygetwindow as gw
+
+            windows = gw.getWindowsWithTitle(window_title)
+            if windows:
+                game_window = windows[0]
+                if not is_interface_ui_visible_fn(game_window):
+                    _print_battle_state_once("not_in_battle", f"血魔檢查: 介面UI不存在，不在戰鬥狀態，跳過治療動作 (血量:{health_percent}%, 魔力:{mana_percent}%)")
+                    return False
+                else:
+                    _print_battle_state_once("in_battle", "血魔檢查: 介面UI存在，正在戰鬥狀態，繼續執行治療動作")
+            else:
+                _print_battle_state_once("no_window", "血魔檢查: 找不到遊戲視窗，跳過介面UI檢查")
+        except Exception as e:
+            _print_battle_state_once("ui_check_failed", f"血魔檢查: 介面UI檢查失敗: {e}，繼續執行治療動作")
+    else:
+        if not _ui_check_warned:
+            _ui_check_warned = True
+            if interface_ui_region:
+                print("血魔檢查: 已設定介面UI區域但無介面UI截圖，跳過戰鬥狀態檢查")
+            else:
+                print("血魔檢查: 未設定介面UI區域，跳過戰鬥狀態檢查")
+    return True
+
+
 def trigger_actions(
     health_percent,
     mana_percent,
@@ -282,27 +344,16 @@ def trigger_actions(
 
     game_foreground=False 時（遊戲非前景）只分析不按鍵，也不記錄冷卻——操控一律在前景進行。
     """
-    if not game_foreground:
-        print(f"血魔檢查: 遊戲非前景，跳過觸發按鍵 (血量:{health_percent}%, 魔力:{mana_percent}%)")
+    if not _battle_state_gate(
+        game_foreground,
+        health_percent,
+        mana_percent,
+        is_interface_ui_visible_fn,
+        window_title,
+        interface_ui_region,
+        interface_ui_screenshot,
+    ):
         return None
-    if interface_ui_region and interface_ui_screenshot is not None:
-        try:
-            import pygetwindow as gw
-
-            windows = gw.getWindowsWithTitle(window_title)
-            if windows:
-                game_window = windows[0]
-                if not is_interface_ui_visible_fn(game_window):
-                    print(f"血魔檢查: 介面UI不存在，不在戰鬥狀態，跳過治療動作 (血量:{health_percent}%, 魔力:{mana_percent}%)")
-                    return
-                else:
-                    print("血魔檢查: 介面UI存在，正在戰鬥狀態，繼續執行治療動作")
-            else:
-                print("血魔檢查: 找不到遊戲視窗，跳過介面UI檢查")
-        except Exception as e:
-            print(f"血魔檢查: 介面UI檢查失敗: {e}，繼續執行治療動作")
-    else:
-        print("血魔檢查: 未設定介面UI區域，跳過戰鬥狀態檢查")
 
     health_settings = []
     mana_settings = []
@@ -388,4 +439,45 @@ if __name__ == "__main__":
     start = time.time()
     interruptible_sleep(0.05, always_true)
     assert time.time() - start >= 0.04, "interruptible_sleep did not sleep"
+
+    # 血魔檢查警示去噪：未設定時首輪印一次，之後靜默；狀態轉變才重印
+    import io
+    from contextlib import redirect_stdout
+
+    def run_trigger(ui_region=None, ui_screenshot=None):
+        return trigger_actions(
+            health_percent=50.0,
+            mana_percent=50.0,
+            config={"settings": []},
+            last_trigger_times={},
+            multi_trigger=False,
+            add_status_message_fn=lambda m, t: None,
+            get_text_fn=lambda k: k,
+            is_interface_ui_visible_fn=lambda w: True,
+            press_key_sequence_fn=lambda k, p: None,
+            window_title="",
+            interface_ui_region=ui_region,
+            interface_ui_screenshot=ui_screenshot,
+        )
+
+    ui_region = {"x": 0, "y": 0, "width": 10, "height": 10}
+    reset_battle_debug_state()
+    buf1 = io.StringIO()
+    with redirect_stdout(buf1):
+        run_trigger()
+    buf2 = io.StringIO()
+    with redirect_stdout(buf2):
+        run_trigger()
+    assert "未設定介面UI區域" in buf1.getvalue(), "首輪應印出未設定警告"
+    assert buf2.getvalue() == "", "狀態未變不應重複印出"
+
+    reset_battle_debug_state()
+    buf3 = io.StringIO()
+    with redirect_stdout(buf3):
+        run_trigger(ui_region, full)
+    assert "介面UI存在" in buf3.getvalue(), "已設定區域+截圖且 UI 可見，首輪應印出戰鬥狀態"
+    buf4 = io.StringIO()
+    with redirect_stdout(buf4):
+        run_trigger(ui_region, full)
+    assert buf4.getvalue() == "", "同狀態重複呼叫不應洗版"
     print("monitor_analyzer self-check OK")
