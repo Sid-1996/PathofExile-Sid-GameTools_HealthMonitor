@@ -14,7 +14,7 @@ import threading
 import time
 import traceback
 
-from PySide6.QtCore import QPoint, QTimer
+from PySide6.QtCore import QPoint, QTimer, Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
@@ -26,13 +26,17 @@ from utils import get_app_dir
 
 
 def _find_splash_pixmap():
+    SPLASH_SIZE = 400
     candidates = [
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "PoeSidTools.png"),
         os.path.join(os.getcwd(), "assets", "PoeSidTools.png"),
     ]
     for path in candidates:
         if os.path.exists(path):
-            return QPixmap(path)
+            pixmap = QPixmap(path)
+            if not pixmap.isNull() and pixmap.width() > SPLASH_SIZE:
+                pixmap = pixmap.scaled(SPLASH_SIZE, SPLASH_SIZE, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            return pixmap
     return QPixmap()
 
 

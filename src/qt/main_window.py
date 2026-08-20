@@ -13,7 +13,7 @@ from datetime import datetime
 
 import pygetwindow as gw
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
@@ -45,6 +45,9 @@ from window_key_sender import WindowKeySender
 # ── 主題常數（與舊 dracula 色系對齊）──
 ACCENT = "#bd93f9"
 MUTED = "#b8b8c8"
+
+# ── 最大化/還原檔位：還原時固定縮到這個尺寸（小螢幕自動 clamp）──
+RESTORE_SIZE = (1600, 900)
 
 
 class MainWindow(FluentWindow):
@@ -134,6 +137,7 @@ class MainWindow(FluentWindow):
             pass
 
         self._initialized = True
+        self._was_maximized = self.isMaximized()  # 啟動即最大化時，首次還原也要歸位
 
     def _load_monitor_config(self) -> None:
         cfg = self.config
@@ -570,6 +574,25 @@ class MainWindow(FluentWindow):
         super().moveEvent(event)
         if self._initialized:
             self._save_window_geometry()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange and self._initialized:
+            if self.isMaximized():
+                self._was_maximized = True
+            elif self._was_maximized:
+                self._was_maximized = False
+                QTimer.singleShot(0, self._snap_to_restore_size)  # 等還原動畫結束再歸位
+
+    def _snap_to_restore_size(self) -> None:
+        """由最大化還原時，固定縮到 1600×900（小螢幕自動 clamp 到可用區）。"""
+        w, h = RESTORE_SIZE
+        screen = QApplication.primaryScreen()
+        if screen:
+            avail = screen.availableGeometry()
+            w = min(w, avail.width())
+            h = min(h, avail.height())
+        self.resize(w, h)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
