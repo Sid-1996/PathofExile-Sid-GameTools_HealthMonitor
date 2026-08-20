@@ -4,6 +4,7 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
+import re
 import sys
 import threading
 import time
@@ -48,11 +49,17 @@ MUTED = "#b8b8c8"
 
 class MainWindow(FluentWindow):
     def __init__(self):
+        self._initialized = False  # 必須在 super().__init__() 之前，否則建構期的 resizeEvent 會炸
         super().__init__()
         self._is_closing = False
         self._pending_timers = []
         self.start_time = datetime.now()
         set_app_instance(self)  # F12 緊急關閉（utils）
+
+        # ── 即時儲存：debounced autosave（400ms 合併寫入，避免每次敲鍵都整檔重寫）──
+        self._config_save_timer = QTimer(self)
+        self._config_save_timer.setSingleShot(True)
+        self._config_save_timer.timeout.connect(self.save_config)
 
         # ── 監控狀態（worker thread 用；bool + Lock）──
         self._monitoring = False
@@ -112,6 +119,22 @@ class MainWindow(FluentWindow):
         self.setMinimumSize(1000, 700)
         self._center_on_screen()
 
+        # 視窗幾何還原（不存在則維持上方 resize + 置中）
+        try:
+            geo = self.config.get("window_geometry")
+            if geo:
+                m = re.match(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", str(geo))
+                if m:
+                    w, h, x, y = map(int, m.groups())
+                    self.setGeometry(x, y, w, h)
+                state = str(self.config.get("window_state", ""))
+                if "Maximized" in state:
+                    self.showMaximized()
+        except Exception:
+            pass
+
+        self._initialized = True
+
     def _load_monitor_config(self) -> None:
         cfg = self.config
         # 相容 tk 世代以 positional list 儲存的 legacy config → 一律正規化為 dict
@@ -157,6 +180,12 @@ class MainWindow(FluentWindow):
         """登記 QTimer，關閉時統一停止（後續階段使用）。"""
         self._pending_timers.append(timer)
 
+    def schedule_config_save(self) -> None:
+        """即時儲存入口：debounce 400ms 後統一整包寫入。關閉/初始化期間忽略。"""
+        if self._is_closing or not self._initialized:
+            return
+        self._config_save_timer.start(400)
+
     def save_config(self) -> None:
         """血魔監控相關設定的 Qt 版儲存（對應 tk 版 save_config）。"""
         try:
@@ -186,7 +215,6 @@ class MainWindow(FluentWindow):
                 self.config["interface_ui_region"] = self.interface_ui_region
             self.config["language"] = self.current_language
             self.config_manager.save_config(self.config)
-            self.add_status_message(self.get_text("all_records_saved"), "success")
         except Exception as e:
             self.add_status_message(self.get_text("save_failed").format(error=str(e)), "error")
 
@@ -455,7 +483,7 @@ class MainWindow(FluentWindow):
         self.current_language = new_language
         self.language_manager.change_language(new_language)
         self.config["language"] = new_language
-        self.save_config()
+        self.schedule_config_save()
         self.setWindowTitle(self.get_text("window_title"))
         if hasattr(self, "monitor_tab"):
             self.monitor_tab.update_monitor_tab_language()
@@ -472,6 +500,10 @@ class MainWindow(FluentWindow):
 
     def _on_usage_tick(self) -> None:
         self.total_usage_time += 60
+        try:
+            self._usage_tracker.save_usage_time_to_registry(self.total_usage_time)
+        except Exception:
+            pass
         if hasattr(self, "about_tab"):
             self.about_tab.refresh_usage_time()
 
@@ -524,9 +556,30 @@ class MainWindow(FluentWindow):
             geo = screen.availableGeometry()
             self.move(geo.center() - self.rect().center())
 
+    def _save_window_geometry(self) -> None:
+        """視窗移動/縮放時即時記錄幾何（debounced 寫入）。"""
+        try:
+            geo = self.geometry()
+            self.config["window_geometry"] = f"{geo.width()}x{geo.height()}+{geo.x()}+{geo.y()}"
+            self.config["window_state"] = self.windowState().name
+        except Exception:
+            pass
+        self.schedule_config_save()
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        if self._initialized:
+            self._save_window_geometry()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if self._initialized:
+            self._save_window_geometry()
+
     def _shutdown(self) -> None:
         """關閉清理。"""
         self._usage_timer.stop()
+        self._config_save_timer.stop()
         try:
             self._usage_tracker.stop()  # 計算本次使用時間並寫回 registry
         except Exception:
@@ -567,6 +620,7 @@ class MainWindow(FluentWindow):
             pass
         if thread is not None and thread.is_alive():
             thread.join(timeout=1.0)
+        self._save_window_geometry()  # 關閉前最後一次幾何快照（內部不含 popup）
         try:
             self.save_config()
         except Exception:

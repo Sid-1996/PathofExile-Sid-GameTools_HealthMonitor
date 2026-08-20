@@ -173,9 +173,6 @@ class ComboTab(QWidget):
         self.combo_stop_btn.setEnabled(False)
         self.combo_stop_btn.clicked.connect(self.stop_combo_system)
         btn_row.addWidget(self.combo_stop_btn)
-        save_btn = PushButton(self._app.get_text("save_combo_settings"))
-        save_btn.clicked.connect(self.save_combo_config)
-        btn_row.addWidget(save_btn)
         btn_row.addStretch(1)
         control_layout.addLayout(btn_row)
 
@@ -200,7 +197,7 @@ class ComboTab(QWidget):
         right_layout.setSpacing(12)
         body.addWidget(right, 2)
 
-        self.skill_timer = SkillTimerModule(parent=right, max_slots=4, on_log=self._app.add_status_message, get_text=self._app.get_text)
+        self.skill_timer = SkillTimerModule(parent=right, max_slots=4, on_log=self._app.add_status_message, get_text=self._app.get_text, on_change=self._sync_combo_config)
         self._app.skill_timer = self.skill_timer
         right_layout.addWidget(self.skill_timer)
 
@@ -325,9 +322,11 @@ class ComboTab(QWidget):
 
     def _on_enabled_toggled(self, set_index, checked):
         self.combo_enabled[set_index] = checked
+        self._sync_combo_config()
 
     def _on_trigger_key_changed(self, set_index, text):
         self.combo_sets[set_index]["trigger_key"] = text
+        self._sync_combo_config()
 
     def _on_trigger_delay_changed(self, set_index, text):
         combo_set = self.combo_sets[set_index]
@@ -350,9 +349,11 @@ class ComboTab(QWidget):
             current = str(combo_set["trigger_delay"]) if combo_set["trigger_delay"] else ""
             if entry.text() != current:
                 entry.setText(current)
+        self._sync_combo_config()
 
     def _on_combo_key_changed(self, set_index, key_index, text):
         self.combo_sets[set_index]["combo_keys"][key_index] = text
+        self._sync_combo_config()
 
     def _on_combo_delay_changed(self, set_index, delay_index, text):
         combo_set = self.combo_sets[set_index]
@@ -375,9 +376,11 @@ class ComboTab(QWidget):
             current = str(combo_set["delays"][delay_index]) if combo_set["delays"][delay_index] else ""
             if entry.text() != current:
                 entry.setText(current)
+        self._sync_combo_config()
 
     def _on_stationary_toggled(self, set_index, skill_index, checked):
         self.combo_sets[set_index]["stationary_attacks"][skill_index] = checked
+        self._sync_combo_config()
 
     def _apply_combo_ui_from_config(self):
         for set_index in range(len(self.combo_sets)):
@@ -390,7 +393,7 @@ class ComboTab(QWidget):
                 refs["key_combos"][i].setCurrentText(combo_set["combo_keys"][i] if combo_set["combo_keys"][i] else "off")
                 refs["delay_entries"][i].setText(str(combo_set["delays"][i]) if combo_set["delays"][i] else "")
                 refs["stationary_checks"][i].setChecked(bool(combo_set["stationary_attacks"][i]))
-        # 技能計時器：還原已儲存的 skill_timer config（save_combo_config 會寫入此鍵）
+        # 技能計時器：還原已儲存的 skill_timer config（_sync_combo_config 會寫入此鍵）
         cfg_st = self._app.config.get("skill_timer")
         if cfg_st and self.skill_timer:
             self.skill_timer.load_config(cfg_st)
@@ -612,18 +615,13 @@ class ComboTab(QWidget):
     #  Config 存檔
     # ────────────────────────────────────────────────────
 
-    def save_combo_config(self):
-        try:
-            self._app.config["combo_sets"] = self.combo_sets
-            self._app.config["combo_enabled"] = self.combo_enabled
-            if self.skill_timer:
-                self._app.config["skill_timer"] = self.skill_timer.get_config()
-            self._app.save_config()
-            QMessageBox.information(self, self._app.get_text("success"), self._app.get_text("combo_settings_saved"))
-            print("連段設定已儲存")
-        except Exception as e:
-            QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("save_failed").format(error=str(e)))
-            print(f"儲存連段設定失敗: {e}")
+    def _sync_combo_config(self):
+        """把連段套組 + 技能計時器同步進 config 並排程即時儲存（自動儲存，無 popup）。"""
+        self._app.config["combo_sets"] = self.combo_sets
+        self._app.config["combo_enabled"] = self.combo_enabled
+        if getattr(self, "skill_timer", None):
+            self._app.config["skill_timer"] = self.skill_timer.get_config()
+        self._app.schedule_config_save()
 
     # ────────────────────────────────────────────────────
     #  語言切換

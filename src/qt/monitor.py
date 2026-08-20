@@ -317,7 +317,7 @@ class MonitorTab(QWidget):
 
         self.window_combo = EditableComboBox()
         self.window_combo.setFixedWidth(320)
-        self.window_combo.currentTextChanged.connect(lambda text: setattr(self, "window_title", text))
+        self.window_combo.currentTextChanged.connect(lambda text: (setattr(self, "window_title", text), self._app.schedule_config_save()))
         grid.addWidget(self.window_combo, 0, 1)
 
         self.refresh_windows_btn = PushButton(self._app.get_text("refresh"))
@@ -428,7 +428,7 @@ class MonitorTab(QWidget):
         self.multi_trigger_check = CheckBox(self._app.get_text("multiple_triggers"))
         self.multi_trigger_check.setToolTip(self._app.get_text("multiple_triggers_tip"))
         self.multi_trigger_check.setChecked(self.multi_trigger)
-        self.multi_trigger_check.toggled.connect(lambda v: setattr(self, "multi_trigger", v))
+        self.multi_trigger_check.toggled.connect(lambda v: (setattr(self, "multi_trigger", v), self._app.schedule_config_save()))
         options_row.addWidget(self.multi_trigger_check)
         options_row.addStretch(1)
         vbox.addLayout(options_row)
@@ -459,9 +459,6 @@ class MonitorTab(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._app.stop_monitoring)
         buttons_row.addWidget(self.stop_btn)
-        self.save_btn = PushButton(self._app.get_text("save_settings"))
-        self.save_btn.clicked.connect(self._app.save_config)
-        buttons_row.addWidget(self.save_btn)
         self.test_preview_btn = PushButton(self._app.get_text("test_preview"))
         self.test_preview_btn.setToolTip(self._app.get_text("test_preview_tip"))
         self.test_preview_btn.clicked.connect(self.test_preview)
@@ -476,7 +473,7 @@ class MonitorTab(QWidget):
         self.interval_combo = ComboBox()
         self.interval_combo.addItems(["25", "50", "100"])
         self.interval_combo.setCurrentText(str(self.monitor_interval_ms))
-        self.interval_combo.currentTextChanged.connect(lambda t: setattr(self, "monitor_interval_ms", int(t)))
+        self.interval_combo.currentTextChanged.connect(lambda t: (setattr(self, "monitor_interval_ms", int(t)), self._app.schedule_config_save()))
         freq_row.addWidget(self.interval_combo)
         self.ms_label = QLabel(self._app.get_text("ms"))
         freq_row.addWidget(self.ms_label)
@@ -521,7 +518,7 @@ class MonitorTab(QWidget):
         preview_row.addWidget(self.preview_settings_label)
         self.enable_preview_check = CheckBox(self._app.get_text("enable_preview"))
         self.enable_preview_check.setChecked(self._app.preview_enabled)
-        self.enable_preview_check.toggled.connect(lambda v: setattr(self._app, "preview_enabled", v))
+        self.enable_preview_check.toggled.connect(lambda v: (setattr(self._app, "preview_enabled", v), self._app.schedule_config_save()))
         preview_row.addWidget(self.enable_preview_check)
         self.preview_interval_label = QLabel(self._app.get_text("preview_interval"))
         preview_row.addWidget(self.preview_interval_label)
@@ -802,6 +799,7 @@ class MonitorTab(QWidget):
             self._app.config.setdefault("settings", []).append({"type": setting_type, "percent": percent, "key": key, "cooldown": cooldown})
             self._append_setting_row(setting_type, percent, key, cooldown)
             self.on_type_changed()
+            self._app.schedule_config_save()
         except ValueError as e:
             QMessageBox.warning(self, self._app.get_text("input_error"), str(e))
         except Exception as e:
@@ -834,6 +832,7 @@ class MonitorTab(QWidget):
             for s in self._app.config.get("settings", [])
             if not ((s.get("type", "HP") == ("HP" if values[0] == "HP" else "MP")) and s["percent"] == int(values[1]) and s["key"] == values[2] and s.get("cooldown", 1000) == int(values[3]))
         ]
+        self._app.schedule_config_save()
 
     def load_settings_to_tree(self):
         self.settings_tree.setRowCount(0)
@@ -985,6 +984,7 @@ class MonitorTab(QWidget):
             self.region_label.setText(get_region_text(self._app.config, self._app.get_text))
             self.region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
             QTimer.singleShot(100, self.capture_preview_async)
+        self._app.schedule_config_save()
         self._finalize_selection_restore_gui()
 
     def _finalize_selection_restore_gui(self):
@@ -1004,12 +1004,14 @@ class MonitorTab(QWidget):
     def _on_always_on_top_toggled(self, checked):
         self._app.always_on_top = checked
         self._app.toggle_always_on_top()
+        self._app.schedule_config_save()
 
     def _on_preview_interval_changed(self, text):
         try:
             self._app.preview_interval = int(text)
         except ValueError:
             pass
+        self._app.schedule_config_save()
 
     def open_adjust_colors(self):
         AdjustColorsDialog(self._app, self).exec()
@@ -1048,7 +1050,6 @@ class MonitorTab(QWidget):
             "control_frame": "control_panel",
             "start_btn": "start_monitoring",
             "stop_btn": "stop_monitoring",
-            "save_btn": "save_settings",
             "test_preview_btn": "test_preview",
             "check_freq_label": "check_frequency",
             "ms_label": "ms",

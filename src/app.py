@@ -7,9 +7,11 @@ smoke 模式（`python src/app.py --smoke`）：背景 thread 連發 5 條訊息
 1s 後檢查 log 並關閉視窗，供 CI/打包驗證。
 """
 
+import json
 import os
 import sys
 import threading
+import time
 import traceback
 
 from PySide6.QtCore import QPoint, QTimer
@@ -20,6 +22,7 @@ from qfluentwidgets import Theme, setTheme
 
 from _version import __version__
 from qt.main_window import MainWindow
+from utils import get_app_dir
 
 
 def _find_splash_pixmap():
@@ -175,6 +178,26 @@ def main(argv=None) -> int:
             mw.toggle_global_pause()
             assert mw.is_global_pause() is False, "global pause toggle off failed"
             print("SMOKE PHASE9 HOTKEYS OK")
+
+            # 即時儲存：改設定 → 等 debounce → config 檔已寫入新值（無需任何儲存按鈕）
+            mw.health_threshold = 0.77
+            mw.schedule_config_save()
+            cfg_path = os.path.join(get_app_dir(), "health_monitor_config.json")
+            deadline = time.time() + 3.0
+            persisted = False
+            while time.time() < deadline:
+                QApplication.processEvents()
+                time.sleep(0.05)
+                if os.path.exists(cfg_path):
+                    try:
+                        with open(cfg_path, encoding="utf-8") as f:
+                            persisted = json.load(f).get("health_threshold") == 0.77
+                    except Exception:
+                        pass
+                if persisted:
+                    break
+            assert persisted, "autosave did not persist config"
+            print("SMOKE AUTOSAVE OK")
 
             # 介面UI框選按鈕須已接上 InventoryTab 流程，不得再有「後續階段」阻攔 stub
             assert hasattr(window.monitor_tab, "_on_select_interface_ui"), "select_interface_ui button not wired"

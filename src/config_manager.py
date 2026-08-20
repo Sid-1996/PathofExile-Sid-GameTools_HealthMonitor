@@ -34,7 +34,7 @@ class ConfigManager:
             self.config = {}
             return False
 
-    def save_config(self, config_data=None, show_message=True):
+    def save_config(self, config_data=None):
         """儲存設定檔案（帶備份和異常恢復機制）"""
         try:
             if config_data is not None:
@@ -202,9 +202,9 @@ def load_config():
     return get_config_manager().load_config()
 
 
-def save_config(config_data=None, show_message=True):
+def save_config(config_data=None):
     """儲存設定（全域便利函數）"""
-    return get_config_manager().save_config(config_data, show_message)
+    return get_config_manager().save_config(config_data)
 
 
 def get_config_value(key, default=None):

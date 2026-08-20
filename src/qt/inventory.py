@@ -128,17 +128,10 @@ class _PickupSetupDialog(QDialog):
         self.clear_btn.clicked.connect(self._tab.clear_all_coordinates)
         buttons.addWidget(self.clear_btn)
         buttons.addStretch(1)
-        self.save_btn = PushButton(get_text("save_coordinates"))
-        self.save_btn.clicked.connect(self._save)
-        buttons.addWidget(self.save_btn)
         self.close_btn = PushButton(get_text("close"))
         self.close_btn.clicked.connect(self.reject)
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
-
-    def _save(self):
-        self._tab.save_pickup_coordinates()
-        self.accept()
 
     def update_display(self):
         coords = self._tab.pickup_coordinates or [[0, 0]] * 5
@@ -233,25 +226,21 @@ class InventoryTab(QWidget):
         positions = [tuple(p) for p in cfg.get("inventory_grid_positions", [])]
         self.inventory_grid_positions = positions or calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
-    def save_inventory_config(self):
-        """儲存背包設定（對應 tk 版 save_inventory_config）。"""
-        try:
-            cfg = self._app.config
-            cfg["inventory_region"] = self.inventory_region
-            cfg["empty_inventory_colors"] = self.empty_inventory_colors
-            cfg["inventory_grid_positions"] = [list(pos) for pos in self.inventory_grid_positions]
-            cfg["grid_offset_x"] = self.grid_offset_x
-            cfg["grid_offset_y"] = self.grid_offset_y
-            cfg["excluded_inventory_slots"] = sorted(self.excluded_inventory_slots)
-            cfg["inventory_window_title"] = self._app.monitor_tab.window_var.get()
-            cfg["inventory_ui_region"] = self.inventory_ui_region
-            cfg["inventory_clear_click_mode"] = self.clear_click_mode
-            if self.pickup_coordinates is not None:
-                cfg["pickup_coordinates"] = self.pickup_coordinates
-            self._app.save_config()
-            self._app.add_status_message(self._app.get_text("inventory_settings_saved"), "success")
-        except Exception as e:
-            self._app.add_status_message(self._app.get_text("save_failed").format(error=str(e)), "error")
+    def _sync_inventory_config(self):
+        """把背包相關狀態同步進 config 並排程即時儲存（移除儲存按鈕後的統一入口）。"""
+        cfg = self._app.config
+        cfg["inventory_region"] = self.inventory_region
+        cfg["empty_inventory_colors"] = self.empty_inventory_colors
+        cfg["inventory_grid_positions"] = [list(pos) for pos in self.inventory_grid_positions]
+        cfg["grid_offset_x"] = self.grid_offset_x
+        cfg["grid_offset_y"] = self.grid_offset_y
+        cfg["excluded_inventory_slots"] = sorted(self.excluded_inventory_slots)
+        cfg["inventory_window_title"] = self._app.monitor_tab.window_var.get()
+        cfg["inventory_ui_region"] = self.inventory_ui_region
+        cfg["inventory_clear_click_mode"] = self.clear_click_mode
+        if self.pickup_coordinates is not None:
+            cfg["pickup_coordinates"] = self.pickup_coordinates
+        self._app.schedule_config_save()
 
     def refresh_config_display(self):
         """同步各狀態標籤（空格顏色數、背包UI狀態、取物座標數）。"""
@@ -385,10 +374,6 @@ class InventoryTab(QWidget):
         self.test_clear_inventory_btn.clicked.connect(self.test_inventory_clearing)
         grid.addWidget(self.test_clear_inventory_btn, 0, 0)
 
-        self.save_inventory_settings_btn = PushButton(self._app.get_text("save_inventory_settings"))
-        self.save_inventory_settings_btn.clicked.connect(self.save_inventory_config)
-        grid.addWidget(self.save_inventory_settings_btn, 0, 1)
-
         self.clear_click_mode_label = QLabel(self._app.get_text("clear_click_mode"))
         grid.addWidget(self.clear_click_mode_label, 1, 0)
 
@@ -451,10 +436,6 @@ class InventoryTab(QWidget):
         self.setup_pickup_coordinates_btn.setToolTip(self._app.get_text("setup_pickup_coordinates_tip"))
         self.setup_pickup_coordinates_btn.clicked.connect(self.setup_pickup_coordinates)
         grid.addWidget(self.setup_pickup_coordinates_btn, 0, 0)
-
-        self.save_pickup_coordinates_btn = PushButton(self._app.get_text("save_coordinates"))
-        self.save_pickup_coordinates_btn.clicked.connect(self.save_pickup_coordinates)
-        grid.addWidget(self.save_pickup_coordinates_btn, 0, 1)
 
         self.coordinates_set_label = QLabel(self._app.get_text("coordinates_set"))
         grid.addWidget(self.coordinates_set_label, 1, 0)
@@ -612,7 +593,7 @@ class InventoryTab(QWidget):
 
     def _set_click_mode(self, mode):
         self.clear_click_mode = mode
-        self._app.save_config()
+        self._sync_inventory_config()
 
     def _on_always_on_top_toggled(self, checked):
         self._app.always_on_top = checked
@@ -626,6 +607,7 @@ class InventoryTab(QWidget):
         self.grid_offset_y = max(-max_offset, min(max_offset, self.grid_offset_y))
         self.update_offset_labels()
         self._recompute_grid_positions()
+        self._sync_inventory_config()
 
     def reset_grid_offset(self):
         self.grid_offset_x = 0
@@ -711,6 +693,7 @@ class InventoryTab(QWidget):
                 self._capture_ui_screenshot("interface_ui")
         finally:
             self._finalize_selection_restore_gui()
+            self._sync_inventory_config()
 
     def _capture_ui_screenshot(self, kind):
         window_title = self._app.monitor_tab.window_var.get()
@@ -813,6 +796,7 @@ class InventoryTab(QWidget):
             self._finalize_selection_restore_gui()
             self.refresh_config_display()
             self.update_inventory_preview_from_current()
+            self._sync_inventory_config()
             recorded_count = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
             QMessageBox.information(self, self._app.get_text("success"), self._app.get_text("empty_color_recorded_message").format(count=recorded_count))
         except Exception as e:
@@ -975,7 +959,7 @@ class InventoryTab(QWidget):
             ),
             "info",
         )
-        self._app.save_config()
+        self._sync_inventory_config()
 
     def _on_preview_resize(self):
         from PySide6.QtCore import QTimer
@@ -1833,16 +1817,9 @@ class InventoryTab(QWidget):
         t.start()
 
     def save_pickup_coordinates(self, parent_window=None):
-        """儲存取物座標設定（對應 tk 版）。"""
-        try:
-            self._app.config["pickup_coordinates"] = self.pickup_coordinates
-            self._app.save_config()
-            print("取物座標已儲存")
-            QMessageBox.information(self.window(), self._app.get_text("success"), self._app.get_text("pickup_coordinates_saved"))
-            self._app.add_status_message(self._app.get_text("pickup_coordinates_saved"), "success")
-        except Exception as e:
-            print(f"儲存取物座標失敗: {str(e)}")
-            QMessageBox.critical(self.window(), self._app.get_text("error"), self._app.get_text("save_failed").format(error=str(e)))
+        """同步取物座標進 config 並排程即時儲存（自動儲存，無 popup）。"""
+        self._app.config["pickup_coordinates"] = self.pickup_coordinates
+        self._app.schedule_config_save()
 
     def setup_pickup_coordinates(self):
         """設定取物座標 - 一次性連續設定5個座標（對應 tk 版）。"""
@@ -1928,6 +1905,7 @@ class InventoryTab(QWidget):
                         self.pickup_coordinates[i] = [abs_x, abs_y]
                         print(f"[WARN] 未設定遊戲視窗，使用絕對座標 {i + 1}: ({abs_x}, {abs_y})")
 
+                    self._app.schedule_config_save()
                     hint.close()
                     time.sleep(0.3)
             except Exception as e:
@@ -1969,6 +1947,7 @@ class InventoryTab(QWidget):
         if QMessageBox.question(self.window(), self._app.get_text("confirm"), self._app.get_text("confirm_clear_coordinates")) == QMessageBox.StandardButton.Yes:
             self.pickup_coordinates = [[0, 0] for _ in range(5)]
             self.update_coordinate_display()
+            self.save_pickup_coordinates()
             print("已清除所有取物座標")
 
     def test_pickup(self):
@@ -2126,10 +2105,8 @@ class InventoryTab(QWidget):
             self.select_inventory_ui_btn.setToolTip(self._app.get_text("select_inventory_ui_tip"))
             self.test_clear_inventory_btn.setText(self._app.get_text("test_clear_inventory"))
             self.test_clear_inventory_btn.setToolTip(self._app.get_text("test_clear_inventory_tip"))
-            self.save_inventory_settings_btn.setText(self._app.get_text("save_inventory_settings"))
             self.setup_pickup_coordinates_btn.setText(self._app.get_text("setup_pickup_coordinates"))
             self.setup_pickup_coordinates_btn.setToolTip(self._app.get_text("setup_pickup_coordinates_tip"))
-            self.save_pickup_coordinates_btn.setText(self._app.get_text("save_coordinates"))
 
             self.record_status_label.setText(self._app.get_text("record_status"))
             self.inventory_ui_status_label.setText(self._app.get_text("inventory_ui_status"))

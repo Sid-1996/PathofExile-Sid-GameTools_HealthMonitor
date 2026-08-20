@@ -194,16 +194,18 @@ class SkillTimerModule(QWidget):
     QWidget 版技能計時器。可直接 addWidget 進任何父容器。
     """
 
-    def __init__(self, parent=None, max_slots: int = 4, on_log=None, get_text=None):
+    def __init__(self, parent=None, max_slots: int = 4, on_log=None, get_text=None, on_change=None):
         """
-        parent    : 父容器
-        max_slots : 最多幾個技能槽（上限 _MAX_SLOTS）
-        on_log    : 可選 callback(message, type)
-        get_text  : 可選 callback(key) -> str，接語言系統
+        parent     : 父容器
+        max_slots  : 最多幾個技能槽（上限 _MAX_SLOTS）
+        on_log     : 可選 callback(message, type)
+        get_text   : 可選 callback(key) -> str，接語言系統
+        on_change  : 可選 callback()，任何槽位設定變更時觸發（供即時儲存）
         """
         super().__init__(parent)
         self._on_log = on_log
         self._get_text = get_text
+        self._on_change = on_change
         self._n = min(max_slots, _MAX_SLOTS)
         self.slots = [SkillSlot() for _ in range(self._n)]
 
@@ -310,6 +312,10 @@ class SkillTimerModule(QWidget):
             self._status_labels.append(status_lbl)
             self._toggle_btns.append(toggle_btn)
             slot.bind_widgets(key_edit, modifier_combo, interval_spin, enabled_check)
+            key_edit.textChanged.connect(lambda *_: self._notify_change())
+            modifier_combo.currentTextChanged.connect(lambda *_: self._notify_change())
+            interval_spin.valueChanged.connect(lambda *_: self._notify_change())
+            enabled_check.toggled.connect(lambda *_: self._notify_change())
 
         # 底部控制列
         ctrl_row = self._n + 2
@@ -402,6 +408,10 @@ class SkillTimerModule(QWidget):
                 self._set_status(i, False)
         if self._on_log:
             self._on_log(self._t("skill_timer_log_all_stop", "[SkillTimer] 全部停止"), "info")
+
+    def _notify_change(self):
+        if self._on_change:
+            self._on_change()
 
     @property
     def is_any_running(self) -> bool:
