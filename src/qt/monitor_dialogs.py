@@ -48,7 +48,7 @@ def _row(grid, row, label_text, value_text, color):
     label = QLabel(label_text)
     grid.addWidget(label, row, 0)
     current = QLabel(value_text)
-    current.setStyleSheet(f"font-weight: 700; color: {color};")
+    current.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {color};")
     grid.addWidget(current, row, 1)
 
 
@@ -58,7 +58,7 @@ def _add_entry(grid, row, entry, explanation_key, get_text):
         explanation = get_text(explanation_key)
         hint = QLabel(explanation)
         hint.setWordWrap(True)
-        hint.setStyleSheet(f"color: {MUTED}; font-size: 11px;")
+        hint.setStyleSheet(f"color: {MUTED}; font-size: 13px;")
         grid.addWidget(hint, row + 1, 0, 1, 2)
 
 
@@ -256,7 +256,7 @@ class AdjustInterfaceUiDialog(QDialog):
             if explanation_key:
                 hint = QLabel(g(explanation_key))
                 hint.setWordWrap(True)
-                hint.setStyleSheet(f"color: {MUTED}; font-size: 11px;")
+                hint.setStyleSheet(f"color: {MUTED}; font-size: 13px;")
                 grid.addWidget(hint, 2, 0, 1, 2)
             content_layout.addWidget(box)
 
