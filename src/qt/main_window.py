@@ -303,14 +303,14 @@ class MainWindow(FluentWindow):
                     if not self.monitor_tab._preview_placeholder_shown:
                         self.monitor_tab._preview_placeholder_shown = True
                         self.add_status_message(self.get_text("game_window_minimized"), "warning")
-                        self.monitor_tab._show_health_preview_placeholder()
-                        self.monitor_tab._show_mana_preview_placeholder()
+                        self.monitor_tab._show_health_preview_placeholder(self.get_text("game_window_minimized"))
+                        self.monitor_tab._show_mana_preview_placeholder(self.get_text("game_window_minimized"))
                     self.monitor_tab.update_status("--", "--", self.get_text("game_window_minimized"), "")
                     interruptible_sleep(0.5, self.is_monitoring)
                     continue
                 if self.monitor_tab._preview_placeholder_shown:
                     self.monitor_tab._preview_placeholder_shown = False
-                    self.add_status_message(self.get_text("game_window_regained_focus"), "success")
+                    self.add_status_message(self.get_text("monitoring_resumed"), "success")
 
                 # 後台截圖：WGC 成功（被遮擋/失焦）或 mss 成功（僅前景）→ 分析；
                 # None（視窗不存在/最小化/WGC 不可用且非前景）→ 暫停等待

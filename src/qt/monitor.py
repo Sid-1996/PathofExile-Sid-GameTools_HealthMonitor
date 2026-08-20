@@ -892,11 +892,11 @@ class MonitorTab(QWidget):
         draw_scale_lines(pil_img)
         return resize_and_center_image(pil_img, self.preview_size)
 
-    def _show_health_preview_placeholder(self):
-        self._signals.health_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+    def _show_health_preview_placeholder(self, message=None):
+        self._signals.health_placeholder.emit(message or self._app.get_text("waiting_for_game_window"))
 
-    def _show_mana_preview_placeholder(self):
-        self._signals.mana_placeholder.emit(self._app.get_text("waiting_for_game_window"))
+    def _show_mana_preview_placeholder(self, message=None):
+        self._signals.mana_placeholder.emit(message or self._app.get_text("waiting_for_game_window"))
 
     # ────────────────────────── 主執行緒 slots ──────────────────────────
 
