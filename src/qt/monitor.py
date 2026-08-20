@@ -115,6 +115,19 @@ def _pil_to_qpixmap(pil_img):
     return QPixmap.fromImage(qimg)
 
 
+class _AutoRefreshCombo(EditableComboBox):
+    """遊戲視窗下拉：每次開啟前自動重掃視窗清單（取代手動重新整理按鈕）。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.on_refresh = None
+
+    def _showComboMenu(self):
+        if self.on_refresh:
+            self.on_refresh()
+        super()._showComboMenu()
+
+
 class _VarShim:
     """相容層：讓 WindowKeySender 等既有模組可繼續用 .get()/.set() 讀寫視窗標題。"""
 
@@ -315,14 +328,11 @@ class MonitorTab(QWidget):
         self.game_window_label = QLabel(self._app.get_text("game_window"))
         grid.addWidget(self.game_window_label, 0, 0)
 
-        self.window_combo = EditableComboBox()
+        self.window_combo = _AutoRefreshCombo()
         self.window_combo.setFixedWidth(320)
+        self.window_combo.on_refresh = self.refresh_windows
         self.window_combo.currentTextChanged.connect(lambda text: (setattr(self, "window_title", text), self._app.schedule_config_save()))
         grid.addWidget(self.window_combo, 0, 1)
-
-        self.refresh_windows_btn = PushButton(self._app.get_text("refresh"))
-        self.refresh_windows_btn.clicked.connect(self.refresh_windows)
-        grid.addWidget(self.refresh_windows_btn, 0, 2)
 
         self.health_bar_region_label = QLabel(self._app.get_text("health_bar_region"))
         grid.addWidget(self.health_bar_region_label, 1, 0)
@@ -617,11 +627,20 @@ class MonitorTab(QWidget):
     # ────────────────────────── 視窗 / 預覽 ──────────────────────────
 
     def refresh_windows(self):
-        windows = [w.title for w in gw.getAllWindows() if w.title]
-        self.window_combo.clear()
-        self.window_combo.addItems(windows)
-        if self.window_title:
-            self.window_combo.setCurrentText(self.window_title)
+        try:
+            windows = [w.title for w in gw.getAllWindows() if w.title]
+            if [self.window_combo.itemText(i) for i in range(self.window_combo.count())] == windows:
+                return
+            self.window_combo.blockSignals(True)
+            try:
+                self.window_combo.clear()
+                self.window_combo.addItems(windows)
+                if self.window_title:
+                    self.window_combo.setCurrentText(self.window_title)
+            finally:
+                self.window_combo.blockSignals(False)
+        except Exception as e:
+            print(f"[WARN] 重新整理視窗清單失敗: {e}")
 
     def auto_load_preview(self):
         if self._app.config.get("region") and self._app.config.get("window_title"):
@@ -1030,7 +1049,6 @@ class MonitorTab(QWidget):
             "page_title_label": "monitor_title",
             "window_frame": "game_window_settings",
             "game_window_label": "game_window",
-            "refresh_windows_btn": "refresh",
             "health_bar_region_label": "health_bar_region",
             "mana_bar_region_label": "mana_bar_region",
             "interface_ui_region_label": "interface_ui_region",

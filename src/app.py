@@ -92,6 +92,15 @@ def main(argv=None) -> int:
             assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
             print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
 
+            # 遊戲視窗下拉：無重新整理按鈕，開啟前自動重掃；refresh 需訊號安全
+            mt = window.monitor_tab
+            assert not hasattr(mt, "refresh_windows_btn"), "refresh button should be removed"
+            assert mt.window_combo.on_refresh.__func__ is mt.refresh_windows.__func__, "auto refresh not wired to popup open"
+            mt.window_title = "__SMOKE_KEEP_WINDOW_TITLE__"
+            mt.refresh_windows()
+            assert mt.window_title == "__SMOKE_KEEP_WINDOW_TITLE__", "refresh_windows clobbered window_title"
+            print("SMOKE WINDOW COMBO OK")
+
             # InventoryTab：grid offset 調整 → 標籤 + 格子位置重算
             assert hasattr(window, "inventory_tab"), "inventory_tab missing"
             it = window.inventory_tab
