@@ -460,13 +460,10 @@ class MonitorTab(QWidget):
 
         buttons_row = QHBoxLayout()
         buttons_row.setSpacing(8)
-        self.start_btn = PrimaryPushButton(self._app.get_text("start_monitoring"))
-        self.start_btn.clicked.connect(self._app.start_monitoring)
-        buttons_row.addWidget(self.start_btn)
-        self.stop_btn = PushButton(self._app.get_text("stop_monitoring"))
-        self.stop_btn.setEnabled(False)
-        self.stop_btn.clicked.connect(self._app.stop_monitoring)
-        buttons_row.addWidget(self.stop_btn)
+        self.toggle_btn = PrimaryPushButton(self._app.get_text("start_monitoring"))
+        self.toggle_btn.clicked.connect(self._app.toggle_monitoring_btn)
+        buttons_row.addWidget(self.toggle_btn)
+        self.update_toggle_btn()
         self.test_preview_btn = PushButton(self._app.get_text("test_preview"))
         self.test_preview_btn.setToolTip(self._app.get_text("test_preview_tip"))
         self.test_preview_btn.clicked.connect(self.test_preview)
@@ -539,6 +536,11 @@ class MonitorTab(QWidget):
         preview_row.addWidget(self.preview_ms_label)
         preview_row.addStretch(1)
         vbox.addLayout(preview_row)
+
+    def update_toggle_btn(self) -> None:
+        """依監控狀態更新切換按鈕文字（啟動/停止 + [F10]）。"""
+        key = "stop_monitoring" if self._app.is_monitoring() else "start_monitoring"
+        self.toggle_btn.setText(f"{self._app.get_text(key)}[F10]")
 
     def _build_status_group(self, layout):
         self.real_time_status_frame = self._styled_group(self._app.get_text("real_time_status"))
@@ -1057,8 +1059,6 @@ class MonitorTab(QWidget):
             "adjust_interface_ui_btn": "adjust_interface_ui",
             "multi_trigger_check": "multiple_triggers",
             "control_frame": "control_panel",
-            "start_btn": "start_monitoring",
-            "stop_btn": "stop_monitoring",
             "test_preview_btn": "test_preview",
             "check_freq_label": "check_frequency",
             "ms_label": "ms",
@@ -1085,6 +1085,8 @@ class MonitorTab(QWidget):
             widget = getattr(self, attr, None)
             if widget is not None:
                 widget.setText(self._app.get_text(key))
+
+        self.update_toggle_btn()
 
         self.settings_tree.setHorizontalHeaderLabels([self._app.get_text("type"), self._app.get_text("percentage"), self._app.get_text("hotkey"), self._app.get_text("cooldown_ms")])
         self.region_label.setText(get_region_text(self._app.config, self._app.get_text))

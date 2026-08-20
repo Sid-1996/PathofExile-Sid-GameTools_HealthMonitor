@@ -235,8 +235,7 @@ class MainWindow(FluentWindow):
             return
 
         self.set_monitoring(True)
-        mt.start_btn.setEnabled(False)
-        mt.stop_btn.setEnabled(True)
+        mt.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_started"), "success")
         self.setWindowOpacity(0.8)  # 非干擾模式
 
@@ -248,8 +247,7 @@ class MainWindow(FluentWindow):
             return
         print("[STOP] 正在停止監控")
         self.set_monitoring(False)
-        self.monitor_tab.start_btn.setEnabled(True)
-        self.monitor_tab.stop_btn.setEnabled(False)
+        self.monitor_tab.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
         self.setWindowOpacity(1.0)
         self._monitor_thread = None  # daemon 執行緒會在下次 interruptible_sleep 檢查時退出
@@ -437,11 +435,20 @@ class MainWindow(FluentWindow):
             print("[STOP] 全域暫停中，跳過 F10 熱鍵")
             self.add_status_message(self.get_text("f10_skip_global_pause"), "warning")
             return
+        key = "f10_stop_monitoring" if self.is_monitoring() else "f10_start_monitoring"
+        self.add_status_message(self.get_text(key), "hotkey")
+        self._toggle_monitoring_core()
+
+    def toggle_monitoring_btn(self) -> None:
+        """監控切換按鈕：依目前狀態啟動/停止（不顯示 F10 訊息）。"""
+        if self._global_pause:
+            return
+        self._toggle_monitoring_core()
+
+    def _toggle_monitoring_core(self) -> None:
         if self.is_monitoring():
-            self.add_status_message(self.get_text("f10_stop_monitoring"), "hotkey")
             self.stop_monitoring()
         else:
-            self.add_status_message(self.get_text("f10_start_monitoring"), "hotkey")
             self.start_monitoring()
 
     def close_app(self) -> None:
