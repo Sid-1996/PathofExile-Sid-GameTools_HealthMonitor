@@ -558,6 +558,14 @@ class InventoryTab(QWidget):
         self.inventory_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {color};")
         self._preview_has_image = False
 
+    def _update_preview_placeholder_state(self):
+        if self._preview_has_image:
+            return
+        if self.inventory_region:
+            self.set_preview_placeholder(self._app.get_text("inventory_preview_guide"), "orange")
+        else:
+            self.set_preview_placeholder(self._app.get_text("select_inventory_region_first"))
+
     def set_preview_pil(self, pil_img):
         pix = _pil_to_qpixmap(pil_img)
         scaled = pix.scaled(
@@ -683,7 +691,7 @@ class InventoryTab(QWidget):
             if kind == "inventory":
                 self.inventory_region = region
                 self._recompute_grid_positions()
-                self.set_preview_placeholder(self._app.get_text("select_inventory_region_first"))
+                self._update_preview_placeholder_state()
                 self._app.add_status_message(self._app.get_text("inventory_region_set"), "success")
             elif kind == "inventory_ui":
                 self.inventory_ui_region = region
@@ -2112,8 +2120,7 @@ class InventoryTab(QWidget):
             self.inventory_exclude_hint.setText(self._app.get_text("inventory_exclude_hint"))
 
             self.refresh_config_display()
-            if not self._preview_has_image:
-                self.set_preview_placeholder(self._app.get_text("select_inventory_region_first"))
+            self._update_preview_placeholder_state()
         except Exception as e:
             print(f"更新一鍵清包分頁語言時發生錯誤: {e}")
 
@@ -2123,5 +2130,6 @@ class InventoryTab(QWidget):
         self.always_on_top_check.setChecked(bool(self._app.always_on_top))
         self.update_offset_labels()
         self.refresh_config_display()
+        self._update_preview_placeholder_state()
         self.update_ui_preview()
         self.update_interface_ui_preview()
