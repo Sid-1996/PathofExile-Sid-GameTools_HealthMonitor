@@ -33,6 +33,9 @@ except ImportError:
     _wc = None  # type: ignore[assignment]
     WGC_AVAILABLE = False
 
+# 新建立 WGC session 首張 frame 的等待上限（frame 非同步到達，未就緒時降級 mss 只能在前景）
+WGC_FIRST_FRAME_WAIT = 1.0
+
 
 class _MssSingleton:
     _local = threading.local()
@@ -78,6 +81,7 @@ class _WgcWindowSession:
         self._closed = False
         self._last_store = 0.0
         self._control = None
+        self._first_frame = threading.Event()
         self._start()
 
     def _start(self):
@@ -94,6 +98,7 @@ class _WgcWindowSession:
             bgr = frame.frame_buffer[:, :, :3].copy()  # 脫離 native buffer 生命週期
             with self._lock:
                 self._frame = bgr
+            self._first_frame.set()
 
         @cap.event
         def on_closed():
@@ -104,6 +109,10 @@ class _WgcWindowSession:
     def latest_frame(self):
         with self._lock:
             return self._frame
+
+    def wait_first_frame(self, timeout):
+        """等待首張 frame 就緒；逾時回傳 False（之後沿用既有降級路徑）。"""
+        return self._first_frame.wait(timeout)
 
     def is_closed(self):
         return self._closed
@@ -135,6 +144,7 @@ def _get_wgc_session(hwnd):
         except Exception as e:
             print(f"[WARN] WGC 初始化失敗，降級 mss: {e}")
             return None
+        session.wait_first_frame(WGC_FIRST_FRAME_WAIT)
         return session
 
 
