@@ -9,10 +9,11 @@ import threading
 import time
 import webbrowser
 from datetime import datetime
+from typing import Dict, Optional
 
 import pygetwindow as gw
 
-from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
@@ -39,7 +40,7 @@ from qt.monitor import MonitorTab
 from qt.status import StatusTab
 from qt.version import VersionTab
 from usage_tracker import UsageTracker
-from utils import set_app_instance, global_f12_handler
+from utils import set_app_instance
 from window_key_sender import WindowKeySender
 
 # ── 主題常數（與舊 dracula 色系對齊）──
@@ -51,6 +52,11 @@ RESTORE_SIZE = (1600, 900)
 
 
 class MainWindow(FluentWindow):
+    # 熱鍵 callback 跑在 keyboard 函式庫監聽執行緒，不能在此直接碰 Qt widget；
+    # 改走 queued signal 送回主執行緒（修 F10 停止監控 GUI 死結）。
+    f10_request = Signal()
+    f12_request = Signal()
+
     def __init__(self):
         self._initialized = False  # 必須在 super().__init__() 之前，避免建構期事件誤觸
         self._was_maximized = False
@@ -90,7 +96,7 @@ class MainWindow(FluentWindow):
         self.language_manager.change_language(self.current_language)
 
         # ── 血魔監控相關設定（與 tk 版 health_monitor.py 相同預設）──
-        self.interface_ui_region = None
+        self.interface_ui_region: Optional[Dict[str, int]] = None
         self.health_threshold = 0.8
         self.red_h_range = 5
         self.green_h_range = 40
@@ -112,6 +118,8 @@ class MainWindow(FluentWindow):
 
         self._build_tabs()
         self.window_key_sender = WindowKeySender(self)
+        self.f10_request.connect(self.toggle_monitoring)
+        self.f12_request.connect(self.close_app)
         self.setup_hotkeys()
 
         # ── 自動點擊（AHK，沿用 auto_click_manager 保留模組）──
@@ -418,8 +426,8 @@ class MainWindow(FluentWindow):
             if hasattr(self.inventory_tab, "return_to_hideout"):
                 keyboard.add_hotkey("f5", self.inventory_tab.return_to_hideout)
             keyboard.add_hotkey("f9", self.toggle_global_pause)
-            keyboard.add_hotkey("f10", self.toggle_monitoring)
-            keyboard.add_hotkey("f12", global_f12_handler)
+            keyboard.add_hotkey("f10", self.f10_request.emit)
+            keyboard.add_hotkey("f12", self.f12_request.emit)
             print("已註冊 F3/F5/F6/F9/F10/F12 全局熱鍵")
         except Exception as e:
             print(f"註冊熱鍵失敗: {e}")

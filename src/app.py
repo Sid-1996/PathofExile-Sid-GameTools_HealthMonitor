@@ -99,7 +99,8 @@ def main(argv=None) -> int:
             # 遊戲視窗下拉：無重新整理按鈕，開啟前自動重掃；refresh 需訊號安全
             mt = window.monitor_tab
             assert not hasattr(mt, "refresh_windows_btn"), "refresh button should be removed"
-            assert mt.window_combo.on_refresh.__func__ is mt.refresh_windows.__func__, "auto refresh not wired to popup open"
+            ref = getattr(mt.window_combo.on_refresh, "__func__", None)
+            assert ref is getattr(mt.refresh_windows, "__func__", None), "auto refresh not wired to popup open"
             mt.window_title = "__SMOKE_KEEP_WINDOW_TITLE__"
             mt.refresh_windows()
             assert mt.window_title == "__SMOKE_KEEP_WINDOW_TITLE__", "refresh_windows clobbered window_title"
@@ -230,10 +231,17 @@ def main(argv=None) -> int:
 
         def _verify_loop():
             assert window.monitor_tab.health_label.text() == "--", f"loop status update failed: {window.monitor_tab.health_label.text()!r}"
-            window.stop_monitoring()
-            assert not window.is_monitoring(), "monitoring should be stopped"
             print("SMOKE MONITOR LOOP OK")
-            window.close()
+            # F10 marshal 路徑：模擬 keyboard 監聽執行緒 emit signal，由主執行緒 queued 處理
+            assert window.is_monitoring(), "monitor should be running before F10 stop"
+            threading.Thread(target=window.f10_request.emit, daemon=True).start()
+
+            def _after_f10():
+                assert not window.is_monitoring(), "f10_request did not stop monitoring on main thread"
+                print("SMOKE F10 MARSHAL OK")
+                window.close()
+
+            QTimer.singleShot(200, _after_f10)
 
         QTimer.singleShot(1000, _verify_signal_path)
 

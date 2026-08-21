@@ -31,6 +31,8 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import CheckBox, PushButton, RadioButton
 
 from capture_utils import _mss_singleton, capture_region_to_cv2, capture_window_region_bgr, load_screenshot_from_file, save_screenshot
+from typing import Dict, Optional
+
 from image_utils import get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
@@ -175,8 +177,8 @@ class InventoryTab(QWidget):
         self.excluded_inventory_slots = set()
         self.grid_offset_x = 0
         self.grid_offset_y = 0
-        self.inventory_region = None
-        self.inventory_ui_region = None
+        self.inventory_region: Optional[Dict[str, int]] = None
+        self.inventory_ui_region: Optional[Dict[str, int]] = None
         self.empty_inventory_colors = []
         self.occupied_threshold = 50
         self.last_inventory_window = None
@@ -685,8 +687,9 @@ class InventoryTab(QWidget):
 
     def _on_region_selection_done(self, kind, region):
         # overlay 回傳 tuple (x,y,w,h)，本子系統一律用 dict 存取 → 在此正規化
-        if isinstance(region, (tuple, list)) and len(region) == 4:
-            region = {"x": region[0], "y": region[1], "width": region[2], "height": region[3]}
+        region = normalize_region(region)
+        if not isinstance(region, dict):
+            return
         try:
             if kind == "inventory":
                 self.inventory_region = region

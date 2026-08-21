@@ -10,13 +10,15 @@ All functions are pure (no tkinter dependency).
 
 import numpy as np
 
+from typing import Dict, Optional, cast
 
-def normalize_region(region):
+
+def normalize_region(region: object) -> Optional[Dict[str, int]]:
     """把 region 正規化為 dict {x, y, width, height}（容錯 tuple/list/dict，None 保留）。"""
     if region is None:
         return None
     if isinstance(region, dict):
-        return region
+        return cast(Dict[str, int], region)
     if isinstance(region, (tuple, list)) and len(region) == 4:
         return {"x": region[0], "y": region[1], "width": region[2], "height": region[3]}
     return None

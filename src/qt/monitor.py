@@ -9,6 +9,7 @@
 import os
 import time
 import threading
+from typing import Callable, Optional
 
 import cv2
 import pygetwindow as gw
@@ -120,7 +121,7 @@ class _AutoRefreshCombo(EditableComboBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.on_refresh = None
+        self.on_refresh: Optional[Callable[[], None]] = None
 
     def _showComboMenu(self):
         if self.on_refresh:
