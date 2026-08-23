@@ -47,7 +47,6 @@ class ConfigManager:
                     import shutil
 
                     shutil.copy2(self.config_file, backup_file)
-                    print(f"[DEBUG] 配置文件備份已創建: {backup_file}")
                 except Exception as backup_error:
                     print(f"[WARN] 創建備份失敗: {backup_error}")
 
@@ -55,7 +54,6 @@ class ConfigManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
 
-            print(f"[DEBUG] 配置文件已保存: {self.config_file}")
             return True
         except Exception as e:
             print(f"[ERROR] 儲存設定檔案失敗: {e}")
@@ -156,7 +154,6 @@ class ConfigManager:
                 with open(backup_file, "w", encoding="utf-8") as dst:
                     dst.write(src.read())
 
-            print(f"[DEBUG] 配置文件已備份至: {backup_file}")
             return True
         except Exception as e:
             print(f"[ERROR] 備份設定檔案失敗: {e}")
