@@ -606,8 +606,7 @@ class InventoryTab(QWidget):
         self._sync_inventory_config()
 
     def _on_always_on_top_toggled(self, checked):
-        self._app.always_on_top = checked
-        self._app.toggle_always_on_top()
+        self._app.set_always_on_top(checked)
 
     def adjust_grid_offset(self, delta_x, delta_y):
         self.grid_offset_x += delta_x

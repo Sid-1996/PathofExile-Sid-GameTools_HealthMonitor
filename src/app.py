@@ -195,6 +195,15 @@ def main(argv=None) -> int:
             assert mw.is_global_pause() is False, "global pause toggle off failed"
             print("SMOKE PHASE9 HOTKEYS OK")
 
+            # 最上方勾選框跨頁同步：撥監控頁 → 背包頁跟隨（測後還原原值）
+            orig_top = mw.always_on_top
+            mt.always_on_top_check.setChecked(not orig_top)
+            assert mw.always_on_top == (not orig_top), "always-on-top flag not updated"
+            assert it.always_on_top_check.isChecked() == (not orig_top), "always-on-top cross-tab sync failed"
+            mt.always_on_top_check.setChecked(orig_top)
+            assert it.always_on_top_check.isChecked() == orig_top, "always-on-top restore failed"
+            print("SMOKE ALWAYS_ON_TOP SYNC OK")
+
             # 即時儲存：改設定 → 等 debounce → config 檔已寫入新值（無需任何儲存按鈕）
             mw.health_threshold = 0.77
             mw.schedule_config_save()

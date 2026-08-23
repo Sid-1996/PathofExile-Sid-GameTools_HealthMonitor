@@ -402,9 +402,18 @@ class MainWindow(FluentWindow):
                 self.monitor_tab.update_status("--", "--", "--", self.get_text("error_prefix").format(error=str(e)))
                 interruptible_sleep(1.0, self.is_monitoring)
 
-    def toggle_always_on_top(self) -> None:
+    def set_always_on_top(self, checked: bool) -> None:
+        """單一事實來源：更新 flag、同步各頁勾選框並排程存檔。"""
+        self.always_on_top = bool(checked)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
         self.show()
+        for tab_name in ("monitor_tab", "inventory_tab"):
+            cb = getattr(getattr(self, tab_name, None), "always_on_top_check", None)
+            if cb is not None and cb.isChecked() != self.always_on_top:
+                cb.blockSignals(True)
+                cb.setChecked(self.always_on_top)
+                cb.blockSignals(False)
+        self.schedule_config_save()
 
     def should_keep_topmost(self) -> bool:
         """GUI 是否保持在最上方（對應 tk 版同名方法）。"""
