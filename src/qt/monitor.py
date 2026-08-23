@@ -331,6 +331,7 @@ class MonitorTab(QWidget):
         self.window_combo = _AutoRefreshCombo()
         self.window_combo.setFixedWidth(320)
         self.window_combo.setPlaceholderText(self._app.get_text("select_game_window_first"))
+        self.window_combo.setToolTip(self._app.get_text("game_window_combo_tip"))
         self.window_combo.on_refresh = self.refresh_windows
         self.window_combo.currentTextChanged.connect(self._on_window_changed)
         grid.addWidget(self.window_combo, 0, 1)
@@ -388,6 +389,7 @@ class MonitorTab(QWidget):
         self.type_combo = ComboBox()
         self.type_combo.addItems(["HP", "MP"])
         self.type_combo.setCurrentText("HP")
+        self.type_combo.setToolTip(self._app.get_text("trigger_type_tip"))
         self.type_combo.currentTextChanged.connect(lambda _: self.on_type_changed())
         add_row.addWidget(self.type_combo)
 
@@ -396,6 +398,7 @@ class MonitorTab(QWidget):
         self.percent_entry = LineEdit()
         self.percent_entry.setText("60")
         self.percent_entry.setFixedWidth(56)
+        self.percent_entry.setToolTip(self._app.get_text("percentage_entry_tip"))
         add_row.addWidget(self.percent_entry)
 
         self.hotkey_label = QLabel(self._app.get_text("hotkey"))
@@ -403,6 +406,7 @@ class MonitorTab(QWidget):
         self.key_entry = LineEdit()
         self.key_entry.setText("1")
         self.key_entry.setFixedWidth(72)
+        self.key_entry.setToolTip(self._app.get_text("hotkey_entry_tip"))
         add_row.addWidget(self.key_entry)
 
         self.cooldown_label = QLabel(self._app.get_text("cooldown_ms"))
@@ -410,6 +414,7 @@ class MonitorTab(QWidget):
         self.cooldown_entry = LineEdit()
         self.cooldown_entry.setText("1500")
         self.cooldown_entry.setFixedWidth(56)
+        self.cooldown_entry.setToolTip(self._app.get_text("cooldown_entry_tip"))
         add_row.addWidget(self.cooldown_entry)
 
         self.add_trigger_btn = PrimaryPushButton(self._app.get_text("add_trigger"))
@@ -464,6 +469,7 @@ class MonitorTab(QWidget):
         buttons_row = QHBoxLayout()
         buttons_row.setSpacing(8)
         self.toggle_btn = PrimaryPushButton(self._app.get_text("start_monitoring"))
+        self.toggle_btn.setToolTip(self._app.get_text("toggle_monitoring_tip"))
         self.toggle_btn.clicked.connect(self._app.toggle_monitoring_btn)
         buttons_row.addWidget(self.toggle_btn)
         self.update_toggle_btn()
@@ -481,6 +487,7 @@ class MonitorTab(QWidget):
         self.interval_combo = ComboBox()
         self.interval_combo.addItems(["25", "50", "100"])
         self.interval_combo.setCurrentText(str(self.monitor_interval_ms))
+        self.interval_combo.setToolTip(self._app.get_text("check_interval_tip"))
         self.interval_combo.currentTextChanged.connect(lambda t: (setattr(self, "monitor_interval_ms", int(t)), self._app.schedule_config_save()))
         freq_row.addWidget(self.interval_combo)
         self.ms_label = QLabel(self._app.get_text("ms"))
@@ -515,6 +522,7 @@ class MonitorTab(QWidget):
         gui_row.addWidget(self.gui_settings_label)
         self.always_on_top_check = CheckBox(self._app.get_text("always_on_top"))
         self.always_on_top_check.setChecked(self._app.always_on_top)
+        self.always_on_top_check.setToolTip(self._app.get_text("always_on_top_tip"))
         self.always_on_top_check.toggled.connect(self._on_always_on_top_toggled)
         gui_row.addWidget(self.always_on_top_check)
         gui_row.addStretch(1)
@@ -526,6 +534,7 @@ class MonitorTab(QWidget):
         preview_row.addWidget(self.preview_settings_label)
         self.enable_preview_check = CheckBox(self._app.get_text("enable_preview"))
         self.enable_preview_check.setChecked(self._app.preview_enabled)
+        self.enable_preview_check.setToolTip(self._app.get_text("enable_preview_tip"))
         self.enable_preview_check.toggled.connect(lambda v: (setattr(self._app, "preview_enabled", v), self._app.schedule_config_save()))
         preview_row.addWidget(self.enable_preview_check)
         self.preview_interval_label = QLabel(self._app.get_text("preview_interval"))
@@ -533,6 +542,7 @@ class MonitorTab(QWidget):
         self.preview_interval_entry = LineEdit()
         self.preview_interval_entry.setText(str(self._app.preview_interval))
         self.preview_interval_entry.setFixedWidth(56)
+        self.preview_interval_entry.setToolTip(self._app.get_text("preview_interval_tip"))
         self.preview_interval_entry.textChanged.connect(self._on_preview_interval_changed)
         preview_row.addWidget(self.preview_interval_entry)
         self.preview_ms_label = QLabel(self._app.get_text("ms"))
@@ -1122,6 +1132,11 @@ class MonitorTab(QWidget):
         self.interface_ui_label.setText(get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text))
 
         tips = {
+            "window_combo": "game_window_combo_tip",
+            "type_combo": "trigger_type_tip",
+            "percent_entry": "percentage_entry_tip",
+            "key_entry": "hotkey_entry_tip",
+            "cooldown_entry": "cooldown_entry_tip",
             "select_health_region_btn": "select_health_region_tip",
             "select_mana_region_btn": "select_mana_region_tip",
             "select_interface_ui_btn": "select_interface_ui_tip",
@@ -1130,7 +1145,14 @@ class MonitorTab(QWidget):
             "adjust_colors_btn": "adjust_colors_tip",
             "adjust_interface_ui_btn": "adjust_interface_ui_tip",
             "multi_trigger_check": "multiple_triggers_tip",
+            "toggle_btn": "toggle_monitoring_tip",
+            "interval_combo": "check_interval_tip",
+            "always_on_top_check": "always_on_top_tip",
+            "enable_preview_check": "enable_preview_tip",
+            "preview_interval_entry": "preview_interval_tip",
             "test_preview_btn": "test_preview_tip",
         }
         for attr, key in tips.items():
-            getattr(self, attr).setToolTip(self._app.get_text(key))
+            w = getattr(self, attr, None)
+            if w is not None:
+                w.setToolTip(self._app.get_text(key))

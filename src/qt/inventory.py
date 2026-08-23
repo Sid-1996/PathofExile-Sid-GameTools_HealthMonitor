@@ -121,12 +121,14 @@ class _PickupSetupDialog(QDialog):
 
         buttons = QHBoxLayout()
         self.start_btn = PushButton(get_text("start_continuous_setup"))
+        self.start_btn.setToolTip(get_text("setup_pickup_coordinates_tip"))
         self.start_btn.clicked.connect(lambda: self._tab.start_continuous_setup(self))
         buttons.addWidget(self.start_btn)
         self.test_btn = PushButton(get_text("test_f6_pickup"))
         self.test_btn.clicked.connect(self._tab.test_pickup)
         buttons.addWidget(self.test_btn)
         self.clear_btn = PushButton(get_text("clear_all_coordinates"))
+        self.clear_btn.setToolTip(get_text("clear_all_coordinates_tip"))
         self.clear_btn.clicked.connect(self._tab.clear_all_coordinates)
         buttons.addWidget(self.clear_btn)
         buttons.addStretch(1)
@@ -397,6 +399,7 @@ class InventoryTab(QWidget):
         grid.addWidget(self.gui_settings_label, 2, 0)
 
         self.always_on_top_check = CheckBox(self._app.get_text("always_on_top"))
+        self.always_on_top_check.setToolTip(self._app.get_text("always_on_top_tip"))
         self.always_on_top_check.toggled.connect(self._on_always_on_top_toggled)
         grid.addWidget(self.always_on_top_check, 2, 1)
 
@@ -508,6 +511,7 @@ class InventoryTab(QWidget):
         self.offset_x_label.setFixedWidth(48)
         self.offset_x_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.offset_x_label.setStyleSheet(self._value_label_style("#f8f8f2"))
+        self.offset_x_label.setToolTip(self._app.get_text("offset_entry_tip"))
         offset_grid.addWidget(self.offset_x_label, 0, 2)
 
         right_btn = PushButton("▶")
@@ -527,6 +531,7 @@ class InventoryTab(QWidget):
         self.offset_y_label.setFixedWidth(48)
         self.offset_y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.offset_y_label.setStyleSheet(self._value_label_style("#f8f8f2"))
+        self.offset_y_label.setToolTip(self._app.get_text("offset_entry_tip"))
         offset_grid.addWidget(self.offset_y_label, 1, 2)
 
         down_btn = PushButton("▼")
@@ -535,6 +540,7 @@ class InventoryTab(QWidget):
         offset_grid.addWidget(down_btn, 1, 3)
 
         self.reset_offset_btn = PushButton(self._app.get_text("reset"))
+        self.reset_offset_btn.setToolTip(self._app.get_text("reset_offset_tip"))
         self.reset_offset_btn.clicked.connect(self.reset_grid_offset)
         offset_grid.addWidget(self.reset_offset_btn, 1, 4)
 
@@ -2115,11 +2121,15 @@ class InventoryTab(QWidget):
             self.horizontal_label.setText(self._app.get_text("horizontal"))
             self.vertical_label.setText(self._app.get_text("vertical"))
             self.reset_offset_btn.setText(self._app.get_text("reset"))
+            self.reset_offset_btn.setToolTip(self._app.get_text("reset_offset_tip"))
             self.clear_click_mode_label.setText(self._app.get_text("clear_click_mode"))
             self.clear_click_left_radio.setText(self._app.get_text("clear_click_left"))
             self.clear_click_right_radio.setText(self._app.get_text("clear_click_right"))
             self.gui_settings_label.setText(self._app.get_text("gui_settings"))
             self.always_on_top_check.setText(self._app.get_text("always_on_top"))
+            self.always_on_top_check.setToolTip(self._app.get_text("always_on_top_tip"))
+            self.offset_x_label.setToolTip(self._app.get_text("offset_entry_tip"))
+            self.offset_y_label.setToolTip(self._app.get_text("offset_entry_tip"))
             self.ui_preview_hint_label.setText(self._app.get_text("inventory_ui_screenshot_hint"))
             self.inventory_exclude_hint.setText(self._app.get_text("inventory_exclude_hint"))
 

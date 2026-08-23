@@ -49,16 +49,18 @@ class StatusTab(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(12)
 
-        title = QLabel(self._app.get_text("tool_execution_status"))
-        title.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
-        layout.addWidget(title)
+        self.title_label = QLabel(self._app.get_text("tool_execution_status"))
+        self.title_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
+        layout.addWidget(self.title_label)
 
         control = QHBoxLayout()
         self.clear_btn = PushButton(self._app.get_text("clear_records"))
+        self.clear_btn.setToolTip(self._app.get_text("clear_records_tip"))
         self.clear_btn.clicked.connect(self.clear_status_log)
         control.addWidget(self.clear_btn)
 
         self.auto_scroll_cb = QCheckBox(self._app.get_text("auto_scroll_to_latest"))
+        self.auto_scroll_cb.setToolTip(self._app.get_text("auto_scroll_tip"))
         self.auto_scroll_cb.setChecked(True)
         control.addWidget(self.auto_scroll_cb)
 
@@ -134,6 +136,14 @@ class StatusTab(QWidget):
         if self.auto_scroll_cb.isChecked():
             sb = self.text_edit.verticalScrollBar()
             sb.setValue(sb.maximum())
+
+    def update_status_tab_language(self) -> None:
+        self.title_label.setText(self._app.get_text("tool_execution_status"))
+        self.clear_btn.setText(self._app.get_text("clear_records"))
+        self.clear_btn.setToolTip(self._app.get_text("clear_records_tip"))
+        self.auto_scroll_cb.setText(self._app.get_text("auto_scroll_to_latest"))
+        self.auto_scroll_cb.setToolTip(self._app.get_text("auto_scroll_tip"))
+        self._update_status_count()
 
     def _update_status_count(self) -> None:
         self.count_label.setText(self._app.get_text("total_records").format(count=len(self.status_log)))

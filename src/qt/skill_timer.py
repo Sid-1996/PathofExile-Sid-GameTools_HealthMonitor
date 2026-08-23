@@ -274,6 +274,7 @@ class SkillTimerModule(QWidget):
 
             enabled_check = QCheckBox()
             enabled_check.setStyleSheet("margin-left: 8px;")
+            enabled_check.setToolTip(self._t("combo_enabled_tip", "啟用此技能"))
             grid.addWidget(enabled_check, row, 0, Qt.AlignmentFlag.AlignCenter)
 
             slot_label = QLabel(f"Skill {i + 1}")
@@ -284,11 +285,13 @@ class SkillTimerModule(QWidget):
             modifier_combo.addItems(_MODIFIERS)
             modifier_combo.setCurrentText("none")
             modifier_combo.setFixedWidth(90)
+            modifier_combo.setToolTip(self._t("trigger_type_tip", "修飾鍵：none / shift / ctrl / alt"))
             grid.addWidget(modifier_combo, row, 2)
 
             key_edit = QLineEdit()
             key_edit.setMaxLength(2)
             key_edit.setFixedWidth(80)
+            key_edit.setToolTip(self._t("trigger_key_tip", "按鍵"))
             grid.addWidget(key_edit, row, 3)
 
             interval_spin = QSpinBox()
@@ -297,6 +300,7 @@ class SkillTimerModule(QWidget):
             interval_spin.setValue(1000)
             interval_spin.setFixedWidth(90)
             interval_spin.setSuffix(" ms")
+            interval_spin.setToolTip(self._t("delay_entry_tip", "間隔時間（毫秒）"))
             grid.addWidget(interval_spin, row, 4)
 
             status_lbl = QLabel(self._t("skill_timer_stopped", "● 停止"))
@@ -306,6 +310,7 @@ class SkillTimerModule(QWidget):
 
             toggle_btn = PushButton("▶")
             toggle_btn.setFixedWidth(40)
+            toggle_btn.setToolTip(self._t("toggle_monitoring_tip", "啟動/停止此技能"))
             toggle_btn.clicked.connect(lambda _=False, s=slot, idx=i: self._toggle(s, idx))
             grid.addWidget(toggle_btn, row, 6)
 
@@ -327,9 +332,11 @@ class SkillTimerModule(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         self._btn_start_all = PushButton(self._t("skill_timer_start_all", "▶▶ 全部啟動"))
+        self._btn_start_all.setToolTip(self._t("start_combo_system_tip", "全部啟動"))
         self._btn_start_all.clicked.connect(self.start_all)
         btn_layout.addWidget(self._btn_start_all)
         self._btn_stop_all = PushButton(self._t("skill_timer_stop_all", "■ 全部停止"))
+        self._btn_stop_all.setToolTip(self._t("stop_combo_system_tip", "全部停止"))
         self._btn_stop_all.clicked.connect(self.stop_all)
         btn_layout.addWidget(self._btn_stop_all)
         btn_layout.addStretch(1)
@@ -445,9 +452,20 @@ class SkillTimerModule(QWidget):
                 self._status_labels[i].setText(self._t("skill_timer_running", "● 執行中"))
             else:
                 self._status_labels[i].setText(self._t("skill_timer_stopped", "● 停止"))
+            if slot._enabled_check is not None:
+                slot._enabled_check.setToolTip(self._t("combo_enabled_tip", "啟用此技能"))
+            if slot._modifier_combo is not None:
+                slot._modifier_combo.setToolTip(self._t("trigger_type_tip", "修飾鍵：none / shift / ctrl / alt"))
+            if slot._key_edit is not None:
+                slot._key_edit.setToolTip(self._t("trigger_key_tip", "按鍵"))
+            if slot._interval_spin is not None:
+                slot._interval_spin.setToolTip(self._t("delay_entry_tip", "間隔時間（毫秒）"))
+            self._toggle_btns[i].setToolTip(self._t("toggle_monitoring_tip", "啟動/停止此技能"))
         if self._btn_start_all is not None and self._btn_stop_all is not None:
             self._btn_start_all.setText(self._t("skill_timer_start_all", "▶▶ 全部啟動"))
+            self._btn_start_all.setToolTip(self._t("start_combo_system_tip", "全部啟動"))
             self._btn_stop_all.setText(self._t("skill_timer_stop_all", "■ 全部停止"))
+            self._btn_stop_all.setToolTip(self._t("stop_combo_system_tip", "全部停止"))
 
     def get_config(self) -> list[dict]:
         return [

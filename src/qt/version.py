@@ -143,6 +143,7 @@ class VersionTab(QWidget):
         button_row.addWidget(self.check_update_btn)
         self.download_btn = PrimaryPushButton(g("download_update_button"))
         self.download_btn.setEnabled(False)
+        self.download_btn.setToolTip(g("download_update_tip"))
         self.download_btn.clicked.connect(self._on_download_click)
         button_row.addWidget(self.download_btn)
         self.test_connection_btn = PushButton(g("test_connection_button"))

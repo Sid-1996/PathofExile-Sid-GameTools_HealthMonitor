@@ -507,6 +507,8 @@ class MainWindow(FluentWindow):
             self.inventory_tab.update_inventory_tab_language()
         if hasattr(self, "combo_tab"):
             self.combo_tab.update_combo_tab_language()
+        if hasattr(self, "status_tab"):
+            self.status_tab.update_status_tab_language()
         if hasattr(self, "help_tab"):
             self.help_tab.update_language()
         if hasattr(self, "version_tab"):
