@@ -145,6 +145,12 @@ def main(argv=None) -> int:
             assert 5 in it.excluded_inventory_slots, "exclusion toggle on failed"
             it._on_preview_click(QPoint(cx, cy))
             assert 5 not in it.excluded_inventory_slots, "exclusion toggle off failed"
+            # 預覽 label 回饋循環防護：重複渲染後尺寸必須穩定
+            s_before = it.inventory_preview_label.size()
+            it.update_inventory_preview_with_items(img, [0, 59])
+            QApplication.processEvents()
+            assert it.inventory_preview_label.size() == s_before, f"inventory preview label feedback loop: {s_before} -> {it.inventory_preview_label.size()}"
+            print(f"SMOKE INVENTORY PREVIEW STABLE OK (label {s_before.width()}x{s_before.height()})")
             print(f"SMOKE INVENTORY PREVIEW OK (meta cell={meta['cell_w']}x{meta['cell_h']})")
 
             # InventoryTab Phase 5c：清包進度預覽渲染 + F3/F6 入口與 hotkey 註冊

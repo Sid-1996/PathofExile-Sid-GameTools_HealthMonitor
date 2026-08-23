@@ -543,6 +543,8 @@ class InventoryTab(QWidget):
 
         self.inventory_preview_label = _ClickableLabel(self._app.get_text("select_inventory_region_first"))
         self.inventory_preview_label.setMinimumSize(300, 200)
+        # 上限切斷回饋循環：QLabel sizeHint 會追著 pixmap 走，反覆 setPreview 會讓 label 無限撐大
+        self.inventory_preview_label.setMaximumSize(400, 300)
         self.inventory_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.inventory_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
         self.inventory_preview_label.clicked.connect(self._on_preview_click)
