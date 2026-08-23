@@ -226,7 +226,8 @@ class MonitorTab(QWidget):
         super().__init__(parent)
         self._app = app
 
-        self.window_title = ""
+        # 從 config 還原上次選取的遊戲視窗（視窗不存在也先回填，實際操作時才阻擋）
+        self.window_title = str(self._app.config.get("window_title", "") or "")
         self.window_var = _VarShim(self)
         # 從 config 回復已框選區域（legacy list → dict 正規化），供預覽/測試擷取使用
         self.selected_region = normalize_region(self._app.config.get("region"))
@@ -329,6 +330,7 @@ class MonitorTab(QWidget):
 
         self.window_combo = _AutoRefreshCombo()
         self.window_combo.setFixedWidth(320)
+        self.window_combo.setPlaceholderText(self._app.get_text("select_game_window_first"))
         self.window_combo.on_refresh = self.refresh_windows
         self.window_combo.currentTextChanged.connect(self._on_window_changed)
         grid.addWidget(self.window_combo, 0, 1)
@@ -636,8 +638,9 @@ class MonitorTab(QWidget):
             try:
                 self.window_combo.clear()
                 self.window_combo.addItems(windows)
-                if self.window_title:
-                    self.window_combo.setCurrentText(self.window_title)
+                # setText（非 setCurrentText）：qfluentwidgets 的 setCurrentText 對不在清單的標題是
+                # silent no-op，遊戲視窗不存在時會還原失敗；setText 可顯示任意保存的標題
+                self.window_combo.setText(self.window_title)
             finally:
                 self.window_combo.blockSignals(False)
         except Exception as e:
