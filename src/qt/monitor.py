@@ -599,6 +599,8 @@ class MonitorTab(QWidget):
         label = QLabel(placeholder)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setMinimumSize(260, 170)
+        # 上限切斷回饋循環：QLabel sizeHint 會追著 pixmap 走，週期性 setPixmap 會讓 label 無限撐大
+        label.setMaximumSize(*self.preview_size)
         label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
         return label
 

@@ -96,6 +96,18 @@ def main(argv=None) -> int:
             assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
             print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
 
+            # 預覽 label 回饋循環防護：連續兩次 setPixmap 後尺寸必須穩定（不得逐漸放大）
+            from PIL import Image as _PILImage
+
+            _pv = window.monitor_tab
+            _pv._set_preview_pixmap(_pv.preview_label, _PILImage.new("RGB", (100, 50), (255, 0, 0)))
+            QApplication.processEvents()
+            s1 = _pv.preview_label.size()
+            _pv._set_preview_pixmap(_pv.preview_label, _PILImage.new("RGB", (100, 50), (255, 0, 0)))
+            QApplication.processEvents()
+            assert _pv.preview_label.size() == s1, f"preview label feedback loop: {s1} -> {_pv.preview_label.size()}"
+            print(f"SMOKE PREVIEW STABLE OK (label {s1.width()}x{s1.height()})")
+
             # 遊戲視窗下拉：無重新整理按鈕，開啟前自動重掃；refresh 需訊號安全
             mt = window.monitor_tab
             assert not hasattr(mt, "refresh_windows_btn"), "refresh button should be removed"
