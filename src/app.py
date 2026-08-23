@@ -165,6 +165,8 @@ def main(argv=None) -> int:
             st = ct.skill_timer
             assert len(st.slots) == 4, "skill timer slots failed"
             assert len(st.get_config()) == 4, "skill timer get_config failed"
+            # 清空槽位再測：smoke 跑在開發機真實 config 上，槽 0 可能已設鍵
+            st.slots[0].key = ""
             assert st.slots[0].start() is False, "empty key start should fail"
             print("SMOKE COMBO TAB OK")
 
