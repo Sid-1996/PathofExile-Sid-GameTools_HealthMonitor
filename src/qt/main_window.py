@@ -627,7 +627,11 @@ class MainWindow(FluentWindow):
         except Exception:
             pass
         try:
-            self.auto_click_manager.stop_auto_click_ahk()
+            # ponytail: 雙後端統一關閉（native/ahk 並存一版，可回退）
+            if hasattr(self.auto_click_manager, "shutdown"):
+                self.auto_click_manager.shutdown()
+            else:
+                self.auto_click_manager.stop_auto_click_ahk()
         except Exception:
             pass
         for timer in self._pending_timers:

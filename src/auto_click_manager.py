@@ -1,3 +1,4 @@
+import ctypes
 import os
 import sys
 import threading
@@ -6,6 +7,11 @@ import time
 import psutil
 import pyautogui
 from utils import get_app_dir
+
+VK_LBUTTON = 0x01
+VK_CONTROL = 0x11
+VK_LCONTROL = 0xA2
+VK_RCONTROL = 0xA3
 
 
 class AutoClickManager:
@@ -17,12 +23,36 @@ class AutoClickManager:
         self.auto_click_active = False
         self.auto_click_running = False
         self.auto_click_thread = None
+        # ponytail: native 後端狀態（與 AHK 並存，config 切換）
+        self._native_running = False
+        self._native_thread = None
+
+    def _get_backend(self) -> str:
+        """讀取後端設定，僅 native/ahk 合法，預設 native。"""
+        try:
+            v = (self._app.config.get("auto_click_backend", "native") or "native").lower().strip()
+        except Exception:
+            v = "native"
+        return v if v in ("native", "ahk") else "native"
+
+    def _get_click_interval(self) -> float:
+        """點擊間隔，預設 0.05s（= AHK 50ms），信任邊界驗證。"""
+        try:
+            iv = float(self._app.config.get("click_interval", 0.05))
+        except Exception:
+            iv = 0.05
+        # 限制 10ms~500ms，避免誤配置導致 CPU 飆高或無反應
+        return max(0.01, min(iv, 0.5))
 
     def setup_auto_click_listener(self):
-        """設定自動點擊功能 - 自動啟動AHK腳本"""
+        """設定自動點擊功能 - 按 config 選擇 native/ahk 後端。"""
         try:
-            print("設定自動點擊功能...")
-            self.start_auto_click_ahk()
+            backend = self._get_backend()
+            print(f"設定自動點擊功能... 後端: {backend}")
+            if backend == "ahk":
+                self.start_auto_click_ahk()
+            else:
+                self.start_auto_click_native()
         except Exception as e:
             print(f"設定自動點擊功能失敗: {e}")
 
@@ -147,6 +177,97 @@ class AutoClickManager:
         finally:
             self.auto_click_process = None
 
+    # ── ponytail: native 後端（零新依賴，pyautogui + ctypes 輪詢，等價 AHK 的 ~*LButton + GetKeyState Ctrl）──
+    def _is_ctrl_lbutton_pressed(self) -> bool:
+        """是否同時按住 Ctrl 與左鍵（GetAsyncKeyState 輪詢，無需 keyboard hook）。"""
+        try:
+            user32 = ctypes.windll.user32
+            # 高位 0x8000 表示按住
+            lbtn = user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000
+            ctrl = (user32.GetAsyncKeyState(VK_CONTROL) & 0x8000) or (user32.GetAsyncKeyState(VK_LCONTROL) & 0x8000) or (user32.GetAsyncKeyState(VK_RCONTROL) & 0x8000)
+            return bool(lbtn and ctrl)
+        except Exception:
+            return False
+
+    def start_auto_click_native(self):
+        """啟動 native 自動點擊監聽（Ctrl+左鍵按住 50ms 連點）。"""
+        if self._native_running and self._native_thread and self._native_thread.is_alive():
+            print("Native 自動點擊已在運行中")
+            return
+        self._native_running = True
+        self._native_thread = threading.Thread(target=self._native_monitor_loop, daemon=True, name="AutoClickNative")
+        self._native_thread.start()
+        print(" Native 自動點擊已啟動（Ctrl+左鍵 按住連點）")
+
+    def stop_auto_click_native(self):
+        """停止 native 自動點擊監聽。"""
+        self._native_running = False
+        # 不 join daemon thread，避免 shutdown 卡住；僅標記停止
+        print("[STOP] Native 自動點擊已停止")
+
+    def _native_monitor_loop(self):
+        """外層監聽是否進入連點，內層等價 AHK AutoClick()。"""
+        while self._native_running:
+            try:
+                # 全域暫停時不觸發
+                if getattr(self._app, "_global_pause", False):
+                    time.sleep(0.05)
+                    continue
+                if self._is_ctrl_lbutton_pressed():
+                    # 進入連點
+                    while self._native_running and self._is_ctrl_lbutton_pressed():
+                        if getattr(self._app, "_global_pause", False):
+                            break
+                        try:
+                            pyautogui.click()
+                        except Exception:
+                            try:
+                                ctypes.windll.user32.mouse_event(0x02, 0, 0, 0, 0)
+                                ctypes.windll.user32.mouse_event(0x04, 0, 0, 0, 0)
+                            except Exception:
+                                pass
+                        time.sleep(self._get_click_interval())
+                else:
+                    time.sleep(0.01)
+            except Exception as e:
+                print(f"Native 監聽錯誤: {e}")
+                time.sleep(0.05)
+
+    def shutdown(self):
+        """統一關閉（供 MainWindow._shutdown 調用，兩後端皆停）。"""
+        try:
+            self.stop_auto_click_native()
+        except Exception:
+            pass
+        try:
+            self.stop_auto_click_ahk()
+        except Exception:
+            pass
+        # 兼容舊的 toggle 路徑
+        try:
+            self.stop_auto_click()
+        except Exception:
+            pass
+
+    # ── ponytail: 可執行自檢（零新依賴驗證信任邊界）──
+    @staticmethod
+    def _self_check():
+        import types
+
+        m = AutoClickManager(types.SimpleNamespace(config={}, _global_pause=False))
+        assert m._get_backend() == "native"
+        m._app.config["auto_click_backend"] = "AHK"
+        assert m._get_backend() == "ahk"
+        m._app.config["auto_click_backend"] = "invalid"
+        assert m._get_backend() == "native"
+        m._app.config["click_interval"] = "0.02"
+        assert m._get_click_interval() == 0.02
+        m._app.config["click_interval"] = "999"
+        assert m._get_click_interval() == 0.5
+        m._app.config["click_interval"] = "bad"
+        assert m._get_click_interval() == 0.05
+        print("auto_click_manager self-check OK")
+
     def toggle_auto_click(self):
         """切換自動點擊狀態（備用方案）"""
         if self.auto_click_active:
@@ -206,3 +327,7 @@ class AutoClickManager:
         print(f"自動點擊循環結束，總共點擊 {click_count} 次")
         self.auto_click_active = False
         self.auto_click_running = False
+
+
+if __name__ == "__main__":
+    AutoClickManager._self_check()
