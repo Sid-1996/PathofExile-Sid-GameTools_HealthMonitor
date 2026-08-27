@@ -1,4 +1,4 @@
-# release.ps1
+﻿# release.ps1
 # 一鍵發佈腳本：版本號同步 → build → ZIP → git tag → GitHub Release
 # Usage:
 #   .\release.ps1                # 正式版：更新 latest_version.txt
@@ -114,9 +114,35 @@ if ($Preview) {
     }
 }
 
+# ── Velopack 打包 ── 供 Setup.exe 安裝與自動更新（過渡期與舊 ZIP/delta 鏈並行）
+# preview → --channel beta --prerelease；stable → 預設 channel。
+# 注意：delta nupkg 只會在同一 outputDir 有前一版 full nupkg 時產生；
+#       cleanup.bat 清掉 dist 後首次 stable 版僅有 full 無 delta（用戶端自動退回整包下載，可接受）。
+Write-Host "`n[5.6/7] Building Velopack packages..."
+$vpkOut = Join-Path $PSScriptRoot "dist" "vpk"
+if (Test-Path $vpkOut) { Remove-Item $vpkOut -Recurse -Force }
+$vpkArgs = @(
+    "pack",
+    "--packId", "Sid.GameToolsHealthMonitor",
+    "--packVersion", $currentVersion,
+    "--packDir", (Join-Path $PSScriptRoot "dist" "GameTools_Package"),
+    "--mainExe", "GameTools_HealthMonitor.exe",
+    "--outputDir", $vpkOut
+)
+if ($Preview) {
+    $vpkArgs += @("--channel", "beta")
+}
+& vpk @vpkArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] vpk pack failed" -ForegroundColor Red
+    exit 1
+}
+# 收集要上傳的 Velopack 資產：Setup.exe + *.nupkg（portable.zip 不上傳——散佈模式為 installer）
+$vpkAssets = @(Get-ChildItem $vpkOut -Filter "*.nupkg") + @(Get-ChildItem $vpkOut -Filter "*Setup.exe")
+
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py updater_main.py tools/build.py tools/make_delta.py release.ps1 index.html sitemap.xml manifest.json delta_info.json
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py src/auto_update.py src/qt/version.py src/app.py updater_main.py tools/build.py tools/make_delta.py scripts/requirements.txt release.ps1 index.html sitemap.xml manifest.json delta_info.json
 if ($Preview) {
     git commit -m "chore: release v$currentVersion (preview)"
 } else {
@@ -135,10 +161,11 @@ if ($Preview) {
         --title "v$currentVersion (preview)" `
         --prerelease `
         --generate-notes `
-        "$fixedZip"
+        @("$fixedZip") @($vpkAssets)
     Write-Host "`n========================================" -ForegroundColor Yellow
     Write-Host " Preview v$currentVersion published!" -ForegroundColor Yellow
     Write-Host " latest_version.txt UNCHANGED — users not notified" -ForegroundColor Yellow
+    Write-Host " Velopack channel: beta | assets attached" -ForegroundColor Yellow
     Write-Host "========================================" -ForegroundColor Yellow
 } else {
     $deltaZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor-delta.zip"
@@ -146,16 +173,17 @@ if ($Preview) {
         gh release create $tagName `
             --title "v$currentVersion" `
             --generate-notes `
-            "$fixedZip" "$deltaZip"
+            @("$fixedZip", "$deltaZip") @($vpkAssets)
         Write-Host "  delta asset attached: GameTools_HealthMonitor-delta.zip"
     } else {
         gh release create $tagName `
             --title "v$currentVersion" `
             --generate-notes `
-            "$fixedZip"
+            @("$fixedZip") @($vpkAssets)
     }
     Write-Host "`n========================================" -ForegroundColor Green
     Write-Host " Release v$currentVersion published!" -ForegroundColor Green
-    Write-Host " ZIP: GameTools_HealthMonitor.zip" -ForegroundColor Green
+    Write-Host " ZIP: GameTools_HealthMonitor.zip (legacy chain)" -ForegroundColor Green
+    Write-Host " Velopack: Setup.exe + nupkg assets attached" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
 }
