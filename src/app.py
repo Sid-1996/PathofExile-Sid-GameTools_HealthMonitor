@@ -286,6 +286,10 @@ def main(argv=None) -> int:
 
     code = app.exec()
     print(f"APP EXIT {code}")
+    # closeEvent → _shutdown 已清理全部 Qt 資源；但第三方庫（keyboard/WGC/winrt）
+    # 的非 daemon thread 可能讓 process 擱置、工作列圖示殘留。打包版實測確認會發生，
+    # 故 event loop 結束後直接強制退出，確保 process 徹底清乾淨。
+    os._exit(0 if code is None else code)
     return code
 
 
