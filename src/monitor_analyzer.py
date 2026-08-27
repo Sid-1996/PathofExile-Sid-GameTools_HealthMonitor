@@ -26,6 +26,9 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
     detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
 
     health_count = 0
+    # ponytail: 升冪序列用於首斷點內插，其餘邏輯（滿血、除錯順序）維持原降冪
+    asc_positions = sorted(detection_positions)  # [0.1 .. 0.95]
+    pos_to_hit = {}
     debug_info = []
 
     for i, pos_percent in enumerate(detection_positions):
@@ -35,9 +38,12 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
         y_end = min(height, y_center + sample_height // 2)
         segment = img[y_start:y_end, :]
         is_health = is_health_color_fn(segment)
+        pos_to_hit[pos_percent] = bool(is_health)
         debug_info.append(f"血量檢測點{i + 1} ({int(pos_percent * 100)}%): Y範圍[{y_start}-{y_end}], 有血量色彩: {is_health}")
         if is_health:
             health_count += 1
+
+    hits_asc = [pos_to_hit[p] for p in asc_positions]
 
     if health_count >= 16:
         bottom_half_start = height // 2
@@ -59,9 +65,33 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
             is_full_blood = True
             debug_info.append("滿血檢測3：所有18個檢測點都有血量")
         if is_full_blood:
-            health_count = 18
+            result = 100.0
+            if health_count >= 6 and result != _last_printed_health:
+                _last_printed_health = result
+                print(f"血量分析結果: {result:.1f}%")
+                for info in debug_info:
+                    print(info)
+            return result
 
-    result = (health_count / 18) * 100
+    # 量化由離散改連續：由底向上首個斷點（末位真值，5% 步階，誤差<2.5%，命中 10%）
+    if health_count == 0:
+        result = 0.0
+    elif health_count == 18:
+        result = 100.0
+    else:
+        result = (health_count / 18) * 100  # 預設離散（雜訊非單調時的保守回退）
+        for i, ok in enumerate(hits_asc):
+            if not ok:
+                if i == 0:
+                    result = 0.0
+                else:
+                    result = asc_positions[i - 1] * 100
+                    debug_info.append(f"內插估計: {asc_positions[i - 1] * 100:.0f}%↔{asc_positions[i] * 100:.0f}% 取 {result:.1f}%")
+                break
+        else:
+            # 無斷點（理論上等同 18，但已短路）
+            result = asc_positions[-1] * 100
+
     if health_count >= 6 and result != _last_printed_health:
         _last_printed_health = result
         print(f"血量分析結果: {result:.1f}%")
@@ -127,6 +157,8 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
     detection_positions = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1]
 
     mana_count = 0
+    asc_positions = sorted(detection_positions)
+    pos_to_hit = {}
     debug_info = []
 
     for i, pos_percent in enumerate(detection_positions):
@@ -136,9 +168,12 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
         y_end = min(height, y_center + sample_height // 2)
         segment = img[y_start:y_end, :]
         is_mana = is_mana_color_fn(segment)
+        pos_to_hit[pos_percent] = bool(is_mana)
         debug_info.append(f"魔力檢測點{i + 1} ({int(pos_percent * 100)}%): Y範圍[{y_start}-{y_end}], 有魔力色彩: {is_mana}")
         if is_mana:
             mana_count += 1
+
+    hits_asc = [pos_to_hit[p] for p in asc_positions]
 
     if mana_count >= 16:
         bottom_half_start = height // 2
@@ -161,9 +196,31 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
             is_full_mana = True
             debug_info.append("滿魔力檢測3：所有18個檢測點都有魔力")
         if is_full_mana:
-            mana_count = 18
+            result = 100.0
+            if mana_count >= 6 and result != _last_printed_mana:
+                _last_printed_mana = result
+                print(f"魔力分析結果: {result:.1f}%")
+                for info in debug_info:
+                    print(info)
+            return result
 
-    result = (mana_count / 18) * 100
+    if mana_count == 0:
+        result = 0.0
+    elif mana_count == 18:
+        result = 100.0
+    else:
+        result = (mana_count / 18) * 100
+        for i, ok in enumerate(hits_asc):
+            if not ok:
+                if i == 0:
+                    result = 0.0
+                else:
+                    result = asc_positions[i - 1] * 100
+                    debug_info.append(f"內插估計: {asc_positions[i - 1] * 100:.0f}%↔{asc_positions[i] * 100:.0f}% 取 {result:.1f}%")
+                break
+        else:
+            result = asc_positions[-1] * 100
+
     if mana_count >= 6 and result != _last_printed_mana:
         _last_printed_mana = result
         print(f"魔力分析結果: {result:.1f}%")
@@ -432,6 +489,43 @@ if __name__ == "__main__":
     assert analyze_health(full, lambda s: True, lambda s: 1.0, 0.5) == 100.0
     assert analyze_health(empty, lambda s: False, lambda s: 0.0, 0.5) == 0.0
     assert analyze_mana(full, lambda s: False, lambda s: 0.0) == 0.0
+
+    # 量化連續化：由底向上首個斷點中點內插（10% 可命中）
+    def _make_health_img(bottom_fill_px, height=100, width=20):
+        img = np.zeros((height, width, 3), dtype=np.uint8)
+        if bottom_fill_px > 0:
+            img[height - bottom_fill_px : height, :] = (0, 0, 255)
+        return img
+
+    def _is_red(seg):
+        return bool(np.mean(seg[:, :, 2]) > 100)
+
+    def _red_ratio(seg):
+        return float(np.mean(seg[:, :, 2] > 100))
+
+    # 底 12px → 僅 0.1 真 → 10%（原離散 5.56%）
+    assert abs(analyze_health(_make_health_img(12), _is_red, _red_ratio, 0.5) - 10.0) < 0.1, "count=1 interpolation"
+    # 底 18px → 0.1,0.15 真 → 15%（原 11.11%）
+    assert abs(analyze_health(_make_health_img(18), _is_red, _red_ratio, 0.5) - 15.0) < 0.1, "count=2 interpolation"
+    # 底 50px → 0.1..0.5 真 → 50%
+    assert abs(analyze_health(_make_health_img(50), _is_red, _red_ratio, 0.5) - 50.0) < 0.1, "half interpolation"
+    # 底 8px → 0 真 → 0%
+    assert abs(analyze_health(_make_health_img(8), _is_red, _red_ratio, 0.5) - 0.0) < 0.1, "count=0 boundary 0%"
+
+    def _make_mana_img(bottom_fill_px, height=100, width=20):
+        img = np.zeros((height, width, 3), dtype=np.uint8)
+        if bottom_fill_px > 0:
+            img[height - bottom_fill_px : height, :] = (255, 0, 0)  # BGR 藍
+        return img
+
+    def _is_blue(seg):
+        return bool(np.mean(seg[:, :, 0]) > 100)
+
+    def _blue_ratio(seg):
+        return float(np.mean(seg[:, :, 0] > 100))
+
+    assert abs(analyze_mana(_make_mana_img(12), _is_blue, _blue_ratio) - 10.0) < 0.1
+    assert abs(analyze_mana(_make_mana_img(50), _is_blue, _blue_ratio) - 50.0) < 0.1
 
     def always_true():
         return True
