@@ -14,30 +14,14 @@ import threading
 import time
 import traceback
 
-from PySide6.QtCore import QPoint, QTimer, Qt
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtCore import QPoint, QTimer
+from PySide6.QtWidgets import QApplication
 
 from qfluentwidgets import Theme, setTheme
 
 from _version import __version__
 from qt.main_window import MainWindow
 from utils import emergency_exit_handler, get_user_data_dir
-
-
-def _find_splash_pixmap():
-    SPLASH_SIZE = 400
-    candidates = [
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "PoeSidTools.png"),
-        os.path.join(os.getcwd(), "assets", "PoeSidTools.png"),
-    ]
-    for path in candidates:
-        if os.path.exists(path):
-            pixmap = QPixmap(path)
-            if not pixmap.isNull() and pixmap.width() > SPLASH_SIZE:
-                pixmap = pixmap.scaled(SPLASH_SIZE, SPLASH_SIZE, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            return pixmap
-    return QPixmap()
 
 
 def _install_exception_hook():
@@ -85,15 +69,9 @@ def main(argv=None) -> int:
     _install_exception_hook()
     setTheme(Theme.DARK)
 
-    splash = QSplashScreen(_find_splash_pixmap())
-    splash.show()
-    app.processEvents()
-
     window = MainWindow()
     window.show()
-    app.processEvents()  # 逼迫主視窗完成首次 paint，finish() 才不會掛起等待
-    splash.finish(window)
-    splash.close()  # 兜底：無條件收掉 splash，保證啟動圖不再殘留擋住 GUI
+    app.processEvents()  # 及早處理首次 paint，避免主視窗晚出
 
     if smoke:
         _smoke_thread_test(window)
