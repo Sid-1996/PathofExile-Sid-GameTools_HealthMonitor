@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # 測試倉（-TestRepo 模式的 Velopack 資產與 Release 目的地）
-$testRepo = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test"
+$testRepoSlug = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test"
 
 # ── 讀取當前版本 ──────────────────────────────────────────
 $versionFile = Join-Path $PSScriptRoot "src" "_version.py"
@@ -162,10 +162,10 @@ $vpkAssets = @(Get-ChildItem $vpkOut -Filter "*.nupkg") + @(Get-ChildItem $vpkOu
 # ── TestRepo 模式：只把 Velopack 資產發到測試倉，完全不碰主倉 ──
 if ($TestRepo) {
     $tagName = "v$currentVersion"
-    Write-Host "`n[7/7] Creating test release on $testRepo : $tagName"
+    Write-Host "`n[7/7] Creating test release on $testRepoSlug : $tagName"
     $relArgs = @(
         "release", "create", $tagName,
-        "--repo", $testRepo,
+        "--repo", $testRepoSlug,
         "--title", $tagName
     )
     if ($Preview) {
@@ -184,7 +184,7 @@ if ($TestRepo) {
         Write-Host " [提醒] _version.py 已被改為 $currentVersion，測試後請手動還原！" -ForegroundColor Yellow
     }
     Write-Host " client 端切換：寫 override 檔到 %LOCALAPPDATA%\GameTools_HealthMonitor\update_repo_override.txt" -ForegroundColor Cyan
-    Write-Host " 內容：https://github.com/$testRepo" -ForegroundColor Cyan
+    Write-Host " 內容：https://github.com/$testRepoSlug" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     exit 0
 }
