@@ -226,7 +226,6 @@ Remove-Item "$env:LOCALAPPDATA\GameTools_HealthMonitor\update_repo_override.txt"
 
 ## Known Issues
 
-- `PrintWindow`（GDI）對 Path of Exile 2（DirectX）回傳全黑 frame。
-- 背景截圖已由 Windows.Graphics.Capture（`windows-capture` 套件，Win10 1903+）提供：被遮擋/失焦視窗仍可正確截取；mss 為自動降級（僅前景時正確）。**最小化視窗無法截圖**（Windows 限制，監控會暫停）。
+- 背景截圖主鏈為 Windows.Graphics.Capture（`windows-capture` 套件，Win10 1903+）：被遮擋/失焦視窗仍可正確截取；mss 為自動降級（僅前景時正確）。**最小化視窗無法截圖**（Windows 限制，監控會暫停）。`PrintWindow`（GDI）對 Path of Exile 2（DirectX）回傳全黑故已棄用，不在代碼中。
 - 操控一律在前景執行（`game_foreground` gate）：遊戲非前景時只分析、不按鍵，不背景注入。
 - WGC 在「獨佔全螢幕」遊戲或無 frame 情境會降級 mss；mss 需視窗為前景才正確。
