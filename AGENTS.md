@@ -135,6 +135,35 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 - **Velopack 更新鏈（v1.3+ 新安裝走這條）**：Setup.exe 安裝 → `auto_update.py` 經 `GithubSource` 檢查 GitHub Releases 的 nupkg 資產 → 下載（delta 自動處理）→ 重啟套用。channel 模型：stable＝預設 channel、搶先版＝beta channel（`--channel beta`）；client 端 config `"allow_prerelease": true` 對應 `ExplicitChannel("beta")`。
 - **過渡期雙軌**：release.ps1 同時上傳舊鏈資產（ZIP + latest_version.txt + make_delta）與 Velopack 資產（Setup.exe + nupkg）。**方案 A 遷移**：v1.3.0 為最後一版支援舊鏈更新的版本，其 release notes 請用戶改下載 Setup.exe 安裝一次；過渡期結束後（v1.4+）刪除 `updater_main.py`、`tools/make_delta.py`、`latest_version*.txt` 機制與 `updater_core.py` 主體。
 
+### 測試倉發版（`-TestRepo`，發版前實測）
+
+測試倉 `Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test` 與主倉 Releases 完全隔離。client 端更新源解析順序（`auto_update.py resolve_repo_url()`）：環境變數 `GTOOLS_UPDATE_REPO` → `%LOCALAPPDATA%\GameTools_HealthMonitor\update_repo_override.txt` → 主倉。override 檔放在使用者資料目錄，可活過 Velopack 更新。
+
+```powershell
+# ── 發布端 ──
+.\release.ps1 -TestRepo -Version 1.2.1-test.1          # 輪次 1：基準版（測試後手動還原 _version.py）
+.\release.ps1 -TestRepo -Version 1.2.2-test.1          # 輪次 2：更新靶版（不清 dist/vpk → 自動產 delta）
+
+# ── client 端切換到測試倉（一次）──
+'https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test' |
+    Out-File "$env:LOCALAPPDATA\GameTools_HealthMonitor\update_repo_override.txt" -Encoding utf8
+
+# 移除 override 即回歸主倉
+Remove-Item "$env:LOCALAPPDATA\GameTools_HealthMonitor\update_repo_override.txt"
+```
+
+**兩輪實測劇本**（驗證完整更新鏈 + config 存活）：
+1. 輪次 1 發基準版 → 手動下載測試倉 Setup.exe 安裝 → 寫 override 檔 → 啟動確認版本
+2. 輪次 2 發較高版本 → 啟動已安裝的程式 → 版本頁應偵測到新版 → 下載（delta 或整包）→ 重啟套用
+3. 更新後驗證：版本號正確、config / override 檔仍在（使用者資料目錄不被 Velopack 清掉）
+
+**channel 矩陣**（client 收不到更新的第一排查點）：`-Preview` 打包成 beta channel，安裝該版後需 config `"allow_prerelease": true` 才查得到 beta 資產；不加 `-Preview` 的 TestRepo 為 default channel，直接可測。
+
+**注意事項**：
+- TestRepo 版本號用 `-test.N` 後綴且**必須高於 client 目前版本**才會被偵測（SemVer 原生比較）
+- `-TestRepo -Version X` 會改 `_version.py` 但不 commit——測試後手動還原（腳本結束會提醒）
+- 測完回歸 stable：override 刪掉後若測試版 > 主倉 stable，不會自動降級；重裝一次主倉 Setup.exe 即可
+
 ### Pre-release 測試（不通知用戶）
 
 1. `_version.py` 設 pre-release（如 `1.2.2-beta`）
