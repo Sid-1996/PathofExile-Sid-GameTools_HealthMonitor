@@ -6,9 +6,65 @@
 - 版本資訊以 InfoShim 暴露 .version，讓呼叫端（qt/version.py）與舊介面形狀一致
 """
 
+import os
+import re
+
 import velopack
 
-GITHUB_REPO_URL = "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
+DEFAULT_REPO_URL = "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
+REPO_OVERRIDE_ENV = "GTOOLS_UPDATE_REPO"
+# 放使用者資料目錄（Velopack 更新只替換 app 目錄，此檔可活過更新持續生效）
+REPO_OVERRIDE_FILENAME = "update_repo_override.txt"
+
+
+def _user_data_dir_for_override():
+    """延遲取 user data dir，避免測試環境循環 import。"""
+    try:
+        from utils import get_user_data_dir
+
+        return get_user_data_dir()
+    except Exception:
+        return None
+
+
+def _normalize_repo_url(value: str) -> str | None:
+    """把 override 值規範化為 https://github.com/<owner>/<repo>；無效回 None。
+
+    接受完整 URL 或 owner/repo 簡寫；去 BOM、引號與前後空白。
+    """
+    v = (value or "").strip().lstrip("\ufeff").strip("\"'").rstrip("/").strip()
+    if not v:
+        return None
+    if re.match(r"^https://github\.com/[\w.-]+/[\w.-]+$", v):
+        return v
+    if re.match(r"^[\w.-]+/[\w.-]+$", v):
+        return f"https://github.com/{v}"
+    return None
+
+
+def resolve_repo_url() -> str:
+    """更新源 repo 解析順序：環境變數 → 使用者資料目錄 override 檔 → 主倉。
+
+    用途：release-test 測試倉隔離發版測試，client 指向測試倉即不會影響主倉用戶。
+    """
+    env = _normalize_repo_url(os.environ.get(REPO_OVERRIDE_ENV, ""))
+    if env:
+        return env
+    base = _user_data_dir_for_override()
+    if base:
+        try:
+            with open(os.path.join(base, REPO_OVERRIDE_FILENAME), "r", encoding="utf-8-sig") as f:
+                content = f.readline()
+            normalized = _normalize_repo_url(content)
+            if normalized:
+                return normalized
+            print(f"[WARN] {REPO_OVERRIDE_FILENAME} 內容無效（需 owner/repo 或 github URL），忽略")
+        except OSError:
+            pass
+    return DEFAULT_REPO_URL
+
+
+GITHUB_REPO_URL = resolve_repo_url()
 
 
 class AutoUpdateError(RuntimeError):
@@ -108,4 +164,11 @@ if __name__ == "__main__":
     shim = InfoShim(type("_FakeInfo", (), {"TargetFullRelease": type("_A", (), {"Version": "1.2.3"})(), "IsDowngrade": False})())
     assert shim.version == "1.2.3" and not shim.is_downgrade, "InfoShim 包裝失敗"
 
-    print("auto_update self-check OK")
+    # repo URL 解析與規範化
+    assert _normalize_repo_url("Sid-1996/Repo_test") == "https://github.com/Sid-1996/Repo_test", "簡寫規範化失敗"
+    assert _normalize_repo_url("https://github.com/Sid-1996/Repo_test/") == "https://github.com/Sid-1996/Repo_test", "URL 尾斜線應去除"
+    assert _normalize_repo_url('\ufeff"Owner.R/Repo-v2"\n') == "https://github.com/Owner.R/Repo-v2", "BOM/引號/換行應清理"
+    assert _normalize_repo_url("not a url") is None and _normalize_repo_url("") is None, "無效值應回 None"
+    assert resolve_repo_url().startswith("https://github.com/"), "resolve 应回合法 github URL"
+
+    print(f"auto_update self-check OK (repo={GITHUB_REPO_URL})")
