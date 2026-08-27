@@ -4,6 +4,8 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
+# pyright: reportArgumentType=false
+
 import sys
 import threading
 import time
@@ -18,7 +20,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QW
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
 from auto_click_manager import AutoClickManager
-from inventory_utils import normalize_region
+from inventory_utils import normalize_region, prop_to_region
 from monitor_analyzer import (
     analyze_health,
     analyze_mana,
@@ -135,8 +137,23 @@ class MainWindow(FluentWindow):
 
     def _load_monitor_config(self) -> None:
         cfg = self.config
-        # 相容 tk 世代以 positional list 儲存的 legacy config → 一律正規化為 dict
-        self.interface_ui_region = normalize_region(cfg.get("interface_ui_region"))
+        # v2 等比優先，回退舊絕對
+        prop = cfg.get("interface_ui_region_prop")
+        if isinstance(prop, dict):
+            # 試取當前窗口尺寸現算，無窗則用 base
+            cur = None
+            try:
+                title = cfg.get("window_title", "")
+                wins = gw.getWindowsWithTitle(title) if title else []
+                if wins:
+                    cur = prop_to_region(prop, wins[0].width, wins[0].height)
+                else:
+                    cur = prop_to_region(prop, prop.get("base_w", 0), prop.get("base_h", 0))
+            except Exception:
+                cur = None
+            self.interface_ui_region = cur or normalize_region(cfg.get("interface_ui_region"))
+        else:
+            self.interface_ui_region = normalize_region(cfg.get("interface_ui_region"))
         self.health_threshold = cfg.get("health_threshold", 0.8)
         self.red_h_range = cfg.get("red_h_range", 5)
         self.green_h_range = cfg.get("green_h_range", 40)
@@ -212,8 +229,7 @@ class MainWindow(FluentWindow):
             self.config["interface_ui_ssim_threshold"] = self.interface_ui_ssim_threshold
             self.config["interface_ui_hist_threshold"] = self.interface_ui_hist_threshold
             self.config["interface_ui_color_threshold"] = self.interface_ui_color_threshold
-            if self.interface_ui_region:
-                self.config["interface_ui_region"] = self.interface_ui_region
+            # interface_ui_region 由 InventoryTab 的等比 sync 統一處理，此處不寫舊絕對，避免污染 v2
             self.config["language"] = self.current_language
             self.config_manager.save_config(self.config)
         except Exception as e:
@@ -239,7 +255,9 @@ class MainWindow(FluentWindow):
             return
         if self.check_game_window_minimized(mt.window_title):
             return
-        if not self.config.get("region"):
+        # v2 等比：優先 prop 現算，回退舊絕對
+        _has_region = bool(mt._get_effective_region(False) or self.config.get("region"))
+        if not _has_region:
             QMessageBox.warning(self, self.get_text("error"), self.get_text("select_health_bar_region_first"))
             return
         if not self.config.get("settings"):
@@ -326,7 +344,8 @@ class MainWindow(FluentWindow):
 
                 # 後台截圖：WGC 成功（被遮擋/失焦）或 mss 成功（僅前景）→ 分析；
                 # None（視窗不存在/最小化/WGC 不可用且非前景）→ 暫停等待
-                result = capture_window_region_bgr(self.monitor_tab.window_title, self.config["region"])
+                _cur_region = self.monitor_tab._get_effective_region(False) or self.config.get("region")
+                result = capture_window_region_bgr(self.monitor_tab.window_title, _cur_region) if _cur_region else None
                 if result is None:
                     if not self.monitor_tab._preview_placeholder_shown:
                         self.monitor_tab._preview_placeholder_shown = True
@@ -351,9 +370,10 @@ class MainWindow(FluentWindow):
                 main_color = get_main_color(img)
 
                 mana_percent = "--"
-                if self.config.get("mana_region"):
+                _cur_mana = self.monitor_tab._get_effective_region(True) or self.config.get("mana_region")
+                if _cur_mana:
                     try:
-                        mana_result = capture_window_region_bgr(self.monitor_tab.window_title, self.config["mana_region"])
+                        mana_result = capture_window_region_bgr(self.monitor_tab.window_title, _cur_mana)
                         if mana_result is not None:
                             mana_img = mana_result[1]
                             mana_percent = analyze_mana(mana_img, is_mana_color, get_mana_color_ratio)
