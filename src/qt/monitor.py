@@ -1069,6 +1069,9 @@ class MonitorTab(QWidget):
 
     def _on_selection_done(self, region, is_mana):
         # 存等比 prop（全新 v2，不存舊絕對）
+        region = normalize_region(region)
+        if not isinstance(region, dict):
+            return
         cur_w = cur_h = None
         try:
             sz = self._get_cur_window_size()
@@ -1079,7 +1082,8 @@ class MonitorTab(QWidget):
         if cur_w and cur_h:
             prop = region_to_prop(region, cur_w, cur_h)
         else:
-            prop = region_to_prop(region, region["width"], region["height"])
+            # 無窗時以 region 自身尺寸為 base（保底，不精確但不崩）
+            prop = region_to_prop(region, region["width"] or 1920, region["height"] or 1080)
         if is_mana:
             self.selected_mana_region = region
             self._mana_region_prop = prop
