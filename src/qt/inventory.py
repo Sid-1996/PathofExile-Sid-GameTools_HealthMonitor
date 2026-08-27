@@ -32,10 +32,26 @@ from qfluentwidgets import CheckBox, PushButton, RadioButton
 
 from capture_utils import _mss_singleton, capture_region_to_cv2, capture_window_region_bgr, load_screenshot_from_file, save_screenshot
 from typing import Dict, Optional
+import base64
 
 from image_utils import get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
+
+# ── ponytail: 參照 ocr-trigger 11_template_matching 的 base64 內聯與 TM_CCOEFF_NORMED 多尺度 ──
+def _img_to_b64(img_bgr: np.ndarray) -> str:
+    _, buf = cv2.imencode(".png", img_bgr)
+    return base64.b64encode(buf).decode("ascii")
+
+
+def _b64_to_img(data: str) -> np.ndarray | None:
+    try:
+        buf = base64.b64decode(data)
+        arr = np.frombuffer(buf, dtype=np.uint8)
+        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
+
 
 # ── 色票（與 qt.monitor 對齊）──
 ERROR = "#f38ba8"
@@ -726,12 +742,21 @@ class InventoryTab(QWidget):
         if kind == "inventory_ui":
             save_screenshot(img, "inventory_ui.png")
             self.inventory_ui_screenshot = img_bgr
+            # ponytail: 參照 ocr-trigger 內聯 base64，隨 config 一併持久化，重啟字節一致
+            try:
+                self._app.config["inventory_ui_template"] = _img_to_b64(img_bgr)
+            except Exception:
+                pass
             self.refresh_config_display()
             self.update_ui_preview()
             self._app.add_status_message(self._app.get_text("inventory_ui_recorded"), "success")
         else:
             save_screenshot(img, "interface_ui.png")
             self.interface_ui_screenshot = img_bgr
+            try:
+                self._app.config["interface_ui_template"] = _img_to_b64(img_bgr)
+            except Exception:
+                pass
             self.update_interface_ui_preview()
             self._app.add_status_message(
                 self._app.get_text("interface_ui_region_set").format(x=region["x"], y=region["y"], width=region["width"], height=region["height"]),
@@ -1065,18 +1090,43 @@ class InventoryTab(QWidget):
         label.setText("")
 
     def load_ui_screenshot_from_file(self):
+        # 優先內聯 b64（重啟字節一致，參照 ocr-trigger），回退檔
+        b64 = self._app.config.get("inventory_ui_template")
+        if isinstance(b64, str) and b64:
+            img_bgr = _b64_to_img(b64)
+            if img_bgr is not None:
+                self.inventory_ui_screenshot = img_bgr
+                self.update_ui_preview()
+                self.refresh_config_display()
+                return True
         img = load_screenshot_from_file("inventory_ui.png")
         if img is not None:
             self.inventory_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            # 補寫 b64 以便下次重啟走內聯
+            try:
+                self._app.config["inventory_ui_template"] = _img_to_b64(self.inventory_ui_screenshot)
+            except Exception:
+                pass
             self.update_ui_preview()
             self.refresh_config_display()
             return True
         return False
 
     def load_interface_ui_screenshot_from_file(self):
+        b64 = self._app.config.get("interface_ui_template")
+        if isinstance(b64, str) and b64:
+            img_bgr = _b64_to_img(b64)
+            if img_bgr is not None:
+                self.interface_ui_screenshot = img_bgr
+                self.update_interface_ui_preview()
+                return True
         img = load_screenshot_from_file("interface_ui.png")
         if img is not None:
             self.interface_ui_screenshot = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            try:
+                self._app.config["interface_ui_template"] = _img_to_b64(self.interface_ui_screenshot)
+            except Exception:
+                pass
             self.update_interface_ui_preview()
             return True
         return False
@@ -2018,13 +2068,12 @@ class InventoryTab(QWidget):
     # ────────────────────────── UI 可見性 ──────────────────────────
 
     def is_inventory_ui_visible(self, game_window):
-        """檢查背包UI是否可見（MSE + 主色比較，對應 tk 版）。"""
+        """檢查背包UI是否可見 — 參照 ocr-trigger TM_CCOEFF_NORMED 多尺度（抗 DPI/窗口縮放）。"""
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
             print("[INV_UI] fail: region or screenshot is None")
             return False
         try:
             result = capture_window_region_bgr(game_window.title, self.inventory_ui_region)
-            # WGC 首幀競態：無幀時短暫重試一次（僅 worker 線程，0.2s 阻塞可接受）
             if result is None:
                 try:
                     import time as _time
@@ -2036,29 +2085,44 @@ class InventoryTab(QWidget):
             if result is None:
                 print(f"[INV_UI] fail: capture None region={self.inventory_ui_region} win={getattr(game_window, 'title', '?')}")
                 return False
-            current_img = result[1]
-            stored = self.inventory_ui_screenshot
-            if current_img.shape != stored.shape:
-                ch, cw = current_img.shape[1], current_img.shape[0]
-                sh, sw = stored.shape[1], stored.shape[0]
-                dw, dh = abs(cw - sw), abs(ch - sh)
-                orig_shape = current_img.shape
-                if dw <= 2 and dh <= 2:
-                    # DPI/邊框 1-2px 漂移：縮放對齊後再比，避免重啟必敗
-                    current_img = cv2.resize(current_img, (sw, sh), interpolation=cv2.INTER_LINEAR)
-                    print(f"[INV_UI] shape mismatch {orig_shape} vs {stored.shape} -> resized (dw={dw},dh={dh})")
+            current_bgr = result[1]
+            stored_bgr = self.inventory_ui_screenshot
+            # 灰度多尺度 TM_CCOEFF_NORMED（ocr-trigger 11_template_matching 精簡版）
+            try:
+                tmpl_gray = cv2.cvtColor(stored_bgr, cv2.COLOR_BGR2GRAY)
+                search_gray = cv2.cvtColor(current_bgr, cv2.COLOR_BGR2GRAY)
+            except Exception:
+                # 回退 MSE（極少觸發）
+                mse = np.mean((current_bgr.astype(np.float32) - stored_bgr.astype(np.float32)) ** 2)
+                return mse < 300
+            th, tw = tmpl_gray.shape[:2]
+            best = -1.0
+            # 覆蓋 22→28 約 27% 漂移，取 0.85-1.15 七檔，步進 0.05（與 ocr-trigger 預設對齊）
+            scales = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15]
+            for scale in scales:
+                sw = max(8, int(tw * scale))
+                sh = max(8, int(th * scale))
+                if sw > search_gray.shape[1] or sh > search_gray.shape[0]:
+                    continue
+                if scale == 1.0:
+                    scaled = tmpl_gray
                 else:
-                    print(f"[INV_UI] fail: shape {orig_shape} vs {stored.shape} (dw={dw},dh={dh}) region={self.inventory_ui_region} [HINT] 建議重截 背包UI：視窗尺寸變化")
-                    return False
-                # resize 後以 stored 尺寸為準
-            mse = np.mean((current_img.astype(np.float32) - stored.astype(np.float32)) ** 2)
-            current_main_color = np.mean(current_img, axis=(0, 1))
-            recorded_main_color = np.mean(stored, axis=(0, 1))
-            color_diff = np.mean(np.abs(current_main_color - recorded_main_color))
-            # 分級放寬：原 150/10 太嚴，>6 天光影漂移易超；300/20 為寬容檔，僅形狀對齊後生效
-            passed = (mse < 150 and color_diff < 10) or (mse < 300 and color_diff < 20)
+                    interp = cv2.INTER_LINEAR if scale > 1.0 else cv2.INTER_AREA
+                    scaled = cv2.resize(tmpl_gray, (sw, sh), interpolation=interp)
+                res = cv2.matchTemplate(search_gray, scaled, cv2.TM_CCOEFF_NORMED)
+                cur_max = float(res.max()) if res.size else -1.0
+                if cur_max > best:
+                    best = cur_max
+                if best >= 0.75:
+                    break
+            if best < 0:
+                print(f"[INV_UI] fail: no valid scale tmpl={tw}x{th} search={search_gray.shape[1]}x{search_gray.shape[0]}")
+                return False
+            passed = best >= 0.75
             if not passed:
-                print(f"[INV_UI] fail: mse={mse:.1f} color={color_diff:.1f} shape={current_img.shape} region={self.inventory_ui_region}")
+                print(f"[INV_UI] fail: confidence={best:.3f} <0.75 tmpl={tw}x{th} search={search_gray.shape[1]}x{search_gray.shape[0]} region={self.inventory_ui_region}")
+            else:
+                print(f"[INV_UI] pass: confidence={best:.3f} region={self.inventory_ui_region}")
             return passed
         except Exception as e:
             print(f"檢查背包UI可見性失敗: {e}")
