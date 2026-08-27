@@ -22,7 +22,7 @@ from qfluentwidgets import Theme, setTheme
 
 from _version import __version__
 from qt.main_window import MainWindow
-from utils import get_app_dir
+from utils import emergency_exit_handler, get_user_data_dir
 
 
 def _find_splash_pixmap():
@@ -225,7 +225,7 @@ def main(argv=None) -> int:
             # 即時儲存：改設定 → 等 debounce → config 檔已寫入新值（無需任何儲存按鈕）
             mw.health_threshold = 0.77
             mw.schedule_config_save()
-            cfg_path = os.path.join(get_app_dir(), "health_monitor_config.json")
+            cfg_path = os.path.join(get_user_data_dir(), "health_monitor_config.json")
             deadline = time.time() + 3.0
             persisted = False
             while time.time() < deadline:

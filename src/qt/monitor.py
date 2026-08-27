@@ -47,7 +47,7 @@ from image_utils import (
     resize_and_center_image,
 )
 from qt.monitor_dialogs import AdjustColorsDialog, AdjustInterfaceUiDialog
-from utils import get_app_dir
+from utils import get_user_data_dir
 
 # ── 色票（與 tk 版 ui_theme 對齊）──
 ERROR = "#f38ba8"
@@ -712,7 +712,7 @@ class MonitorTab(QWidget):
             print("沒有找到已儲存的設定")
 
     def load_preview_image(self):
-        path = os.path.join(get_app_dir(), "screenshots", "health_monitor_preview.png")
+        path = os.path.join(get_user_data_dir(), "screenshots", "health_monitor_preview.png")
         if os.path.exists(path) and self.selected_region:
             try:
                 img = Image.open(path)
@@ -730,7 +730,7 @@ class MonitorTab(QWidget):
         return False
 
     def load_mana_preview_image(self):
-        path = os.path.join(get_app_dir(), "screenshots", "health_monitor_mana_preview.png")
+        path = os.path.join(get_user_data_dir(), "screenshots", "health_monitor_mana_preview.png")
         if os.path.exists(path) and self.selected_mana_region:
             try:
                 img = Image.open(path)

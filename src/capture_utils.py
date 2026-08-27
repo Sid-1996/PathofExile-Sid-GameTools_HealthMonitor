@@ -7,6 +7,7 @@ WGC 不可用（Win<1903 / 獨佔全螢幕 / 初始化失敗）時，自動降�
 """
 
 import os
+import shutil
 import threading
 import time
 
@@ -16,7 +17,7 @@ from PIL import Image
 import pygetwindow as gw
 
 from inventory_utils import normalize_region
-from utils import get_app_dir
+from utils import get_user_data_dir
 
 try:
     import cv2
@@ -220,14 +221,14 @@ def capture_window_region_pil(window_title, region):
 
 
 def save_screenshot(pil_img, filename, subdir="screenshots"):
-    path = os.path.join(get_app_dir(), subdir, filename)
+    path = os.path.join(get_user_data_dir(), subdir, filename)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pil_img.save(path)
     return path
 
 
 def load_screenshot_from_file(filename, subdir="screenshots"):
-    path = os.path.join(get_app_dir(), subdir, filename)
+    path = os.path.join(get_user_data_dir(), subdir, filename)
     if os.path.exists(path):
         return Image.open(path)
     return None
@@ -237,10 +238,9 @@ if __name__ == "__main__":
     import tempfile
 
     tmp = tempfile.mkdtemp()
-    old_app_dir = get_app_dir
     try:
 
-        def get_app_dir():  # noqa: F811
+        def get_user_data_dir():  # noqa: F811
             return tmp
 
         img = Image.new("RGB", (8, 8), (255, 0, 0))
@@ -250,7 +250,7 @@ if __name__ == "__main__":
         assert loaded is not None and loaded.size == (8, 8), "roundtrip failed"
         assert load_screenshot_from_file("missing.png") is None, "missing file -> None"
     finally:
-        get_app_dir = old_app_dir  # noqa: F811
+        shutil.rmtree(tmp, ignore_errors=True)
 
     class _FakeWindow:
         width = 1920

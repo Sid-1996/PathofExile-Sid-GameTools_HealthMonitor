@@ -7,7 +7,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from utils import get_app_dir
+from utils import get_user_data_dir
 
 
 class ConfigManager:
@@ -15,7 +15,7 @@ class ConfigManager:
 
     def __init__(self, config_filename="health_monitor_config.json", config_path=None):
         # ponytail: config_path 供測試注入暫存路徑，預設行為不變
-        base_dir = config_path if config_path else get_app_dir()
+        base_dir = config_path if config_path else get_user_data_dir()
         self.config_file = os.path.join(base_dir, config_filename)
         self.config = {}
 

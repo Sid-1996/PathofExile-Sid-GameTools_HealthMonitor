@@ -4,6 +4,7 @@
 """
 
 import os
+import shutil
 import sys
 import keyboard
 import psutil
@@ -18,6 +19,40 @@ def get_app_dir():
     else:
         # 如果是開發環境
         return os.path.dirname(__file__)
+
+
+def get_user_data_dir():
+    """取得使用者資料目錄（%LOCALAPPDATA%\\GameTools_HealthMonitor）。
+
+    config / screenshots 等執行期產生的使用者資料一律放這裡，與 app 目錄分離
+    （Velopack 更新會替換整個 app 目錄）。首次呼叫時把舊版放在 exe 同層的資料
+    「複製」過來：冪等、不刪來源、逐項隔離錯誤，遷移失敗不阻擋啟動。
+    """
+    base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+    data_dir = os.path.join(base, "GameTools_HealthMonitor")
+    app_dir = get_app_dir()
+    if os.path.abspath(data_dir) == os.path.abspath(app_dir):
+        return data_dir
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+    except Exception as e:
+        print(f"[WARN] 建立使用者資料目錄失敗: {e}")
+        return data_dir
+    for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
+        src = os.path.join(app_dir, name)
+        dst = os.path.join(data_dir, name)
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                shutil.copy2(src, dst)
+            except Exception as e:
+                print(f"[WARN] 遷移 {name} 失敗: {e}")
+    legacy_shots = os.path.join(app_dir, "screenshots")
+    if os.path.isdir(legacy_shots):
+        try:
+            shutil.copytree(legacy_shots, os.path.join(data_dir, "screenshots"), dirs_exist_ok=True)
+        except Exception as e:
+            print(f"[WARN] 遷移 screenshots 失敗: {e}")
+    return data_dir
 
 
 def emergency_cleanup():
