@@ -91,7 +91,9 @@ def main(argv=None) -> int:
 
     window = MainWindow()
     window.show()
+    app.processEvents()  # 逼迫主視窗完成首次 paint，finish() 才不會掛起等待
     splash.finish(window)
+    splash.close()  # 兜底：無條件收掉 splash，保證啟動圖不再殘留擋住 GUI
 
     if smoke:
         _smoke_thread_test(window)
