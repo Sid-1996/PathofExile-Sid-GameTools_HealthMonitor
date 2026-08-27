@@ -21,7 +21,7 @@ $ErrorActionPreference = "Stop"
 $testRepoSlug = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test"
 
 # ── 讀取當前版本 ──────────────────────────────────────────
-$versionFile = Join-Path $PSScriptRoot "src" "_version.py"
+$versionFile = Join-Path $PSScriptRoot "src\_version.py"
 $content = Get-Content $versionFile -Raw
 if ($content -match '__version__\s*=\s*"(.+?)"') {
     $currentVersion = $Matches[1]
@@ -93,25 +93,25 @@ try {
 # ── 清理 + build ─────────────────────────────────────────
 if (-not $TestRepo) {
     Write-Host "`n[3/7] Cleaning old build artifacts..."
-    $cleanupBat = Join-Path $PSScriptRoot "scripts" "cleanup.bat"
+    $cleanupBat = Join-Path $PSScriptRoot "scripts\cleanup.bat"
     if (Test-Path $cleanupBat) { & $cleanupBat }
 }
 
 Write-Host "`n[4/7] Building EXE + updater.exe..."
-$buildScript = Join-Path $PSScriptRoot "tools" "build.py"
+$buildScript = Join-Path $PSScriptRoot "tools\build.py"
 python $buildScript
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Build failed" -ForegroundColor Red
     exit 1
 }
 
-$packageDir = Join-Path $PSScriptRoot "dist" "GameTools_Package"
-$vpkOut = Join-Path $PSScriptRoot "dist" "vpk"
+$packageDir = Join-Path $PSScriptRoot "dist\GameTools_Package"
+$vpkOut = Join-Path $PSScriptRoot "dist\vpk"
 
 if (-not $TestRepo) {
     # ── 建立 release ZIP ──────────────────────────────────────
     Write-Host "`n[5/7] Preparing release ZIP..."
-    $fixedZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor.zip"
+    $fixedZip = Join-Path $PSScriptRoot "dist\GameTools_HealthMonitor.zip"
     if (Test-Path $fixedZip) { Remove-Item $fixedZip -Force }
     Compress-Archive -Path "$packageDir\*" -DestinationPath $fixedZip
     Write-Host "  Created: GameTools_HealthMonitor.zip"
@@ -121,8 +121,8 @@ if (-not $TestRepo) {
     if ($Preview) {
         Write-Host "  Preview: skip make_delta（delta 只對 stable 發佈）"
     } else {
-        $makeDelta = Join-Path $PSScriptRoot "tools" "make_delta.py"
-        $packageDirForDelta = Join-Path $PSScriptRoot "dist" "GameTools_Package"
+        $makeDelta = Join-Path $PSScriptRoot "tools\make_delta.py"
+        $packageDirForDelta = Join-Path $PSScriptRoot "dist\GameTools_Package"
         python $makeDelta $currentVersion $baseVersion $packageDirForDelta (Join-Path $PSScriptRoot "dist")
         if ($LASTEXITCODE -ne 0) {
             Write-Host "[ERROR] make_delta failed" -ForegroundColor Red
@@ -156,8 +156,17 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] vpk pack failed" -ForegroundColor Red
     exit 1
 }
-# 收集要上傳的 Velopack 資產：Setup.exe + *.nupkg（portable.zip 不上傳——散佈模式為 installer）
-$vpkAssets = @(Get-ChildItem $vpkOut -Filter "*.nupkg") + @(Get-ChildItem $vpkOut -Filter "*Setup.exe")
+# 收集要上傳的 Velopack 資產：Setup.exe + *.nupkg + feed（portable.zip 不上傳——散佈模式為 installer）
+# Velopack GithubSource 需要每個 Release 含 releases.*.json / RELEASES / assets.*.json 才會解析版本
+$vpkAssets = @()
+$vpkAssets += @(Get-ChildItem $vpkOut -Filter "*.nupkg" -ErrorAction SilentlyContinue | ForEach-Object FullName)
+$vpkAssets += @(Get-ChildItem $vpkOut -Filter "*Setup.exe" -ErrorAction SilentlyContinue | ForEach-Object FullName)
+$vpkAssets += @(Get-ChildItem $vpkOut -Filter "releases.*.json" -ErrorAction SilentlyContinue | ForEach-Object FullName)
+$vpkAssets += @((Join-Path $vpkOut "RELEASES") | Where-Object { Test-Path $_ })
+$vpkAssets += @(Get-ChildItem $vpkOut -Filter "assets.*.json" -ErrorAction SilentlyContinue | ForEach-Object FullName)
+$vpkAssets = @($vpkAssets | Sort-Object -Unique)
+if ($vpkAssets.Count -eq 0) { Write-Host "[ERROR] No Velopack assets found in $vpkOut" -ForegroundColor Red; exit 1 }
+Write-Host "  Velopack assets: $(($vpkAssets | ForEach-Object { Split-Path $_ -Leaf }) -join ', ')"
 
 # ── TestRepo 模式：只把 Velopack 資產發到測試倉，完全不碰主倉 ──
 if ($TestRepo) {
@@ -217,7 +226,7 @@ if ($Preview) {
     Write-Host " Velopack channel: beta | assets attached" -ForegroundColor Yellow
     Write-Host "========================================" -ForegroundColor Yellow
 } else {
-    $deltaZip = Join-Path $PSScriptRoot "dist" "GameTools_HealthMonitor-delta.zip"
+    $deltaZip = Join-Path $PSScriptRoot "dist\GameTools_HealthMonitor-delta.zip"
     if (Test-Path $deltaZip) {
         gh release create $tagName `
             --title "v$currentVersion" `
