@@ -132,8 +132,8 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 
 - 版本唯一事實來源：`src/_version.py`（commitizen 管理，同步 `qt/version.py` 與 `tools/build.py`）。目前 **v1.2.1**。
 - **Dual-track 版本檢查**：≤ v1.2.0 走 GitHub API `/releases/latest`；≥ v1.2.1 走 `latest_version.txt`（raw.githubusercontent，無 API 限制）。GitHub API 只回傳非 pre-release、非 draft 的 release。
-- **Velopack 更新鏈（v1.3+ 新安裝走這條）**：Setup.exe 安裝 → `auto_update.py` 經 `GithubSource` 檢查 GitHub Releases 的 nupkg 資產 → 下載（delta 自動處理）→ 重啟套用。channel 模型：stable＝預設 channel、搶先版＝beta channel（`--channel beta`）；client 端 config `"allow_prerelease": true` 對應 `ExplicitChannel("beta")`。
-- **過渡期雙軌**：release.ps1 同時上傳舊鏈資產（ZIP + latest_version.txt + make_delta）與 Velopack 資產（Setup.exe + nupkg）。**方案 A 遷移**：v1.3.0 為最後一版支援舊鏈更新的版本，其 release notes 請用戶改下載 Setup.exe 安裝一次；過渡期結束後（v1.4+）刪除 `updater_main.py`、`tools/make_delta.py`、`latest_version*.txt` 機制與 `updater_core.py` 主體。
+- **Velopack 更新鏈（已為預設分發，≥ v1.2.4-test 驗證通過）**：Setup.exe 安裝 → `auto_update.py` 經 `GithubSource` 檢查 GitHub Releases 的 nupkg 資產 → 下載（delta 自動處理）→ 重啟套用。channel 模型：stable＝預設 channel、搶先版＝beta channel（`--channel beta`）；client 端 config `"allow_prerelease": true` 對應 `ExplicitChannel("beta")`。
+- **過渡期雙軌**：release.ps1 同時上傳舊鏈資產（ZIP + latest_version.txt + make_delta）與 Velopack 資產（Setup.exe + nupkg + feed 三件套 `releases.*.json`/`RELEASES`/`assets.*.json`）。**方案 A 遷移**：v1.3.0 為最後一版支援舊鏈更新的版本，其 release notes 請用戶改下載 Setup.exe 安裝一次；過渡期結束後（v1.4+）刪除 `updater_main.py`、`tools/make_delta.py`、`latest_version*.txt` 機制與 `updater_core.py` 主體。
 
 ### 測試倉發版（`-TestRepo`，發版前實測）
 
@@ -163,6 +163,12 @@ Remove-Item "$env:LOCALAPPDATA\GameTools_HealthMonitor\update_repo_override.txt"
 - TestRepo 版本號用 `-test.N` 後綴且**必須高於 client 目前版本**才會被偵測（SemVer 原生比較）
 - `-TestRepo -Version X` 會改 `_version.py` 但不 commit——測試後手動還原（腳本結束會提醒）
 - 測完回歸 stable：override 刪掉後若測試版 > 主倉 stable，不會自動降級；重裝一次主倉 Setup.exe 即可
+- **delta 產出條件**：同一 `dist/vpk` 需保留前一版 `*-full.nupkg` 才會產生 delta；`TestRepo` 保留 outputDir → 連續兩輪不同版本自動產 delta，正式版每次清空 `dist/vpk` → 首版無 delta（客戶端退回整包下載屬正常），勿手動 `cleanup.bat` 後期待 delta
+
+| 場景 | `dist/vpk` | 結果 |
+|---|---|---|
+| `-TestRepo` 連續兩版不同版本 | 保留 | 自動產 delta |
+| 正式版 / `cleanup.bat` 後首版 | 清空 | 無 delta，客戶端整包下載 |
 
 ### Pre-release 測試（不通知用戶）
 
@@ -192,6 +198,8 @@ Remove-Item "$env:LOCALAPPDATA\GameTools_HealthMonitor\update_repo_override.txt"
 - `tools/build.py` 從 `src/` 與 `docs/` 收集 assets。建出內容：`GameTools_HealthMonitor.exe`、`auto_click.exe`、`updater.exe`、`language_packs.json`、`使用說明.md`、`啟動工具.bat`、`README.txt`。
 - `updater_main.py` 建為 `updater.exe`（輕量、無 GUI deps）。（過渡期保留；Velopack 接管後刪除）
 - **velopack 打包**：套件只含 `velopack.pyd` 原生擴充，PyInstaller import 分析會自動帶入，build.py 無需額外處理；發版時 `vpk pack`（release.ps1 [5.6]）以 `dist/GameTools_Package` 為 packDir 產生 Setup.exe / nupkg。
+- **Velopack feed 必上傳**：每個 GitHub Release 須含 `releases.*.json` + `RELEASES` + `assets.*.json`（`release.ps1:159-168` 白名單），缺一即 `Found 0 release(s)`（2026-08-27 已修復）。
+- **PS 5.1 地雷**：`Join-Path` 僅支援二段，`src/_version.py` 類路徑一律寫 `Join-Path $PSScriptRoot "src\_version.py"` 單串，避免 `PositionalParameterNotFound`（`release.ps1` 多處已修）。
 - 若 PyInstaller cache 在 Windows 被鎖（`WinError 5`），清 `build/GameTools_HealthMonitor` 重建。
 - **PySide6 打包地雷**：只要 `--collect-all qfluentwidgets` 就夠，**絕不加 `--exclude-module PySide6.*`**（會打斷 hook 的 plugin/qt.conf 處理導致啟動掛住）。
 - qfluentwidgets 1.11.3：`MessageBox` 無 static 方法（用原生 `QMessageBox`）；PySide6 6.11 enum 用完整命名空間（如 `Qt.AlignmentFlag.AlignCenter`）。
