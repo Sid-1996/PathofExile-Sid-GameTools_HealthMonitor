@@ -266,6 +266,10 @@ class MainWindow(FluentWindow):
 
         reset_battle_debug_state()
 
+        # 介面UI 未截時僅警示一次，不阻擋（可選過濾語意，參照 ocr-trigger）
+        if not (self.interface_ui_region and getattr(self.inventory_tab, "interface_ui_screenshot", None) is not None):
+            self.add_status_message(self.get_text("interface_ui_not_set_warning") if self.get_text("interface_ui_not_set_warning") != "[interface_ui_not_set_warning]" else "未截介面UI：將在任何場景觸發，非僅戰鬥（建議框選介面UI以啟用戰鬥過濾）", "warning")
+
         self.set_monitoring(True)
         mt.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_started"), "success")
