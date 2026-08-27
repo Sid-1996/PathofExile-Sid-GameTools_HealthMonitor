@@ -24,7 +24,7 @@ Windows 上給 Path of Exile 玩家的日常自動化工具：健康/魔力監�
 
 > **程式碼結構問題一律用 `codegraph_explore` 查，不讀靜態文件**——所有 Python 已被索引，動態查詢比靜態文件準確且省 token。CodeGraph 不索引 markdown/config/scripts；那些要問的放這裡。
 >
-> Runtime-generated（非 source，勿當程式碼改）：`src/health_monitor_config.json` / `.backup`、`src/screenshots/`。
+> Runtime-generated（非 source，勿當程式碼改）：config / screenshots 已改存 `%LOCALAPPDATA%\GameTools_HealthMonitor\`（`get_user_data_dir()`，首次啟動會從舊位置 `src/` 或 exe 同層一次性複製遷移，只複製不刪除）。開發機舊的 `src/health_monitor_config.json` 可能還在（遷移來源殘留），勿當 source。
 
 ---
 
@@ -119,10 +119,12 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 
 ## 一鍵工作流
 
-1. 安裝依賴：`scripts/install_dependencies.bat`（uv 全域 + Python 3.13）
+1. 安裝依賴：`scripts/install_dependencies.bat`（uv 全域 + Python 3.13；含 `velopack`）
 2. 從 source 或 EXE 執行：`Run.bat`
 3. 建 EXE：`scripts/build_exe.bat`（PyInstaller onedir）
 4. 測試建出的 EXE：`Run.bat`
+
+發版額外需求：`.NET SDK 8+` 與 `dotnet tool install -g vpk`（Velopack CLI），僅開發機需要。
 
 ---
 
@@ -130,24 +132,28 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 
 - 版本唯一事實來源：`src/_version.py`（commitizen 管理，同步 `qt/version.py` 與 `tools/build.py`）。目前 **v1.2.1**。
 - **Dual-track 版本檢查**：≤ v1.2.0 走 GitHub API `/releases/latest`；≥ v1.2.1 走 `latest_version.txt`（raw.githubusercontent，無 API 限制）。GitHub API 只回傳非 pre-release、非 draft 的 release。
+- **Velopack 更新鏈（v1.3+ 新安裝走這條）**：Setup.exe 安裝 → `auto_update.py` 經 `GithubSource` 檢查 GitHub Releases 的 nupkg 資產 → 下載（delta 自動處理）→ 重啟套用。channel 模型：stable＝預設 channel、搶先版＝beta channel（`--channel beta`）；client 端 config `"allow_prerelease": true` 對應 `ExplicitChannel("beta")`。
+- **過渡期雙軌**：release.ps1 同時上傳舊鏈資產（ZIP + latest_version.txt + make_delta）與 Velopack 資產（Setup.exe + nupkg）。**方案 A 遷移**：v1.3.0 為最後一版支援舊鏈更新的版本，其 release notes 請用戶改下載 Setup.exe 安裝一次；過渡期結束後（v1.4+）刪除 `updater_main.py`、`tools/make_delta.py`、`latest_version*.txt` 機制與 `updater_core.py` 主體。
 
 ### Pre-release 測試（不通知用戶）
 
 1. `_version.py` 設 pre-release（如 `1.2.2-beta`）
-2. `.\release.ps1 -Preview` — 建 EXE、建 GitHub **Pre-release**、只更新 `latest_version_prerelease.txt`
+2. `.\release.ps1 -Preview` — 建 EXE、vpk pack（beta channel）、建 GitHub **Pre-release**、只更新 `latest_version_prerelease.txt`
 3. `latest_version.txt` 不動 → 現有用戶看不到
-4. 你的 config `"allow_prerelease": true` → 偵測到 pre-release，測試完整下載流程
+4. 你的 config `"allow_prerelease": true` → 偵測到 pre-release（beta channel），測試完整下載流程
 5. 穩定後：`_version.py` = `1.2.2`，跑 `.\release.ps1`（一般）→ 更新 `latest_version.txt` → 通知所有用戶
 
 ### 穩定發版
 
-跑 `.\release.ps1` — 更新 `latest_version.txt`、建正常 GitHub Release、所有用戶下次啟動被通知。
+跑 `.\release.ps1` — 更新 `latest_version.txt`、建正常 GitHub Release（含 Velopack Setup.exe/nupkg）、所有用戶下次啟動被通知。
 
 ### 關鍵規則
 
 - **絕不把 pre-release 版本寫進 `latest_version.txt`** — 這會通知所有用戶
 - `allow_prerelease` config 預設 `false` — 只有開發者應為測試設為 `true`
-- `_parse_version()` 讓 pre-release 低於 stable（`1.2.2-beta` < `1.2.2`）
+- `_parse_version()` 讓 pre-release 低於 stable（`1.2.2-beta` < `1.2.2`）（舊鏈專屬；Velopack 用 SemVer 原生比較）
+- Velopack 只接受 SemVer 3 段版本（可帶 `-beta` 後綴），不能四段
+- Velopack delta nupkg 只在同一 outputDir 存在前一版 full nupkg 時產生；`cleanup.bat` 清 dist 後首版無 delta，用戶端自動退回整包下載
 - 使用者提到「發版 / release / 測試更新 / 不通知用戶 / pre-release」時：確認要 **Preview（先測）** 還是 **stable（發所有人）**，並提醒 `-Preview` flag 與 `allow_prerelease` config。
 
 ---
@@ -155,7 +161,8 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 ## 打包規則（Critical）
 
 - `tools/build.py` 從 `src/` 與 `docs/` 收集 assets。建出內容：`GameTools_HealthMonitor.exe`、`auto_click.exe`、`updater.exe`、`language_packs.json`、`使用說明.md`、`啟動工具.bat`、`README.txt`。
-- `updater_main.py` 建為 `updater.exe`（輕量、無 GUI deps）。
+- `updater_main.py` 建為 `updater.exe`（輕量、無 GUI deps）。（過渡期保留；Velopack 接管後刪除）
+- **velopack 打包**：套件只含 `velopack.pyd` 原生擴充，PyInstaller import 分析會自動帶入，build.py 無需額外處理；發版時 `vpk pack`（release.ps1 [5.6]）以 `dist/GameTools_Package` 為 packDir 產生 Setup.exe / nupkg。
 - 若 PyInstaller cache 在 Windows 被鎖（`WinError 5`），清 `build/GameTools_HealthMonitor` 重建。
 - **PySide6 打包地雷**：只要 `--collect-all qfluentwidgets` 就夠，**絕不加 `--exclude-module PySide6.*`**（會打斷 hook 的 plugin/qt.conf 處理導致啟動掛住）。
 - qfluentwidgets 1.11.3：`MessageBox` 無 static 方法（用原生 `QMessageBox`）；PySide6 6.11 enum 用完整命名空間（如 `Qt.AlignmentFlag.AlignCenter`）。
