@@ -24,71 +24,6 @@ def normalize_region(region: object) -> Optional[Dict[str, int]]:
     return None
 
 
-def region_to_prop(region: Dict[str, int], base_w: int, base_h: int) -> Dict[str, float]:
-    """絕對 region → 等比 prop（同比例上下相容），base 為擷取時 window 外框尺寸。"""
-    if base_w <= 0 or base_h <= 0:
-        return {"x_ratio": 0.0, "y_ratio": 0.0, "w_ratio": 0.0, "h_ratio": 0.0, "base_w": base_w, "base_h": base_h}
-    return {
-        "x_ratio": region["x"] / base_w,
-        "y_ratio": region["y"] / base_h,
-        "w_ratio": region["width"] / base_w,
-        "h_ratio": region["height"] / base_h,
-        "base_w": base_w,
-        "base_h": base_h,
-    }
-
-
-def prop_to_region(prop: object, cur_w: int, cur_h: int) -> Optional[Dict[str, int]]:
-    """等比 prop → 當前絕對 region，cur 為當前 window 外框尺寸。"""
-    if not isinstance(prop, dict) or cur_w <= 0 or cur_h <= 0:
-        return None
-    try:
-        return {
-            "x": int(round(prop["x_ratio"] * cur_w)),
-            "y": int(round(prop["y_ratio"] * cur_h)),
-            "width": int(round(prop["w_ratio"] * cur_w)),
-            "height": int(round(prop["h_ratio"] * cur_h)),
-        }
-    except Exception:
-        return None
-
-
-def offset_to_prop(offset: int, base_len: int) -> float:
-    """絕對偏移 → 比例（用寬/高對應的 base）。"""
-    return offset / base_len if base_len else 0.0
-
-
-def prop_to_offset(ratio: float, cur_len: int) -> int:
-    """比例偏移 → 當前絕對偏移。"""
-    try:
-        return int(round(float(ratio) * cur_len))
-    except Exception:
-        return 0
-
-
-def points_to_prop(points: list, base_w: int, base_h: int) -> list:
-    """多點（pickup）絕對 → 比例。"""
-    out = []
-    for p in points or []:
-        try:
-            x, y = p[0], p[1]
-            out.append([x / base_w if base_w else 0.0, y / base_h if base_h else 0.0])
-        except Exception:
-            out.append([0.0, 0.0])
-    return out
-
-
-def prop_to_points(prop_points: list, cur_w: int, cur_h: int) -> list:
-    """多點比例 → 當前絕對。"""
-    out = []
-    for p in prop_points or []:
-        try:
-            out.append([int(round(p[0] * cur_w)), int(round(p[1] * cur_h))])
-        except Exception:
-            out.append([0, 0])
-    return out
-
-
 def should_clear_inventory(img, empty_inventory_colors, inventory_grid_positions, inventory_region, skip_slots=None, current_slot=None):
     """檢查背包是否需要清空 - 檢查60個格子，可選擇跳過指定格子和之前的格子"""
     inventory_region = normalize_region(inventory_region)
@@ -182,13 +117,4 @@ if __name__ == "__main__":
     assert normalize_region([0, 0, 120, 50]) == region, "list -> dict"
     assert normalize_region(region) is region, "dict passthrough"
     assert normalize_region(None) is None, "None passthrough"
-    # 等比互轉
-    prop = region_to_prop({"x": 100, "y": 50, "width": 200, "height": 100}, 1000, 800)
-    assert abs(prop["x_ratio"] - 0.1) < 1e-6 and prop["base_w"] == 1000
-    assert prop_to_region(prop, 2000, 1600) == {"x": 200, "y": 100, "width": 400, "height": 200}
-    assert prop_to_region(None, 1000, 800) is None
-    assert offset_to_prop(10, 1000) == 0.01 and prop_to_offset(0.01, 2000) == 20
-    pts = points_to_prop([[100, 50], [200, 100]], 1000, 800)
-    assert pts[0] == [0.1, 0.0625]
-    assert prop_to_points(pts, 2000, 1600) == [[200, 100], [400, 200]]
     print("inventory_utils self-check OK")

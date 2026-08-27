@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import CheckBox, ComboBox, EditableComboBox, LineEdit, PrimaryPushButton, PushButton
 
 from capture_utils import capture_window_region_pil, save_screenshot
-from inventory_utils import normalize_region, prop_to_region, region_to_prop
+from inventory_utils import normalize_region
 from image_utils import (
     draw_health_indicator,
     draw_mana_indicator,
@@ -232,11 +232,9 @@ class MonitorTab(QWidget):
             _saved_title = ""  # 拋棄 smoke 測試污染，不暴露測試假視窗標題給使用者
         self.window_title = _saved_title
         self.window_var = _VarShim(self)
-        # 從 config 回復已框選區域（v2 等比，無遷移）
-        self._region_prop = self._app.config.get("region_prop")
-        self._mana_region_prop = self._app.config.get("mana_region_prop")
-        self.selected_region = self._prop_to_cur(self._region_prop)
-        self.selected_mana_region = self._prop_to_cur(self._mana_region_prop)
+        # 從 config 回復已框選區域（legacy list → dict 正規化），供預覽/測試擷取使用
+        self.selected_region = normalize_region(self._app.config.get("region"))
+        self.selected_mana_region = normalize_region(self._app.config.get("mana_region"))
         self.preview_size = (380, 280)
         self.monitor_interval_ms = int(self._app.config.get("monitor_interval", 0.1) * 1000)
         self.multi_trigger = bool(self._app.config.get("multiple_triggers", True))
@@ -262,36 +260,6 @@ class MonitorTab(QWidget):
         self.refresh_windows()
         self.load_settings_to_tree()
         self.auto_load_preview()
-
-    def _get_cur_window_size(self):
-        try:
-            wins = gw.getWindowsWithTitle(self.window_title) if self.window_title else []
-            if wins:
-                return wins[0].width, wins[0].height
-        except Exception:
-            pass
-        return None
-
-    def _prop_to_cur(self, prop):
-        if not isinstance(prop, dict):
-            return None
-        sz = self._get_cur_window_size()
-        if sz is None:
-            return prop_to_region(prop, prop.get("base_w", 0), prop.get("base_h", 0))
-        cur_w, cur_h = sz
-        return prop_to_region(prop, cur_w, cur_h)
-
-    def _get_effective_region(self, is_mana: bool):
-        """等比統一入口：prop 現算優先，回退舊絕對（全新 v2 下舊鍵已清，僅兼容）。"""
-        if is_mana:
-            cur = self._prop_to_cur(self._mana_region_prop)
-            if cur:
-                return cur
-            return normalize_region(self._app.config.get("mana_region"))
-        cur = self._prop_to_cur(self._region_prop)
-        if cur:
-            return cur
-        return normalize_region(self._app.config.get("region"))
 
     # ────────────────────────── UI 建構 ──────────────────────────
 
@@ -703,11 +671,12 @@ class MonitorTab(QWidget):
 
     def refresh_window_placeholders(self):
         """依目前視窗/區域狀態刷新血魔預覽佔位文字（不截圖）。"""
+        cfg = self._app.config
         for is_mana in (False, True):
             sig = self._signals.mana_placeholder if is_mana else self._signals.health_placeholder
             if not self.window_title:
                 text = self._app.get_text("select_game_window_first")
-            elif not self._get_effective_region(is_mana):
+            elif not cfg.get("mana_region" if is_mana else "region"):
                 key = "select_mana_bar_first" if is_mana else "select_health_bar_first"
                 text = self._app.get_text(key)
             elif not gw.getWindowsWithTitle(self.window_title):
@@ -717,15 +686,10 @@ class MonitorTab(QWidget):
             sig.emit(text)
 
     def auto_load_preview(self):
-        has_region = bool(self._get_effective_region(False))
-        has_mana = bool(self._get_effective_region(True))
-        if (has_region or has_mana) and self._app.config.get("window_title"):
+        if self._app.config.get("region") and self._app.config.get("window_title"):
             try:
                 if gw.getWindowsWithTitle(self._app.config["window_title"]):
                     self.window_var.set(self._app.config["window_title"])
-                    # 同步 selected_region 為當前等比換算（避免啟動時窗口尺寸不同）
-                    self.selected_region = self._get_effective_region(False)
-                    self.selected_mana_region = self._get_effective_region(True)
                     health_loaded = self.load_preview_image()
                     mana_loaded = self.load_mana_preview_image()
                     if health_loaded or mana_loaded:
@@ -735,18 +699,18 @@ class MonitorTab(QWidget):
                 else:
                     print(f"遊戲視窗 '{self._app.config['window_title']}' 未找到")
                     self.window_var.set(self._app.config["window_title"])
-                    if has_region:
+                    if self._app.config.get("region"):
                         self._signals.health_placeholder.emit(self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]))
-                    if has_mana:
+                    if self._app.config.get("mana_region"):
                         self._signals.mana_placeholder.emit(self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]))
             except Exception as e:
                 print(f"自動載入預覽失敗: {e}")
                 self._signals.health_placeholder.emit(self._app.get_text("settings_load_failed"))
                 self._signals.mana_placeholder.emit(self._app.get_text("settings_load_failed"))
         else:
-            if not has_region:
+            if not self._app.config.get("region"):
                 self._signals.health_placeholder.emit(self._app.get_text("select_health_bar_first"))
-            if not has_mana:
+            if not self._app.config.get("mana_region"):
                 self._signals.mana_placeholder.emit(self._app.get_text("select_mana_bar_first"))
             print("沒有找到已儲存的設定")
 
@@ -787,15 +751,12 @@ class MonitorTab(QWidget):
         return False
 
     def capture_preview_async(self):
-        cur = self._get_effective_region(False) or self.selected_region
-        if not cur:
+        if not self.selected_region:
             return
-        # 同步 selected_region 為當前等比，避免窗口縮放後預覽偏
-        self.selected_region = cur
 
         def _capture():
             try:
-                _, img = capture_window_region_pil(self.window_title, cur)
+                _, img = capture_window_region_pil(self.window_title, self.selected_region)
                 if img is None:
                     self._signals.health_placeholder.emit(self._app.get_text("waiting_for_game_window"))
                     return
@@ -809,14 +770,12 @@ class MonitorTab(QWidget):
         threading.Thread(target=_capture, daemon=True).start()
 
     def capture_mana_preview_async(self):
-        cur = self._get_effective_region(True) or self.selected_mana_region
-        if not cur:
+        if not self.selected_mana_region:
             return
-        self.selected_mana_region = cur
 
         def _capture():
             try:
-                _, img = capture_window_region_pil(self.window_title, cur)
+                _, img = capture_window_region_pil(self.window_title, self.selected_mana_region)
                 if img is None:
                     self._signals.mana_placeholder.emit(self._app.get_text("waiting_for_game_window"))
                     return
@@ -845,13 +804,13 @@ class MonitorTab(QWidget):
                 success_count = 0
                 errors = []
                 try:
-                    if self._get_effective_region(False):
+                    if self._app.config.get("region"):
                         try:
                             self.capture_preview_async()
                             success_count += 1
                         except Exception as e:
                             errors.append(f"血量預覽測試失敗 {e}")
-                    if self._get_effective_region(True):
+                    if self._app.config.get("mana_region"):
                         try:
                             self.capture_mana_preview_async()
                             success_count += 1
@@ -1068,40 +1027,21 @@ class MonitorTab(QWidget):
             QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text(error_key).format(error=str(e)))
 
     def _on_selection_done(self, region, is_mana):
-        # 存等比 prop（全新 v2，不存舊絕對）
-        region = normalize_region(region)
-        if not isinstance(region, dict):
-            return
-        cur_w = cur_h = None
-        try:
-            sz = self._get_cur_window_size()
-            if sz:
-                cur_w, cur_h = sz
-        except Exception:
-            pass
-        if cur_w and cur_h:
-            prop = region_to_prop(region, cur_w, cur_h)
-        else:
-            # 無窗時以 region 自身尺寸為 base（保底，不精確但不崩）
-            prop = region_to_prop(region, region["width"] or 1920, region["height"] or 1080)
         if is_mana:
             self.selected_mana_region = region
-            self._mana_region_prop = prop
-            self._app.config["mana_region_prop"] = prop
-            self._app.config.pop("mana_region", None)
-            self._app.config["config_version"] = 2
+            self._app.config["mana_region"] = region
+            self._app.config.pop("mana_region_prop", None)
             self.mana_region_label.setText(get_mana_region_text(self._app.config, self._app.get_text))
             self.mana_region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
             QTimer.singleShot(100, self.capture_mana_preview_async)
         else:
             self.selected_region = region
-            self._region_prop = prop
-            self._app.config["region_prop"] = prop
-            self._app.config.pop("region", None)
-            self._app.config["config_version"] = 2
+            self._app.config["region"] = region
+            self._app.config.pop("region_prop", None)
             self.region_label.setText(get_region_text(self._app.config, self._app.get_text))
             self.region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
             QTimer.singleShot(100, self.capture_preview_async)
+        self._app.config.pop("config_version", None) if self._app.config.get("config_version") == 2 else None
         self._app.schedule_config_save()
         self._finalize_selection_restore_gui()
 
