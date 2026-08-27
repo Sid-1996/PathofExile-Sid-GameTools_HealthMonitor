@@ -70,6 +70,14 @@ def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv
     smoke = "--smoke" in argv
 
+    # Velopack builder 必須最先執行（安裝/更新 hook 可能重啟程序）；開發環境為 no-op
+    try:
+        import velopack
+
+        velopack.App().run()
+    except ImportError:
+        print("[WARN] velopack 未安裝，自動更新功能停用")
+
     app = QApplication(argv)
     app.setApplicationName("GameTools Health Monitor")
     app.setApplicationVersion(__version__)

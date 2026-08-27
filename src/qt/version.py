@@ -2,7 +2,8 @@
 version.py（Qt 版）— 版本檢查分頁
 ────────────────────────────────────────────────────────
 對應 tk 版 `tab_version.py`（Phase 7）。
-- 版本比對走 GitHub raw latest_version.txt（無 API 限制）；release notes 僅在查看時從 GitHub API 取。
+- 更新檢查/下載/套用走 Velopack（auto_update.py，GitHub Releases 為源）；
+  release notes 僅在查看時從 GitHub API 取。
 - 所有背景 thread 的 UI 更新一律走 `_VersionSignals`（thread-safe queued signal）。
 - 下載進度用 modal QDialog + QProgressBar；更新通知用 QDialog。
 """
@@ -27,7 +28,7 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import PrimaryPushButton, PushButton
 
-import updater_core
+import auto_update
 from _version import __version__
 
 CURRENT_VERSION = f"v{__version__}"
@@ -44,16 +45,14 @@ FG = "#f8f8f2"
 class _VersionSignals(QObject):
     """背景 thread → 主執行緒的 thread-safe 更新通道。"""
 
-    version_checked = Signal(object)  # UpdateInfo | None
+    version_checked = Signal(object)  # auto_update.InfoShim | None
     error_shown = Signal(str, str, str)  # version_key, status_key, error
     status_text = Signal(str)  # 設定狀態列文字
     latest_text = Signal(str)  # 設定最新版本文字
     release_notes = Signal(str)
     download_progress = Signal(float, float)  # downloaded, total
-    download_fallback = Signal()
-    download_done = Signal(object, object)  # exe_path, info
+    download_done = Signal(object, object)  # (None 佔位, InfoShim)
     download_fail = Signal(str)
-    download_cancelled = Signal()
 
 
 class VersionTab(QWidget):
@@ -64,8 +63,8 @@ class VersionTab(QWidget):
         self._updating = False
         self._downloading = False
         self._silent_mode = False
-        self._cancel_event = None
         self._pending_update_info = None
+        self._update_manager = None
         self._notification_dialog = None
         self._progress_dialog = None
 
@@ -76,10 +75,8 @@ class VersionTab(QWidget):
         self._sig.latest_text.connect(lambda t: self.latest_version_label.setText(t))
         self._sig.release_notes.connect(self._update_release_notes_display)
         self._sig.download_progress.connect(self._on_progress)
-        self._sig.download_fallback.connect(self._on_fallback)
         self._sig.download_done.connect(self._on_download_finished)
         self._sig.download_fail.connect(self._on_download_error)
-        self._sig.download_cancelled.connect(self._on_download_cancelled)
 
         self._build_ui()
 
@@ -194,7 +191,10 @@ class VersionTab(QWidget):
 
         def _check():
             try:
-                info = updater_core.check_for_update(CURRENT_VERSION, self._allow_prerelease())
+                channel = "beta" if self._allow_prerelease() else None
+                manager = auto_update.create_manager(channel)
+                self._update_manager = manager
+                info = auto_update.check_for_update(manager)
                 self._sig.version_checked.emit(info)
             except requests.exceptions.Timeout:
                 self._sig.error_shown.emit("connection_timeout", "github_timeout", "")
@@ -270,7 +270,7 @@ class VersionTab(QWidget):
     def _on_download_click(self):
         if self._downloading or self._pending_update_info is None:
             return
-        if not updater_core.is_frozen():
+        if self._update_manager is None:
             QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("updater_source_mode_warning"))
             return
         self._start_download(self._pending_update_info)
@@ -279,8 +279,6 @@ class VersionTab(QWidget):
         if self._app._is_closing:
             return
         self._downloading = True
-        cancel_event = threading.Event()
-        self._cancel_event = cancel_event
         self.download_btn.setEnabled(False)
         self.check_update_btn.setEnabled(False)
 
@@ -301,9 +299,7 @@ class VersionTab(QWidget):
         self._progress_status_label = QLabel("0 KB / ? KB")
         self._progress_status_label.setStyleSheet("font-family: Consolas; font-size: 11px; color: #f8f8f2;")
         dialog_layout.addWidget(self._progress_status_label, 0, Qt.AlignmentFlag.AlignCenter)
-        cancel_btn = PushButton(self._app.get_text("cancel"))
-        cancel_btn.clicked.connect(lambda: cancel_event.set())
-        dialog_layout.addWidget(cancel_btn, 0, Qt.AlignmentFlag.AlignCenter)
+        # Velopack 下載不支援中途取消（delta 傳輸量小、速度快），不提供取消按鈕
         self._progress_dialog = dialog
 
         def _progress_cb(downloaded, total):
@@ -311,18 +307,8 @@ class VersionTab(QWidget):
 
         def _do_download():
             try:
-                if info.delta_url:
-                    exe_path = updater_core.download_delta_update(
-                        info,
-                        progress_cb=_progress_cb,
-                        cancel_event=self._cancel_event,
-                        fallback_cb=lambda: self._sig.download_fallback.emit(),
-                    )
-                else:
-                    exe_path = updater_core.download_update(info, progress_cb=_progress_cb, cancel_event=self._cancel_event)
-                self._sig.download_done.emit(exe_path, info)
-            except updater_core.UserCancelledError:
-                self._sig.download_cancelled.emit()
+                auto_update.download_update(self._update_manager, info, progress_cb=_progress_cb)
+                self._sig.download_done.emit(None, info)
             except Exception as e:
                 self._sig.download_fail.emit(self._translate_error(e))
 
@@ -337,22 +323,10 @@ class VersionTab(QWidget):
         else:
             self._progress_status_label.setText(f"{downloaded / 1024:.0f} KB")
 
-    def _on_fallback(self):
-        if self._progress_status_label is not None:
-            self._progress_status_label.setText(self._app.get_text("fallback_to_full_update"))
-
     def _close_progress_dialog(self):
         if self._progress_dialog is not None:
             self._progress_dialog.accept()
             self._progress_dialog = None
-
-    def _on_download_cancelled(self):
-        if self._app._is_closing:
-            return
-        self._downloading = False
-        self.download_btn.setEnabled(True)
-        self.check_update_btn.setEnabled(True)
-        self._close_progress_dialog()
 
     def _on_download_error(self, error_msg):
         if self._app._is_closing:
@@ -363,7 +337,7 @@ class VersionTab(QWidget):
         self._close_progress_dialog()
         QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("apply_update_failed").format(error=error_msg))
 
-    def _on_download_finished(self, exe_path, info):
+    def _on_download_finished(self, _none, info):
         if self._app._is_closing:
             return
         self._downloading = False
@@ -381,14 +355,16 @@ class VersionTab(QWidget):
             try:
                 self._app.config["just_updated"] = info.version
                 self._app.save_config()
-                updater_core.apply_update(exe_path)
-                os._exit(0)
+                # 套用後由 Velopack 接管重啟（與舊 updater.exe+os._exit 等價的立即離開）；
+                # 若使用者選 No，已下載的更新會在下次啟動時由 velopack 自動套用。
+                auto_update.apply_and_restart(self._update_manager, info)
+                os._exit(0)  # 防護：正常情況 apply 內部不會返回
             except Exception as e:
                 QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("apply_update_failed").format(error=self._translate_error(e)))
 
     def _translate_error(self, e):
-        """將 updater_core 拋出的語言 key 錯誤翻譯為使用者可見訊息。"""
-        if isinstance(e, updater_core.UpdateError):
+        """將 auto_update 拋出的語言 key 錯誤翻譯為使用者可見訊息。"""
+        if isinstance(e, auto_update.AutoUpdateError):
             return self._app.get_text(e.key).format(**e.params)
         return str(e)
 
@@ -498,9 +474,7 @@ class VersionTab(QWidget):
         dialog.exec()
 
     def shutdown_cleanup(self):
-        """關閉時中止下載 / 關掉通知視窗。"""
-        if self._downloading and self._cancel_event is not None:
-            self._cancel_event.set()
+        """關閉時關掉通知視窗（Velopack 下載無法取消，背景 thread 為 daemon 隨程序結束）。"""
         if self._notification_dialog is not None:
             try:
                 self._notification_dialog.reject()
