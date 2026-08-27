@@ -2020,19 +2020,46 @@ class InventoryTab(QWidget):
     def is_inventory_ui_visible(self, game_window):
         """檢查背包UI是否可見（MSE + 主色比較，對應 tk 版）。"""
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
+            print("[INV_UI] fail: region or screenshot is None")
             return False
         try:
             result = capture_window_region_bgr(game_window.title, self.inventory_ui_region)
+            # WGC 首幀競態：無幀時短暫重試一次（僅 worker 線程，0.2s 阻塞可接受）
             if result is None:
+                try:
+                    import time as _time
+
+                    _time.sleep(0.2)
+                    result = capture_window_region_bgr(game_window.title, self.inventory_ui_region)
+                except Exception:
+                    pass
+            if result is None:
+                print(f"[INV_UI] fail: capture None region={self.inventory_ui_region} win={getattr(game_window, 'title', '?')}")
                 return False
             current_img = result[1]
-            if current_img.shape != self.inventory_ui_screenshot.shape:
-                return False
-            mse = np.mean((current_img - self.inventory_ui_screenshot) ** 2)
+            stored = self.inventory_ui_screenshot
+            if current_img.shape != stored.shape:
+                ch, cw = current_img.shape[1], current_img.shape[0]
+                sh, sw = stored.shape[1], stored.shape[0]
+                dw, dh = abs(cw - sw), abs(ch - sh)
+                orig_shape = current_img.shape
+                if dw <= 2 and dh <= 2:
+                    # DPI/邊框 1-2px 漂移：縮放對齊後再比，避免重啟必敗
+                    current_img = cv2.resize(current_img, (sw, sh), interpolation=cv2.INTER_LINEAR)
+                    print(f"[INV_UI] shape mismatch {orig_shape} vs {stored.shape} -> resized (dw={dw},dh={dh})")
+                else:
+                    print(f"[INV_UI] fail: shape {orig_shape} vs {stored.shape} (dw={dw},dh={dh}) region={self.inventory_ui_region} [HINT] 建議重截 背包UI：視窗尺寸變化")
+                    return False
+                # resize 後以 stored 尺寸為準
+            mse = np.mean((current_img.astype(np.float32) - stored.astype(np.float32)) ** 2)
             current_main_color = np.mean(current_img, axis=(0, 1))
-            recorded_main_color = np.mean(self.inventory_ui_screenshot, axis=(0, 1))
+            recorded_main_color = np.mean(stored, axis=(0, 1))
             color_diff = np.mean(np.abs(current_main_color - recorded_main_color))
-            return mse < 150 and color_diff < 10
+            # 分級放寬：原 150/10 太嚴，>6 天光影漂移易超；300/20 為寬容檔，僅形狀對齊後生效
+            passed = (mse < 150 and color_diff < 10) or (mse < 300 and color_diff < 20)
+            if not passed:
+                print(f"[INV_UI] fail: mse={mse:.1f} color={color_diff:.1f} shape={current_img.shape} region={self.inventory_ui_region}")
+            return passed
         except Exception as e:
             print(f"檢查背包UI可見性失敗: {e}")
             return False
