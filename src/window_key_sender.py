@@ -1,15 +1,29 @@
 import ctypes
 import time
+from ctypes import wintypes
+
 import pygetwindow as gw
 
+# ponytail: 參照 ocr-trigger 獨立 WinDLL，避免污染 ctypes.windll 全域（pygetwindow 等未設 argtypes 的呼叫端）
+_user32 = ctypes.WinDLL("user32")
+_user32.GetForegroundWindow.argtypes = []
+_user32.GetForegroundWindow.restype = wintypes.HWND
+_user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+_user32.GetWindowTextW.restype = ctypes.c_int
+_user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
+_user32.GetWindowTextLengthW.restype = ctypes.c_int
+_user32.SendMessageW.argtypes = [wintypes.HWND, ctypes.c_uint, wintypes.WPARAM, wintypes.LPARAM]
+_user32.SendMessageW.restype = wintypes.LPARAM
+_user32.PostMessageW.argtypes = [wintypes.HWND, ctypes.c_uint, wintypes.WPARAM, wintypes.LPARAM]
+_user32.PostMessageW.restype = wintypes.BOOL
 
-# Windows API functions
-user32 = ctypes.windll.user32
-GetForegroundWindow = user32.GetForegroundWindow
-GetWindowTextW = user32.GetWindowTextW
-GetWindowTextLengthW = user32.GetWindowTextLengthW
-SendMessageW = user32.SendMessageW
-PostMessageW = user32.PostMessageW
+# 兼容舊引用（對外不變）
+user32 = _user32
+GetForegroundWindow = _user32.GetForegroundWindow
+GetWindowTextW = _user32.GetWindowTextW
+GetWindowTextLengthW = _user32.GetWindowTextLengthW
+SendMessageW = _user32.SendMessageW
+PostMessageW = _user32.PostMessageW
 
 # Virtual key code constants
 VK_RETURN = 0x0D
@@ -38,13 +52,7 @@ WM_KEYDOWN = 0x0100
 WM_KEYUP = 0x0101
 WM_CHAR = 0x0102
 
-# argtypes setup
-GetWindowTextLengthW.argtypes = [ctypes.c_void_p]
-GetWindowTextLengthW.restype = ctypes.c_int
-GetWindowTextW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int]
-GetWindowTextW.restype = ctypes.c_int
-SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_long]
-SendMessageW.restype = ctypes.c_long
+# 已由獨立 _user32 設置 argtypes，無需重複（保留此段作遷移註記，後續可刪）
 
 
 class WindowKeySender:
@@ -141,9 +149,7 @@ class WindowKeySender:
 
     def _send_with_postmessage(self, hwnd, vk_code):
         try:
-            from ctypes import windll
-
-            PostMessageW_local = windll.user32.PostMessageW
+            PostMessageW_local = _user32.PostMessageW
             print(f" 使用PostMessage備用方法: VK_{vk_code}")
             result1 = PostMessageW_local(hwnd, WM_KEYDOWN, vk_code, 0)
             time.sleep(0.1)
