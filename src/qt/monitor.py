@@ -227,7 +227,10 @@ class MonitorTab(QWidget):
         self._app = app
 
         # 從 config 還原上次選取的遊戲視窗（視窗不存在也先回填，實際操作時才阻擋）
-        self.window_title = str(self._app.config.get("window_title", "") or "")
+        _saved_title = str(self._app.config.get("window_title", "") or "")
+        if _saved_title.startswith("__SMOKE_"):
+            _saved_title = ""  # 拋棄 smoke 測試污染，不暴露測試假視窗標題給使用者
+        self.window_title = _saved_title
         self.window_var = _VarShim(self)
         # 從 config 回復已框選區域（legacy list → dict 正規化），供預覽/測試擷取使用
         self.selected_region = normalize_region(self._app.config.get("region"))

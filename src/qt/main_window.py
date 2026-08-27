@@ -189,7 +189,10 @@ class MainWindow(FluentWindow):
         try:
             if hasattr(self, "monitor_tab"):
                 mt = self.monitor_tab
-                self.config["window_title"] = mt.window_title
+                if str(mt.window_title or "").startswith("__SMOKE_"):
+                    self.config.pop("window_title", None)  # 清掉 smoke 測試殘留的假視窗標題
+                else:
+                    self.config["window_title"] = mt.window_title
                 self.config["monitor_interval"] = mt.monitor_interval_ms / 1000.0
                 self.config["multiple_triggers"] = mt.multi_trigger
                 try:
