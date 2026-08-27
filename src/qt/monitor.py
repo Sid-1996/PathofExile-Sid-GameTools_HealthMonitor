@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import CheckBox, ComboBox, EditableComboBox, LineEdit, PrimaryPushButton, PushButton
 
 from capture_utils import capture_window_region_pil, save_screenshot
-from inventory_utils import normalize_region
+from inventory_utils import normalize_region, prop_to_region, region_to_prop
 from image_utils import (
     draw_health_indicator,
     draw_mana_indicator,
@@ -232,9 +232,11 @@ class MonitorTab(QWidget):
             _saved_title = ""  # 拋棄 smoke 測試污染，不暴露測試假視窗標題給使用者
         self.window_title = _saved_title
         self.window_var = _VarShim(self)
-        # 從 config 回復已框選區域（legacy list → dict 正規化），供預覽/測試擷取使用
-        self.selected_region = normalize_region(self._app.config.get("region"))
-        self.selected_mana_region = normalize_region(self._app.config.get("mana_region"))
+        # 從 config 回復已框選區域（v2 等比，無遷移）
+        self._region_prop = self._app.config.get("region_prop")
+        self._mana_region_prop = self._app.config.get("mana_region_prop")
+        self.selected_region = self._prop_to_cur(self._region_prop)
+        self.selected_mana_region = self._prop_to_cur(self._mana_region_prop)
         self.preview_size = (380, 280)
         self.monitor_interval_ms = int(self._app.config.get("monitor_interval", 0.1) * 1000)
         self.multi_trigger = bool(self._app.config.get("multiple_triggers", True))
@@ -255,6 +257,24 @@ class MonitorTab(QWidget):
         self._signals.health_placeholder.connect(self._on_health_placeholder)
         self._signals.mana_placeholder.connect(self._on_mana_placeholder)
         self._signals.preview_test_result.connect(self._on_preview_test_result)
+
+    def _get_cur_window_size(self):
+        try:
+            wins = gw.getWindowsWithTitle(self.window_title) if self.window_title else []
+            if wins:
+                return wins[0].width, wins[0].height
+        except Exception:
+            pass
+        return None
+
+    def _prop_to_cur(self, prop):
+        if not isinstance(prop, dict):
+            return None
+        sz = self._get_cur_window_size()
+        if sz is None:
+            return prop_to_region(prop, prop.get("base_w", 0), prop.get("base_h", 0))
+        cur_w, cur_h = sz
+        return prop_to_region(prop, cur_w, cur_h)
 
         self._build_ui()
         self.refresh_windows()
@@ -1027,15 +1047,33 @@ class MonitorTab(QWidget):
             QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text(error_key).format(error=str(e)))
 
     def _on_selection_done(self, region, is_mana):
+        # 存等比 prop（全新 v2，不存舊絕對）
+        cur_w = cur_h = None
+        try:
+            sz = self._get_cur_window_size()
+            if sz:
+                cur_w, cur_h = sz
+        except Exception:
+            pass
+        if cur_w and cur_h:
+            prop = region_to_prop(region, cur_w, cur_h)
+        else:
+            prop = region_to_prop(region, region["width"], region["height"])
         if is_mana:
             self.selected_mana_region = region
-            self._app.config["mana_region"] = region
+            self._mana_region_prop = prop
+            self._app.config["mana_region_prop"] = prop
+            self._app.config.pop("mana_region", None)
+            self._app.config["config_version"] = 2
             self.mana_region_label.setText(get_mana_region_text(self._app.config, self._app.get_text))
             self.mana_region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
             QTimer.singleShot(100, self.capture_mana_preview_async)
         else:
             self.selected_region = region
-            self._app.config["region"] = region
+            self._region_prop = prop
+            self._app.config["region_prop"] = prop
+            self._app.config.pop("region", None)
+            self._app.config["config_version"] = 2
             self.region_label.setText(get_region_text(self._app.config, self._app.get_text))
             self.region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
             QTimer.singleShot(100, self.capture_preview_async)

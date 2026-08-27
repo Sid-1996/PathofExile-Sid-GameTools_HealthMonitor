@@ -35,8 +35,20 @@ from typing import Dict, Optional
 import base64
 
 from image_utils import get_interface_ui_region_text
-from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
+from inventory_utils import (
+    calculate_inventory_grid_positions,
+    find_inventory_items,
+    normalize_region,
+    offset_to_prop,
+    points_to_prop,
+    prop_to_offset,
+    prop_to_points,
+    prop_to_region,
+    region_to_prop,
+    should_clear_inventory,
+)
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
+
 
 # ── ponytail: 參照 ocr-trigger 11_template_matching 的 base64 內聯與 TM_CCOEFF_NORMED 多尺度 ──
 def _img_to_b64(img_bgr: np.ndarray) -> str:
@@ -233,33 +245,124 @@ class InventoryTab(QWidget):
 
     # ────────────────────────── config ──────────────────────────
 
+    def _get_cur_window_size(self):
+        try:
+            title = self._app.monitor_tab.window_var.get() if hasattr(self._app, "monitor_tab") else None
+            if title:
+                wins = gw.getWindowsWithTitle(title)
+                if wins:
+                    return wins[0].width, wins[0].height
+        except Exception:
+            pass
+        return None
+
+    def _prop_to_cur(self, prop):
+        if prop is None:
+            return None
+        try:
+            sz = self._get_cur_window_size()
+            if sz is None:
+                # 無窗時暫用 base 尺寸換算（等比，以 base 為當前）
+                return prop_to_region(prop, prop.get("base_w", 0), prop.get("base_h", 0))
+            cur_w, cur_h = sz
+            return prop_to_region(prop, cur_w, cur_h)
+        except Exception:
+            return None
+
     def _load_config(self):
         cfg = self._app.config
-        self.inventory_region = normalize_region(cfg.get("inventory_region"))
+        # v2 等比：僅讀 prop，無 prop 即視為未設定（全新 JSON，不遷移舊絕對）
+        self._inventory_region_prop = cfg.get("inventory_region_prop")
+        self._inventory_ui_region_prop = cfg.get("inventory_ui_region_prop")
+        self._interface_ui_region_prop = cfg.get("interface_ui_region_prop")
+        self._pickup_prop = cfg.get("pickup_coordinates_prop")
+        self._grid_offset_prop = cfg.get("grid_offset_prop")
+        self.inventory_region = self._prop_to_cur(self._inventory_region_prop)
+        self.inventory_ui_region = self._prop_to_cur(self._inventory_ui_region_prop)
+        # 同步 MainWindow 的 interface_ui_region（v2 等比，舊絕對已棄）
+        try:
+            cur_if = self._prop_to_cur(self._interface_ui_region_prop)
+            if cur_if:
+                self._app.interface_ui_region = cur_if
+        except Exception:
+            pass
         self.empty_inventory_colors = [tuple(c) for c in cfg.get("empty_inventory_colors", [])]
-        self.grid_offset_x = cfg.get("grid_offset_x", 0)
-        self.grid_offset_y = cfg.get("grid_offset_y", 0)
+        # grid offset：prop → 當前絕對（無窗時以 base 為準）
+        if isinstance(self._grid_offset_prop, dict):
+            sz = self._get_cur_window_size()
+            if sz:
+                cur_w, cur_h = sz
+                self.grid_offset_x = prop_to_offset(self._grid_offset_prop.get("x_ratio", 0), cur_w)
+                self.grid_offset_y = prop_to_offset(self._grid_offset_prop.get("y_ratio", 0), cur_h)
+            else:
+                bw = self._grid_offset_prop.get("base_w", 0)
+                bh = self._grid_offset_prop.get("base_h", 0)
+                self.grid_offset_x = prop_to_offset(self._grid_offset_prop.get("x_ratio", 0), bw or 1000)
+                self.grid_offset_y = prop_to_offset(self._grid_offset_prop.get("y_ratio", 0), bh or 800)
+        else:
+            self.grid_offset_x = 0
+            self.grid_offset_y = 0
         self.excluded_inventory_slots = set(cfg.get("excluded_inventory_slots", []))
-        self.inventory_ui_region = normalize_region(cfg.get("inventory_ui_region"))
-        self.pickup_coordinates = cfg.get("pickup_coordinates")
+        # pickup：prop → 當前絕對
+        if isinstance(self._pickup_prop, list):
+            sz = self._get_cur_window_size()
+            if sz:
+                cur_w, cur_h = sz
+                self.pickup_coordinates = prop_to_points(self._pickup_prop, cur_w, cur_h)
+            else:
+                # 無窗時暫用 base 尺寸
+                base_w = self._pickup_prop[0][2] if self._pickup_prop and len(self._pickup_prop[0]) > 2 else 1000
+                base_h = self._pickup_prop[0][3] if self._pickup_prop and len(self._pickup_prop[0]) > 3 else 800
+                self.pickup_coordinates = prop_to_points(self._pickup_prop, base_w, base_h)
+        else:
+            self.pickup_coordinates = None
         self.clear_click_mode = cfg.get("inventory_clear_click_mode", "left")
-        positions = [tuple(p) for p in cfg.get("inventory_grid_positions", [])]
-        self.inventory_grid_positions = positions or calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
+        # grid 現算（不存絕對 positions，同比例自適應）
+        self.inventory_grid_positions = calculate_inventory_grid_positions(self.inventory_region, self.grid_offset_x, self.grid_offset_y)
 
     def _sync_inventory_config(self):
         """把背包相關狀態同步進 config 並排程即時儲存（移除儲存按鈕後的統一入口）。"""
         cfg = self._app.config
-        cfg["inventory_region"] = self.inventory_region
+        cfg["config_version"] = 2
+        # 僅存 prop，不存舊絕對與 grid_positions
+        # 需當前 window 尺寸作 base
+        cur_w = cur_h = None
+        try:
+            sz = self._get_cur_window_size()
+            if sz:
+                cur_w, cur_h = sz
+        except Exception:
+            pass
+        # 若無窗，沿用 prop 的 base
+        if cur_w is None and isinstance(self._inventory_region_prop, dict):
+            cur_w = self._inventory_region_prop.get("base_w", 1920)
+            cur_h = self._inventory_region_prop.get("base_h", 1080)
+        if self.inventory_region and cur_w and cur_h:
+            self._inventory_region_prop = region_to_prop(self.inventory_region, int(cur_w), int(cur_h))
+            cfg["inventory_region_prop"] = self._inventory_region_prop
+        if self.inventory_ui_region and cur_w and cur_h:
+            self._inventory_ui_region_prop = region_to_prop(self.inventory_ui_region, int(cur_w), int(cur_h))
+            cfg["inventory_ui_region_prop"] = self._inventory_ui_region_prop
+        try:
+            if getattr(self._app, "interface_ui_region", None) and cur_w and cur_h:
+                self._interface_ui_region_prop = region_to_prop(self._app.interface_ui_region, int(cur_w), int(cur_h))
+                cfg["interface_ui_region_prop"] = self._interface_ui_region_prop
+        except Exception:
+            pass
         cfg["empty_inventory_colors"] = self.empty_inventory_colors
-        cfg["inventory_grid_positions"] = [list(pos) for pos in self.inventory_grid_positions]
-        cfg["grid_offset_x"] = self.grid_offset_x
-        cfg["grid_offset_y"] = self.grid_offset_y
+        # grid offset 存比例
+        if cur_w and cur_h:
+            cfg["grid_offset_prop"] = {"x_ratio": offset_to_prop(self.grid_offset_x, int(cur_w)), "y_ratio": offset_to_prop(self.grid_offset_y, int(cur_h)), "base_w": int(cur_w), "base_h": int(cur_h)}
+            self._grid_offset_prop = cfg["grid_offset_prop"]
         cfg["excluded_inventory_slots"] = sorted(self.excluded_inventory_slots)
-        cfg["inventory_window_title"] = self._app.monitor_tab.window_var.get()
-        cfg["inventory_ui_region"] = self.inventory_ui_region
+        cfg["inventory_window_title"] = self._app.monitor_tab.window_var.get() if hasattr(self._app, "monitor_tab") else ""
         cfg["inventory_clear_click_mode"] = self.clear_click_mode
-        if self.pickup_coordinates is not None:
-            cfg["pickup_coordinates"] = self.pickup_coordinates
+        if self.pickup_coordinates is not None and cur_w and cur_h:
+            cfg["pickup_coordinates_prop"] = points_to_prop(self.pickup_coordinates, int(cur_w), int(cur_h))
+            self._pickup_prop = cfg["pickup_coordinates_prop"]
+        # 清理舊絕對鍵（全新 JSON，不保留）
+        for k in ("inventory_region", "inventory_ui_region", "interface_ui_region", "region", "mana_region", "inventory_grid_positions", "grid_offset_x", "grid_offset_y", "pickup_coordinates"):
+            cfg.pop(k, None)
         self._app.schedule_config_save()
 
     def refresh_config_display(self):

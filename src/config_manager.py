@@ -20,18 +20,66 @@ class ConfigManager:
         self.config = {}
 
     def load_config(self):
-        """載入設定檔案"""
+        """載入設定檔案（v2 等比座標，不遷移舊絕對版）"""
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
+                # 舊版檢測：無 config_version==2 且含舊絕對 ROI 鍵 → 視為 v1，備份後重置
+                if self.config.get("config_version") != 2:
+                    has_old = any(k in self.config for k in ("region", "mana_region", "inventory_region", "inventory_ui_region", "interface_ui_region"))
+                    if has_old:
+                        try:
+                            import shutil
+
+                            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            bak = f"{self.config_file}.backup_v1_{ts}"
+                            shutil.copy2(self.config_file, bak)
+                            print(f"[INFO] 舊設定已備份至 {bak}，將重置為等比座標新格式（需重截）")
+                        except Exception as e:
+                            print(f"[WARN] 舊設定備份失敗: {e}")
+                        # 保留非 ROI 的用戶偏好（語言、觸發、排除格等），其餘重置
+                        keep_keys = (
+                            "language",
+                            "settings",
+                            "excluded_inventory_slots",
+                            "inventory_clear_click_mode",
+                            "always_on_top",
+                            "preview_enabled",
+                            "preview_interval",
+                            "window_title",
+                            "last_selected_tab",
+                            "multi_trigger",
+                            "health_threshold",
+                            "red_h_range",
+                            "green_h_range",
+                            "red_saturation_min",
+                            "red_value_min",
+                            "green_saturation_min",
+                            "green_value_min",
+                            "interface_ui_mse_threshold",
+                            "interface_ui_ssim_threshold",
+                            "interface_ui_hist_threshold",
+                            "interface_ui_color_threshold",
+                        )
+                        kept = {k: v for k, v in self.config.items() if k in keep_keys}
+                        self.config = {"config_version": 2, **kept}
+                        # 立即寫回新格式，避免下次再觸發備份
+                        try:
+                            with open(self.config_file, "w", encoding="utf-8") as out:
+                                json.dump(self.config, out, indent=2, ensure_ascii=False)
+                        except Exception:
+                            pass
+                # 確保新檔含版本號
+                if "config_version" not in self.config:
+                    self.config["config_version"] = 2
                 return True
             else:
-                self.config = {}
+                self.config = {"config_version": 2}
                 return True
         except Exception as e:
             print(f"[ERROR] 載入設定檔案失敗: {e}")
-            self.config = {}
+            self.config = {"config_version": 2}
             return False
 
     def save_config(self, config_data=None):

@@ -160,9 +160,21 @@ def get_region_text(config, get_text=None):
     Returns:
         Formatted string or unset placeholder.
     """
-    if config and config.get("region"):
-        x, y, w, h = config["region"]
-        return f"x={x}, y={y}, w={w}, h={h}"
+    if config:
+        if config.get("region"):
+            x, y, w, h = config["region"]
+            return f"x={x}, y={y}, w={w}, h={h}"
+        # v2 等比：顯示 base 尺寸的等比座標
+        prop = config.get("region_prop")
+        if isinstance(prop, dict):
+            try:
+                x = int(round(prop["x_ratio"] * prop["base_w"]))
+                y = int(round(prop["y_ratio"] * prop["base_h"]))
+                w = int(round(prop["w_ratio"] * prop["base_w"]))
+                h = int(round(prop["h_ratio"] * prop["base_h"]))
+                return f"x={x}, y={y}, w={w}, h={h} (等比)"
+            except Exception:
+                pass
     return get_text("coordinate_not_set") if get_text else "未設定"
 
 
@@ -176,9 +188,20 @@ def get_mana_region_text(config, get_text=None):
     Returns:
         Formatted string or unset placeholder.
     """
-    if config and config.get("mana_region"):
-        x, y, w, h = config["mana_region"]
-        return f"x={x}, y={y}, w={w}, h={h}"
+    if config:
+        if config.get("mana_region"):
+            x, y, w, h = config["mana_region"]
+            return f"x={x}, y={y}, w={w}, h={h}"
+        prop = config.get("mana_region_prop")
+        if isinstance(prop, dict):
+            try:
+                x = int(round(prop["x_ratio"] * prop["base_w"]))
+                y = int(round(prop["y_ratio"] * prop["base_h"]))
+                w = int(round(prop["w_ratio"] * prop["base_w"]))
+                h = int(round(prop["h_ratio"] * prop["base_h"]))
+                return f"x={x}, y={y}, w={w}, h={h} (等比)"
+            except Exception:
+                pass
     return get_text("coordinate_not_set") if get_text else "未設定"
 
 
