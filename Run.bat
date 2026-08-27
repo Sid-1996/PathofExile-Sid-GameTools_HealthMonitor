@@ -9,14 +9,14 @@ echo [INFO] Starting GameTools Health Monitor...
 
 :: 1. Try EXE in same directory
 if exist "%~dp0GameTools_HealthMonitor.exe" (
-    start /WAIT "" "%~dp0GameTools_HealthMonitor.exe"
+    start /WAIT "" "%~dp0GameTools_HealthMonitor.exe" %*
     if errorlevel 1 echo [WARN] GameTools_HealthMonitor.exe exited with code %ERRORLEVEL%
     goto check_restart
 )
 
 :: 2. Try EXE in dist directory
 if exist "%~dp0dist\GameTools_HealthMonitor.exe" (
-    start /WAIT "" "%~dp0dist\GameTools_HealthMonitor.exe"
+    start /WAIT "" "%~dp0dist\GameTools_HealthMonitor.exe" %*
     if errorlevel 1 echo [WARN] dist\GameTools_HealthMonitor.exe exited with code %ERRORLEVEL%
     goto check_restart
 )
@@ -39,7 +39,7 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    python "%~dp0src\app.py"
+    python "%~dp0src\app.py" %*
     if errorlevel 1 echo [WARN] Script exited with code %ERRORLEVEL%
     goto check_restart
 )
@@ -59,7 +59,7 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    py -3.13 "%~dp0src\app.py"
+    py -3.13 "%~dp0src\app.py" %*
     if errorlevel 1 echo [WARN] Script exited with code %ERRORLEVEL%
     goto check_restart
 )

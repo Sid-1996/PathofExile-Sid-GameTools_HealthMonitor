@@ -6,6 +6,7 @@ Capture utility functions extracted from health_monitor.py.
 WGC 不可用（Win<1903 / 獨佔全螢幕 / 初始化失敗）時，自動降級 mss（僅在前景才正確）。
 """
 
+import logging
 import os
 import shutil
 import threading
@@ -18,6 +19,8 @@ import pygetwindow as gw
 
 from inventory_utils import normalize_region
 from utils import get_user_data_dir
+
+logger = logging.getLogger(__name__)
 
 try:
     import cv2
@@ -143,7 +146,7 @@ def _get_wgc_session(hwnd):
             session = _WgcWindowSession(hwnd)
             _wgc_sessions[hwnd] = session
         except Exception as e:
-            print(f"[WARN] WGC 初始化失敗，降級 mss: {e}")
+            logger.warning("WGC 初始化失敗，降級 mss: %s", e)
             return None
         session.wait_first_frame(WGC_FIRST_FRAME_WAIT)
         return session

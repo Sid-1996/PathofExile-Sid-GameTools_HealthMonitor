@@ -4,10 +4,13 @@
 """
 
 import json
+import logging
 import os
 import sys
 from datetime import datetime
 from utils import get_user_data_dir
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
@@ -30,7 +33,7 @@ class ConfigManager:
                 self.config = {}
                 return True
         except Exception as e:
-            print(f"[ERROR] 載入設定檔案失敗: {e}")
+            logger.error("載入設定檔案失敗: %s", e)
             self.config = {}
             return False
 
@@ -48,7 +51,7 @@ class ConfigManager:
 
                     shutil.copy2(self.config_file, backup_file)
                 except Exception as backup_error:
-                    print(f"[WARN] 創建備份失敗: {backup_error}")
+                    logger.warning("創建備份失敗: %s", backup_error)
 
             # 保存配置文件
             with open(self.config_file, "w", encoding="utf-8") as f:
@@ -56,7 +59,7 @@ class ConfigManager:
 
             return True
         except Exception as e:
-            print(f"[ERROR] 儲存設定檔案失敗: {e}")
+            logger.error("儲存設定檔案失敗: %s", e)
 
             # 嘗試從備份恢復
             backup_file = self.config_file + ".backup"
@@ -65,10 +68,10 @@ class ConfigManager:
                     import shutil
 
                     shutil.copy2(backup_file, self.config_file)
-                    print("[WARN] 已從備份恢復配置文件")
+                    logger.warning("已從備份恢復配置文件")
                     return False
                 except Exception as restore_error:
-                    print(f"[ERROR] 從備份恢復失敗: {restore_error}")
+                    logger.error("從備份恢復失敗: %s", restore_error)
                     return False
 
             return False
@@ -156,14 +159,14 @@ class ConfigManager:
 
             return True
         except Exception as e:
-            print(f"[ERROR] 備份設定檔案失敗: {e}")
+            logger.error("備份設定檔案失敗: %s", e)
             return False
 
     def restore_config(self, backup_file):
         """恢復設定檔案"""
         try:
             if not os.path.exists(backup_file):
-                print(f"[ERROR] 備份檔案不存在: {backup_file}")
+                logger.error("備份檔案不存在: %s", backup_file)
                 return False
 
             with open(backup_file, "r", encoding="utf-8") as src:
@@ -175,7 +178,7 @@ class ConfigManager:
 
             return True
         except Exception as e:
-            print(f"[ERROR] 恢復設定檔案失敗: {e}")
+            logger.error("恢復設定檔案失敗: %s", e)
             return False
 
 

@@ -3,6 +3,7 @@
 對應 tk 版 `tab_inventory.py`。worker thread 的 UI 更新一律走 Signal（延續 MonitorTab/StatusTab 模式）。
 """
 
+import logging
 import threading
 import time
 
@@ -37,6 +38,8 @@ import base64
 from image_utils import get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
+
+logger = logging.getLogger(__name__)
 
 
 # ── ponytail: 參照 ocr-trigger 11_template_matching 的 base64 內聯與 TM_CCOEFF_NORMED 多尺度 ──
@@ -876,7 +879,7 @@ class InventoryTab(QWidget):
             _, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, region, self.excluded_inventory_slots)
             self.update_inventory_preview_with_items(img, occupied_slots)
         except Exception as e:
-            print(f"重新獲取預覽失敗: {e}")
+            logger.error("重新獲取預覽失敗: %s", e)
 
     def update_inventory_preview_with_items(self, img, occupied_slots):
         """繪製網格/佔用標記/排除疊加層並縮放顯示到預覽標籤（對應 tk 版）。"""
@@ -950,7 +953,7 @@ class InventoryTab(QWidget):
             self.occupied_slots_cache = set(occupied_slots)
             self.occupied_label.setText(self._app.get_text("slots_count").format(count=occupied_count))
         except Exception as e:
-            print(f"更新預覽失敗: {e}")
+            logger.error("更新預覽失敗: %s", e)
 
     def _draw_exclusion_overlay(self, img, width, height):
         rows, cols = 5, 12
@@ -1067,7 +1070,7 @@ class InventoryTab(QWidget):
             self._preview_has_image = True
             self.occupied_label.setText(self._app.get_text("slots_count").format(count=len(occupied_slots)))
         except Exception as e:
-            print(f"更新進度預覽失敗: {e}")
+            logger.error("更新進度預覽失敗: %s", e)
 
     # ────────────────────────── UI / 介面UI 預覽 ──────────────────────────
 
@@ -1143,7 +1146,7 @@ class InventoryTab(QWidget):
     def return_to_hideout(self):
         """F5 返回藏身處（送出 /hideout 指令）"""
         if self._app.is_global_pause():
-            print("[STOP] 全域暫停中，跳過 F5 熱鍵")
+            logger.info("全域暫停中，跳過 F5 熱鍵")
             self._app.add_status_message(self._app.get_text("f5_skip_global_pause"), "warning")
             return
 
@@ -1152,17 +1155,17 @@ class InventoryTab(QWidget):
         try:
             window_title = self._app.monitor_tab.window_var.get()
             if not window_title:
-                print("F5: 未設定遊戲視窗，無法使用返回藏身處")
+                logger.warning("F5: 未設定遊戲視窗，無法使用返回藏身處")
                 self._app.add_status_message(self._app.get_text("f5_fail_game_window_not_set"), "error")
                 return
 
             if not self._app.window_key_sender.is_game_window_foreground(window_title):
-                print(f"F5: 遊戲視窗 '{window_title}' 不在前景，取消返回藏身處操作")
+                logger.warning("F5: 遊戲視窗 '%s' 不在前景，取消返回藏身處操作", window_title)
                 self._app.add_status_message(self._app.get_text("f5_cancel_game_window_not_foreground"), "warning")
                 return
 
             self._app.add_status_message(self._app.get_text("f5_processing_return_to_hideout"), "info")
-            print("F5: 執行返回藏身處")
+            logger.info("F5: 執行返回藏身處")
 
             import pyperclip
 
@@ -1173,15 +1176,15 @@ class InventoryTab(QWidget):
             time.sleep(0.025)
             pyautogui.press("enter")
 
-            print("F5: 返回藏身處指令已送出")
+            logger.info("F5: 返回藏身處指令已送出")
             self._app.add_status_message(self._app.get_text("f5_success_hide_command_sent"), "success")
         except Exception as e:
-            print(f"F5: 返回藏身處失敗: {str(e)}")
+            logger.error("F5: 返回藏身處失敗: %s", e)
             self._app.add_status_message(self._app.get_text("f5_fail_with_error").format(error=str(e)), "error")
 
     def _validate_f3(self):
         if self._app.is_global_pause():
-            print("[STOP] 全域暫停中，跳過F3熱鍵")
+            logger.info("全域暫停中，跳過F3熱鍵")
             self._app.add_status_message(self._app.get_text("f3_skip_global_pause"), "warning")
             return None
         self._app.inventory_clear_interrupt = False
@@ -1204,7 +1207,7 @@ class InventoryTab(QWidget):
     def _capture_and_prepare_f3_gui(self, window_title):
         if not self._app.window_key_sender.is_game_window_foreground(window_title):
             self._app.add_status_message(self._app.get_text("f3_cancel_game_not_foreground"), "warning")
-            print(f"F3: 遊戲視窗 '{window_title}' 不在前台，將嘗試激活")
+            logger.warning("F3: 遊戲視窗 '%s' 不在前台，將嘗試激活", window_title)
         win = self.window()
         gui_was_visible = not win.isMinimized() and not win.isHidden()
         gui_was_foreground = False
@@ -1216,14 +1219,19 @@ class InventoryTab(QWidget):
                 gui_was_foreground = win32gui.GetForegroundWindow() == win.winId()
             except Exception:
                 gui_was_foreground = False
-        print(f"F3: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
+        logger.debug(
+            "F3: GUI視窗狀態 - 原本%s，%s，%s",
+            "顯示" if gui_was_visible else "最小化",
+            "在前台" if gui_was_foreground else "在後台",
+            "保持在最上方" if gui_was_topmost else "不保持在最上方",
+        )
         if gui_was_foreground or gui_was_topmost:
             if gui_was_topmost:
                 win.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
                 win.show()
-                print("F3: 已取消 GUI 置頂設定")
+                logger.info("F3: 已取消 GUI 置頂設定")
             win.lower()
-            print("F3: 已將 GUI 移到後台")
+            logger.info("F3: 已將 GUI 移到後台")
         self._hide_setting_windows()
         return gui_was_foreground, gui_was_topmost
 
@@ -1235,9 +1243,9 @@ class InventoryTab(QWidget):
                 t = str(w.windowTitle())
                 if "F3" in t or "F6" in t or "清包" in t or "設定" in t or "setup" in t.lower():
                     w.hide()
-                    print(f"F3/F6: 隱藏設定視窗: {t}")
+                    logger.debug("F3/F6: 隱藏設定視窗: %s", t)
         except Exception as e:
-            print(f"隱藏設定視窗時發生錯誤: {e}")
+            logger.error("隱藏設定視窗時發生錯誤: %s", e)
 
     def quick_clear_inventory(self):
         window_title = self._validate_f3()
@@ -1252,26 +1260,26 @@ class InventoryTab(QWidget):
                     self._app.add_status_message(self._app.get_text("f3_fail_game_window_not_found"), "error")
                     return
                 game_window = windows[0]
-                print(f"F3(worker): 找到遊戲視窗: {game_window.title}")
+                logger.info("F3(worker): 找到遊戲視窗: %s", game_window.title)
                 try:
                     game_window.activate()
                     time.sleep(0.5)
                 except Exception as e:
-                    print(f"F3(worker): 激活遊戲視窗失敗: {e}")
+                    logger.error("F3(worker): 激活遊戲視窗失敗: %s", e)
                 if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
-                    print("F3(worker): 警告 - 遊戲視窗可能未在前台")
+                    logger.warning("F3(worker): 警告 - 遊戲視窗可能未在前台")
                     try:
                         pyautogui.click(game_window.left + game_window.width // 2, game_window.top + game_window.height // 2)
                         time.sleep(0.2)
                     except Exception:
                         pass
                 if not self.is_inventory_ui_visible(game_window):
-                    print("F3(worker): 背包UI未開啟，跳過清包操作")
+                    logger.warning("F3(worker): 背包UI未開啟，跳過清包操作")
                     self._app.add_status_message(self._app.get_text("f3_cancel_inventory_not_open"), "warning")
                     return
                 self._execute_f3_clear(game_window, window_title_local)
             except Exception as e:
-                print(f"F3(worker): 發生例外: {e}")
+                logger.error("F3(worker): 發生例外: %s", e)
                 self._app.add_status_message(self._app.get_text("f3_fail_with_error").format(error=str(e)), "error")
             finally:
                 self._app.inventory_clear_interrupt = False
@@ -1288,11 +1296,11 @@ class InventoryTab(QWidget):
                 if gui_was_topmost_local:
                     self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
                     self.window().show()
-                    print("F3(worker): 已恢復 GUI 到前台並重新置頂")
+                    logger.info("F3(worker): 已恢復 GUI 到前台並重新置頂")
                 else:
-                    print("F3(worker): 已恢復 GUI 到前台")
+                    logger.info("F3(worker): 已恢復 GUI 到前台")
             except Exception as e:
-                print(f"F3(worker): 恢復 GUI 失敗: {e}")
+                logger.error("F3(worker): 恢復 GUI 失敗: %s", e)
 
     def _execute_f3_clear(self, game_window, window_title_local):
         if not self.inventory_region or not self.inventory_grid_positions:
@@ -1311,29 +1319,29 @@ class InventoryTab(QWidget):
         needs_clearing, occupied_slots = should_clear_inventory(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots)
         if needs_clearing:
             self._app.add_status_message(self._app.get_text("f3_processing_items_detected").format(count=len(occupied_slots)), "info")
-            print(f"F3(worker): 檢測到 {len(occupied_slots)} 個格子有物品，正在清空...")
+            logger.info("F3(worker): 檢測到 %s 個格子有物品，正在清空...", len(occupied_slots))
             self.clear_inventory_item(game_window, img)
             if self._app.inventory_clear_interrupt:
                 self._app.add_status_message(self._app.get_text("f3_cancel_user_interrupt"), "warning")
-                print("F3(worker): 清包被中斷")
+                logger.info("F3(worker): 清包被中斷")
             else:
                 self._app.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success")
-                print("F3(worker): 已清空背包物品")
+                logger.info("F3(worker): 已清空背包物品")
         else:
             self._app.add_status_message(self._app.get_text("f3_completed_inventory_cleared"), "success")
-            print("F3(worker): 背包已淨空，無需操作")
+            logger.info("F3(worker): 背包已淨空，無需操作")
 
     def clear_inventory_item(self, game_window, img):
         """清空背包物品 - 動態辨識版（對應 tk 版）。"""
         if not self.inventory_region or not self.inventory_grid_positions:
             return
         try:
-            print("階段1：開始初始識別，創建清包列表")
+            logger.info("階段1：開始初始識別，創建清包列表")
             initial_item_positions = find_inventory_items(img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
             if not initial_item_positions:
-                print("沒有找到需要清空的物品")
+                logger.info("沒有找到需要清空的物品")
                 return
-            print(f"找到 {len(initial_item_positions)} 個物品位置，開始動態清包")
+            logger.info("找到 %s 個物品位置，開始動態清包", len(initial_item_positions))
 
             monitor = {
                 "top": game_window.top + self.inventory_region["y"],
@@ -1346,13 +1354,13 @@ class InventoryTab(QWidget):
             max_iterations = 40
             skipped_positions = set()
 
-            print("開始動態清包模式 - 持續按住 Ctrl 鍵")
+            logger.info("開始動態清包模式 - 持續按住 Ctrl 鍵")
             pyautogui.keyDown("ctrl")
             time.sleep(0.025)
 
             while total_processed < max_iterations:
                 if self._app.inventory_clear_interrupt:
-                    print("F3清包被用戶中斷")
+                    logger.info("F3清包被用戶中斷")
                     break
                 try:
                     center_x = game_window.left + game_window.width // 2
@@ -1371,13 +1379,13 @@ class InventoryTab(QWidget):
 
                     progress_text = self._app.get_text("inventory_clear_dynamic_progress").format(count=total_processed)
                     self._signals.progress_update.emit(current_img, current_occupied, progress_text)
-                    print(f"辨識結果：剩餘 {len(current_occupied)} 個物品需要清理")
+                    logger.debug("辨識結果：剩餘 %s 個物品需要清理", len(current_occupied))
 
                     if not should_continue:
-                        print(f"背包已清空，結束動態清包 (總共處理了 {total_processed} 個道具)")
+                        logger.info("背包已清空，結束動態清包 (總共處理了 %s 個道具)", total_processed)
                         break
                 except Exception as e:
-                    print(f"辨識過程發生錯誤: {e}")
+                    logger.error("辨識過程發生錯誤: %s", e)
                     break
 
                 current_item_positions = find_inventory_items(current_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
@@ -1385,10 +1393,10 @@ class InventoryTab(QWidget):
 
                 if not available_positions:
                     if skipped_positions:
-                        print(f" 所有剩餘物品都無法存放進倉庫（已跳過 {len(skipped_positions)} 個位置）")
+                        logger.warning("所有剩餘物品都無法存放進倉庫（已跳過 %s 個位置）", len(skipped_positions))
                         self._app.add_status_message(self._app.get_text("inventory_full_cannot_continue"), "warning")
                     else:
-                        print("重新辨識發現沒有需要清理的物品，結束")
+                        logger.info("重新辨識發現沒有需要清理的物品，結束")
                     break
 
                 next_pos = available_positions[0]
@@ -1401,23 +1409,23 @@ class InventoryTab(QWidget):
                         slot_index = idx
                         break
 
-                print(f"準備點擊第 {total_processed + 1} 個物品 - 格子索引 {slot_index}, 螢幕坐標 ({screen_x}, {screen_y})")
+                logger.debug("準備點擊第 %s 個物品 - 格子索引 %s, 螢幕坐標 (%s, %s)", total_processed + 1, slot_index, screen_x, screen_y)
 
                 pyautogui.moveTo(screen_x, screen_y, duration=0.015)
                 time.sleep(0.025)
                 if self.clear_click_mode == "left":
                     pyautogui.click(screen_x, screen_y)
-                    print(f"[OK] 已完成左鍵點擊第 {total_processed + 1} 個道具")
+                    logger.debug("已完成左鍵點擊第 %s 個道具", total_processed + 1)
                 else:
                     pyautogui.rightClick(screen_x, screen_y)
-                    print(f"[OK] 已完成右鍵點擊第 {total_processed + 1} 個道具")
+                    logger.debug("已完成右鍵點擊第 %s 個道具", total_processed + 1)
                 time.sleep(0.025)
                 total_processed += 1
 
                 center_x = game_window.left + game_window.width // 2
                 center_y = game_window.top + game_window.height // 2
                 pyautogui.moveTo(center_x, center_y, duration=0.015)
-                print(f"滑鼠已移動到遊戲視窗正中央 ({center_x}, {center_y})")
+                logger.debug("滑鼠已移動到遊戲視窗正中央 (%s, %s)", center_x, center_y)
 
                 time.sleep(0.015)
 
@@ -1436,29 +1444,29 @@ class InventoryTab(QWidget):
 
                     if next_pos in check_item_positions:
                         skipped_positions.add(next_pos)
-                        print(f"[WARN] 物品位置 {next_pos} 無法清空，已加入跳過列表 (跳過總數: {len(skipped_positions)})")
+                        logger.warning("物品位置 %s 無法清空，已加入跳過列表 (跳過總數: %s)", next_pos, len(skipped_positions))
                         total_processed -= 1
                     else:
-                        print(f"[OK] 物品位置 {next_pos} 已成功清空")
+                        logger.debug("物品位置 %s 已成功清空", next_pos)
                 except Exception as e:
-                    print(f"檢查物品清空狀態時發生錯誤: {e}")
+                    logger.error("檢查物品清空狀態時發生錯誤: %s", e)
 
-            print("釋放 Ctrl 鍵")
+            logger.info("釋放 Ctrl 鍵")
             pyautogui.keyUp("ctrl")
             time.sleep(0.025)
 
             total_processed = self._perform_final_retry(game_window, monitor, total_processed, max_iterations)
         except Exception as e:
-            print(f"清空物品失敗: {e}")
+            logger.error("清空物品失敗: %s", e)
         finally:
             try:
                 pyautogui.keyUp("ctrl")
-                print("確保CTRL鍵已釋放")
+                logger.debug("確保CTRL鍵已釋放")
             except Exception as e:
-                print(f"釋放CTRL鍵時發生錯誤: {e}")
+                logger.error("釋放CTRL鍵時發生錯誤: %s", e)
 
     def _perform_final_retry(self, game_window, monitor, total_processed, max_iterations):
-        print("階段3：最終確認和重試邏輯")
+        logger.info("階段3：最終確認和重試邏輯")
         try:
             center_x = game_window.left + game_window.width // 2
             center_y = game_window.top + game_window.height // 2
@@ -1471,13 +1479,13 @@ class InventoryTab(QWidget):
             final_should_clear, final_occupied = should_clear_inventory(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
             final_progress_text = self._app.get_text("inventory_clear_done").format(count=total_processed)
             self._signals.progress_update.emit(final_img, final_occupied, final_progress_text)
-            print(f"最終確認：清包完成 {total_processed} 個道具，剩餘: {len(final_occupied)} 個")
+            logger.info("最終確認：清包完成 %s 個道具，剩餘: %s 個", total_processed, len(final_occupied))
             if final_should_clear and total_processed < max_iterations:
-                print("檢測到還有剩餘物品，執行最終重試")
+                logger.info("檢測到還有剩餘物品，執行最終重試")
                 self._app.add_status_message(self._app.get_text("f3_retry_final"), "info")
                 retry_item_positions = find_inventory_items(final_img, self.empty_inventory_colors, self.inventory_grid_positions, self.inventory_region, self.excluded_inventory_slots, -1)
                 if retry_item_positions:
-                    print(f"重試：找到 {len(retry_item_positions)} 個剩餘物品")
+                    logger.info("重試：找到 %s 個剩餘物品", len(retry_item_positions))
                     retry_tasks = []
                     for pos in retry_item_positions:
                         screen_x = game_window.left + pos[0]
@@ -1489,7 +1497,7 @@ class InventoryTab(QWidget):
                                 break
                         if slot_index is not None:
                             retry_tasks.append((screen_x, screen_y, slot_index))
-                    print(f"重試：已創建重試任務列表，包含 {len(retry_tasks)} 個任務")
+                    logger.debug("重試：已創建重試任務列表，包含 %s 個任務", len(retry_tasks))
                     pyautogui.keyDown("ctrl")
                     time.sleep(0.025)
                     retry_processed = 0
@@ -1497,17 +1505,17 @@ class InventoryTab(QWidget):
                         if self._app.inventory_clear_interrupt:
                             break
                         screen_x, screen_y, slot_index = task
-                        print(f"重試處理第 {retry_processed + 1} 個剩餘物品，位置: ({screen_x}, {screen_y})")
+                        logger.debug("重試處理第 %s 個剩餘物品，位置: (%s, %s)", retry_processed + 1, screen_x, screen_y)
                         pyautogui.moveTo(screen_x, screen_y, duration=0.015)
                         time.sleep(0.025)
                         pyautogui.rightClick(screen_x, screen_y)
                         time.sleep(0.025)
-                        print(f"已執行右鍵點擊重試第 {retry_processed + 1} 個道具 (包含正確的延遲)")
+                        logger.debug("已執行右鍵點擊重試第 %s 個道具 (包含正確的延遲)", retry_processed + 1)
                         retry_processed += 1
                         total_processed += 1
                     pyautogui.keyUp("ctrl")
                     time.sleep(0.025)
-                    print(f"重試完成，已額外處理 {retry_processed} 個剩餘物品")
+                    logger.info("重試完成，已額外處理 %s 個剩餘物品", retry_processed)
                     center_x = game_window.left + game_window.width // 2
                     center_y = game_window.top + game_window.height // 2
                     pyautogui.moveTo(center_x, center_y, duration=0.015)
@@ -1521,10 +1529,10 @@ class InventoryTab(QWidget):
                     )
                     final_progress_text = self._app.get_text("inventory_clear_done_retry").format(count=total_processed)
                     self._signals.progress_update.emit(retry_final_img, retry_final_occupied, final_progress_text)
-                    print(f"重試最終確認：總共處理 {total_processed} 個道具，剩餘: {len(retry_final_occupied)} 個")
+                    logger.info("重試最終確認：總共處理 %s 個道具，剩餘: %s 個", total_processed, len(retry_final_occupied))
         except Exception as e:
-            print(f"最終確認過程發生錯誤: {e}")
-        print(f"F3: 優化清包完成，已清空 {total_processed} 個背包物品")
+            logger.error("最終確認過程發生錯誤: %s", e)
+        logger.info("F3: 優化清包完成，已清空 %s 個背包物品", total_processed)
         return total_processed
 
     # ────────────────────────── 清包測試（Phase 5c） ──────────────────────────
@@ -1553,7 +1561,7 @@ class InventoryTab(QWidget):
             overlap_ratio = overlap_area / inventory_area if inventory_area > 0 else 0
             return overlap_ratio > 0.1
         except Exception as e:
-            print(f"檢查GUI重疊時發生錯誤: {e}")
+            logger.error("檢查GUI重疊時發生錯誤: %s", e)
             return False
 
     def check_gui_overlap_with_inventory_ui(self, game_window):
@@ -1580,7 +1588,7 @@ class InventoryTab(QWidget):
             overlap_ratio = overlap_area / ui_area if ui_area > 0 else 0
             return overlap_ratio > 0.05
         except Exception as e:
-            print(f"檢查GUI與背包UI重疊時發生錯誤: {e}")
+            logger.error("檢查GUI與背包UI重疊時發生錯誤: %s", e)
             return False
 
     def _disable_topmost_for_test(self):
@@ -1588,7 +1596,7 @@ class InventoryTab(QWidget):
             self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
             self.window().lower()
             self.window().show()
-            print("已暫時移除 GUI 置頂設定並將 GUI 移到後台")
+            logger.info("已暫時移除 GUI 置頂設定並將 GUI 移到後台")
             return True
         return False
 
@@ -1601,19 +1609,19 @@ class InventoryTab(QWidget):
             elif original_geometry:
                 win.setGeometry(original_geometry)
             time.sleep(0.2)
-            print("GUI已恢復")
+            logger.info("GUI已恢復")
         self.update_inventory_preview_with_items(img, occupied_slots)
         if not gui_minimized_for_test:
             try:
                 win.raise_()
                 win.activateWindow()
-                print("已重新激活GUI視窗，用戶可以查看背包預覽")
+                logger.info("已重新激活GUI視窗，用戶可以查看背包預覽")
             except Exception:
                 pass
         if gui_was_topmost:
             win.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             win.show()
-            print("已恢復 GUI 置頂設定")
+            logger.info("已恢復 GUI 置頂設定")
         status_key = "test_clear_inventory_needs_clear" if should_clear else "test_clear_inventory_empty"
         result_msg = self._app.get_text("test_clear_inventory_status").format(status=self._app.get_text(status_key))
         result_msg += self._app.get_text("test_clear_inventory_occupied_slots").format(count=len(occupied_slots))
@@ -1635,28 +1643,28 @@ class InventoryTab(QWidget):
         if self._app.always_on_top:
             if self.inventory_ui_region and self.check_gui_overlap_with_inventory_ui(game_window):
                 needs_gui_minimize = True
-                print("檢測到GUI可能遮擋背包UI檢測區域")
+                logger.info("檢測到GUI可能遮擋背包UI檢測區域")
             if self.check_gui_overlap_with_inventory(game_window):
                 needs_gui_minimize = True
-                print("檢測到GUI可能遮擋背包區域")
+                logger.info("檢測到GUI可能遮擋背包區域")
         else:
-            print("GUI未設定為永遠保持在最上方，跳過遮擋檢查")
+            logger.info("GUI未設定為永遠保持在最上方，跳過遮擋檢查")
         if needs_gui_minimize:
-            print("正在縮小GUI以避免遮擋...")
+            logger.info("正在縮小GUI以避免遮擋...")
             original_state = "zoomed" if self.window().isMaximized() else "normal"
             original_geometry = self.window().geometry()
             self.window().showMinimized()
             time.sleep(0.2)
             gui_minimized_for_test = True
-            print("GUI已縮小")
+            logger.info("GUI已縮小")
             return gui_minimized_for_test, original_state, original_geometry
         return gui_minimized_for_test, None, None
 
     def _open_inventory_if_needed(self, game_window):
         inventory_ui_exists = self.check_inventory_ui_exists(game_window)
-        print(f"背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
+        logger.info("背包UI狀態: %s", "存在" if inventory_ui_exists else "不存在")
         if not inventory_ui_exists:
-            print("背包未開啟，正在自動開啟...")
+            logger.info("背包未開啟，正在自動開啟...")
             try:
                 game_window.activate()
                 time.sleep(0.2)
@@ -1665,12 +1673,12 @@ class InventoryTab(QWidget):
                 time.sleep(0.2)
             pyautogui.press("i")
             time.sleep(0.8)
-            print("已發送 I 鍵開啟背包")
+            logger.info("已發送 I 鍵開啟背包")
             if self.inventory_ui_region:
                 inventory_ui_exists = self.check_inventory_ui_exists(game_window)
-                print(f"開啟後背包UI狀態: {'存在' if inventory_ui_exists else '不存在'}")
+                logger.info("開啟後背包UI狀態: %s", "存在" if inventory_ui_exists else "不存在")
                 if not inventory_ui_exists:
-                    print("警告: 背包可能未正確開啟，但繼續執行")
+                    logger.warning("背包可能未正確開啟，但繼續執行")
         return inventory_ui_exists
 
     def test_inventory_clearing(self):
@@ -1699,21 +1707,21 @@ class InventoryTab(QWidget):
                 QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
             game_window = windows[0]
-            print(f"找到遊戲視窗: {game_window.title}")
+            logger.info("找到遊戲視窗: %s", game_window.title)
             gui_was_topmost = self._disable_topmost_for_test()
             gui_minimized_for_test, original_state, original_geometry = self._minimize_gui_for_test_if_needed(game_window)
             try:
                 game_window.activate()
                 time.sleep(0.2)
-                print("遊戲視窗已激活")
+                logger.info("遊戲視窗已激活")
             except Exception as e:
-                print(f"激活遊戲視窗失敗: {e}")
+                logger.error("激活遊戲視窗失敗: %s", e)
                 try:
                     pyautogui.click(game_window.left + game_window.width // 2, game_window.top + game_window.height // 2)
                     time.sleep(0.2)
-                    print("已嘗試點擊遊戲視窗")
+                    logger.info("已嘗試點擊遊戲視窗")
                 except Exception as e2:
-                    print(f"點擊遊戲視窗也失敗: {e2}")
+                    logger.error("點擊遊戲視窗也失敗: %s", e2)
             self._open_inventory_if_needed(game_window)
             monitor = {
                 "top": game_window.top + self.inventory_region["y"],
@@ -1738,17 +1746,17 @@ class InventoryTab(QWidget):
 
     def _validate_f6(self):
         if self._app.is_global_pause():
-            print("[STOP] 全域暫停中，跳過F6熱鍵")
+            logger.info("全域暫停中，跳過F6熱鍵")
             self._app.add_status_message(self._app.get_text("f6_skip_global_pause"), "warning")
             return None
         self._app.add_status_message(self._app.get_text("f6_hotkey_pressed"), "hotkey")
-        print("=== F6取物功能被調用（非阻塞版） ===")
+        logger.info("=== F6取物功能被調用（非阻塞版） ===")
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
-            print("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
+            logger.warning("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
             self._app.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error")
             return None
-        print(f"F6: 遊戲視窗已設定為: {window_title}")
+        logger.info("F6: 遊戲視窗已設定為: %s", window_title)
         return window_title
 
     def _capture_and_prepare_f6_gui(self):
@@ -1763,20 +1771,25 @@ class InventoryTab(QWidget):
                 gui_was_foreground = win32gui.GetForegroundWindow() == win.winId()
             except Exception:
                 gui_was_foreground = False
-        print(f"F6: GUI視窗狀態 - 原本{'顯示' if gui_was_visible else '最小化'}，{'在前台' if gui_was_foreground else '在後台'}，{'保持在最上方' if gui_was_topmost else '不保持在最上方'}")
+        logger.debug(
+            "F6: GUI視窗狀態 - 原本%s，%s，%s",
+            "顯示" if gui_was_visible else "最小化",
+            "在前台" if gui_was_foreground else "在後台",
+            "保持在最上方" if gui_was_topmost else "不保持在最上方",
+        )
         if gui_was_foreground or gui_was_topmost:
             if gui_was_topmost:
                 win.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
                 win.show()
-                print("F6: 已取消 GUI 置頂設定")
+                logger.info("F6: 已取消 GUI 置頂設定")
             win.lower()
-            print("F6: 已將 GUI 移到後台")
+            logger.info("F6: 已將 GUI 移到後台")
         self._hide_setting_windows()
         return gui_was_foreground, gui_was_topmost
 
     def _execute_f6_pickup(self, game_window, valid_coords_local):
         self._app.add_status_message(self._app.get_text("f6_processing_inventory_ui_check_passed"), "info")
-        print(f"F6(worker): 開始執行取物，共 {len(valid_coords_local)} 個座標")
+        logger.info("F6(worker): 開始執行取物，共 %s 個座標", len(valid_coords_local))
         try:
             original_pos = pyautogui.position()
         except Exception:
@@ -1785,17 +1798,17 @@ class InventoryTab(QWidget):
             pyautogui.keyDown("ctrl")
             time.sleep(0.05)
         except Exception as e:
-            print(f"F6(worker): 按鍵Down失敗: {e}")
+            logger.error("F6(worker): 按鍵Down失敗: %s", e)
         try:
             for i, (rel_x, rel_y) in enumerate(valid_coords_local):
                 abs_x = game_window.left + rel_x
                 abs_y = game_window.top + rel_y
-                print(f"F6(worker): 處理座標 {i + 1}/{len(valid_coords_local)} -> ({abs_x},{abs_y})")
+                logger.debug("F6(worker): 處理座標 %s/%s -> (%s,%s)", i + 1, len(valid_coords_local), abs_x, abs_y)
                 pyautogui.moveTo(abs_x, abs_y, duration=0.05)
                 time.sleep(0.05)
                 pyautogui.click()
                 time.sleep(0.05)
-            print("F6(worker): 取物完成")
+            logger.info("F6(worker): 取物完成")
             self._app.add_status_message(self._app.get_text("f6_completed_coordinates_processed").format(count=len(valid_coords_local)), "success")
             if original_pos:
                 try:
@@ -1816,11 +1829,11 @@ class InventoryTab(QWidget):
                 if gui_was_topmost_local:
                     self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
                     self.window().show()
-                    print("F6(worker): 已恢復 GUI 到前台並重新置頂")
+                    logger.info("F6(worker): 已恢復 GUI 到前台並重新置頂")
                 else:
-                    print("F6(worker): 已恢復 GUI 到前台")
+                    logger.info("F6(worker): 已恢復 GUI 到前台")
             except Exception as e:
-                print(f"F6(worker): 恢復 GUI 失敗: {e}")
+                logger.error("F6(worker): 恢復 GUI 失敗: %s", e)
 
     def f6_pickup_items(self):
         window_title = self._validate_f6()
@@ -1837,9 +1850,9 @@ class InventoryTab(QWidget):
                     if t not in seen:
                         valid_coords.append((x, y))
                         seen.add(t)
-        print(f"F6: 有效取物座標 {len(valid_coords)} 個")
+        logger.debug("F6: 有效取物座標 %s 個", len(valid_coords))
         if not valid_coords:
-            print("F6: 無有效座標，跳過背景執行")
+            logger.info("F6: 無有效座標，跳過背景執行")
             self._app.add_status_message(self._app.get_text("f6_no_valid_coordinates"), "warning")
             return
 
@@ -1847,25 +1860,25 @@ class InventoryTab(QWidget):
             try:
                 windows = gw.getWindowsWithTitle(window_title_local)
                 if not windows:
-                    print("F6(worker): 找不到遊戲視窗")
+                    logger.warning("F6(worker): 找不到遊戲視窗")
                     self._app.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error")
                     return
                 game_window = windows[0]
-                print(f"F6(worker): 找到遊戲視窗: {game_window.title}")
+                logger.info("F6(worker): 找到遊戲視窗: %s", game_window.title)
                 try:
                     game_window.activate()
                     time.sleep(0.5)
                 except Exception as e:
-                    print(f"F6(worker): 激活遊戲視窗失敗: {e}")
+                    logger.error("F6(worker): 激活遊戲視窗失敗: %s", e)
                 if not self._app.window_key_sender.is_game_window_foreground(window_title_local):
-                    print("F6(worker): 警告 - 遊戲視窗可能未在前台")
+                    logger.warning("F6(worker): 警告 - 遊戲視窗可能未在前台")
                 if not self.is_inventory_ui_visible(game_window):
-                    print("F6(worker): 背包UI未打開，無法執行取物功能")
+                    logger.warning("F6(worker): 背包UI未打開，無法執行取物功能")
                     self._app.add_status_message(self._app.get_text("f6_cancel_inventory_ui_not_open"), "warning")
                     return
                 self._execute_f6_pickup(game_window, valid_coords_local)
             except Exception as e:
-                print(f"F6(worker): 發生例外: {e}")
+                logger.error("F6(worker): 發生例外: %s", e)
                 self._app.add_status_message(self._app.get_text("f6_fail_with_error").format(error=str(e)), "error")
                 try:
                     pyautogui.keyUp("ctrl")
@@ -1914,7 +1927,7 @@ class InventoryTab(QWidget):
             def on_esc_press():
                 nonlocal cancel_setup
                 cancel_setup = True
-                print("[ERROR] 用戶按下ESC，取消設定")
+                logger.info("用戶按下ESC，取消設定")
 
             keyboard.on_press_key("esc", lambda _: on_esc_press())
 
@@ -1924,7 +1937,7 @@ class InventoryTab(QWidget):
                         QMessageBox.information(self.window(), self._app.get_text("setup_cancelled"), self._app.get_text("setup_cancelled_message"))
                         break
 
-                    print(f"等待設定座標 {i + 1}... (按ESC取消)")
+                    logger.info("等待設定座標 %s... (按ESC取消)", i + 1)
                     hint = _CoordHintWindow(
                         self._app.get_text("setup_coordinate_title").format(current=i + 1, total=5),
                         self._app.get_text("setup_coordinate_hint").format(number=i + 1),
@@ -1958,19 +1971,19 @@ class InventoryTab(QWidget):
                             rel_x = abs_x - game_window.left
                             rel_y = abs_y - game_window.top
                             self.pickup_coordinates[i] = [rel_x, rel_y]
-                            print(f"[OK] 座標 {i + 1} 已設定: 絕對座標({abs_x}, {abs_y}) -> 相對座標({rel_x}, {rel_y})")
+                            logger.info("[OK] 座標 %s 已設定: 絕對座標(%s, %s) -> 相對座標(%s, %s)", i + 1, abs_x, abs_y, rel_x, rel_y)
                         else:
                             self.pickup_coordinates[i] = [abs_x, abs_y]
-                            print(f"[WARN] 找不到遊戲視窗，使用絕對座標 {i + 1}: ({abs_x}, {abs_y})")
+                            logger.warning("找不到遊戲視窗，使用絕對座標 %s: (%s, %s)", i + 1, abs_x, abs_y)
                     else:
                         self.pickup_coordinates[i] = [abs_x, abs_y]
-                        print(f"[WARN] 未設定遊戲視窗，使用絕對座標 {i + 1}: ({abs_x}, {abs_y})")
+                        logger.warning("未設定遊戲視窗，使用絕對座標 %s: (%s, %s)", i + 1, abs_x, abs_y)
 
                     self._app.schedule_config_save()
                     hint.close()
                     time.sleep(0.3)
             except Exception as e:
-                print(f"連續設定失敗: {str(e)}")
+                logger.error("連續設定失敗: %s", e)
                 QMessageBox.critical(self.window(), self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
             finally:
                 try:
@@ -1989,7 +2002,7 @@ class InventoryTab(QWidget):
                     self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
                     self.window().show()
         except Exception as e:
-            print(f"連續設定失敗: {str(e)}")
+            logger.error("連續設定失敗: %s", e)
             QMessageBox.critical(self.window(), self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
         finally:
             try:
@@ -2009,11 +2022,11 @@ class InventoryTab(QWidget):
             self.pickup_coordinates = [[0, 0] for _ in range(5)]
             self.update_coordinate_display()
             self.save_pickup_coordinates()
-            print("已清除所有取物座標")
+            logger.info("已清除所有取物座標")
 
     def test_pickup(self):
         """測試F6取物功能（對應 tk 版）。"""
-        print("=== 開始測試F6取物功能 ===")
+        logger.info("=== 開始測試F6取物功能 ===")
         if self.pickup_coordinates is None:
             self.pickup_coordinates = [[0, 0] for _ in range(5)]
         if not any(x != 0 or y != 0 for x, y in self.pickup_coordinates):
@@ -2036,8 +2049,8 @@ class InventoryTab(QWidget):
             for i, (config_x, config_y) in enumerate(config_coords):
                 current_x, current_y = self.pickup_coordinates[i]
                 if config_x != current_x or config_y != current_y:
-                    print(f"警告：座標{i + 1}配置不一致 - 配置:({config_x},{config_y}) vs 當前:({current_x},{current_y})")
-            print("[OK] 座標和遊戲視窗設定檢查通過")
+                    logger.warning("警告：座標%s配置不一致 - 配置:(%s,%s) vs 當前:(%s,%s)", i + 1, config_x, config_y, current_x, current_y)
+            logger.info("[OK] 座標和遊戲視窗設定檢查通過")
         except Exception as e:
             QMessageBox.critical(self.window(), self._app.get_text("error"), self._app.get_text("operation_failed").format(error=str(e)))
             return
@@ -2047,17 +2060,17 @@ class InventoryTab(QWidget):
                 QMessageBox.critical(self.window(), self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=window_title))
                 return
             game_window = windows[0]
-            print(f"[OK] 找到遊戲視窗: {window_title}")
-            print("激活遊戲視窗...")
+            logger.info("[OK] 找到遊戲視窗: %s", window_title)
+            logger.info("激活遊戲視窗...")
             game_window.activate()
-            print("等待1秒確保遊戲視窗已激活...")
+            logger.info("等待1秒確保遊戲視窗已激活...")
             time.sleep(1)
-            print("執行F6取物功能...")
+            logger.info("執行F6取物功能...")
             self.f6_pickup_items()
-            print("=== F6取物測試完成 ===")
+            logger.info("=== F6取物測試完成 ===")
         except Exception as e:
-            print(f"測試取物功能失敗: {e}")
-            print("F6: 測試模式 - 異常處理時不恢復GUI視窗")
+            logger.error("測試取物功能失敗: %s", e)
+            logger.info("F6: 測試模式 - 異常處理時不恢復GUI視窗")
             QMessageBox.critical(self.window(), self._app.get_text("error"), self._app.get_text("pickup_test_failed").format(error=str(e)))
 
     def update_pickup_status(self):
@@ -2074,7 +2087,7 @@ class InventoryTab(QWidget):
     def is_inventory_ui_visible(self, game_window):
         """檢查背包UI是否可見 — 參照 ocr-trigger TM_CCOEFF_NORMED 多尺度（抗 DPI/窗口縮放）。"""
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
-            print("[INV_UI] fail: region or screenshot is None")
+            logger.debug("[INV_UI] fail: region or screenshot is None")
             return False
         try:
             result = capture_window_region_bgr(game_window.title, self.inventory_ui_region)
@@ -2087,7 +2100,7 @@ class InventoryTab(QWidget):
                 except Exception:
                     pass
             if result is None:
-                print(f"[INV_UI] fail: capture None region={self.inventory_ui_region} win={getattr(game_window, 'title', '?')}")
+                logger.debug("[INV_UI] fail: capture None region=%s win=%s", self.inventory_ui_region, getattr(game_window, "title", "?"))
                 return False
             current_bgr = result[1]
             stored_bgr = self.inventory_ui_screenshot
@@ -2120,16 +2133,16 @@ class InventoryTab(QWidget):
                 if best >= 0.75:
                     break
             if best < 0:
-                print(f"[INV_UI] fail: no valid scale tmpl={tw}x{th} search={search_gray.shape[1]}x{search_gray.shape[0]}")
+                logger.debug("[INV_UI] fail: no valid scale tmpl=%sx%s search=%sx%s", tw, th, search_gray.shape[1], search_gray.shape[0])
                 return False
             passed = best >= 0.75
             if not passed:
-                print(f"[INV_UI] fail: confidence={best:.3f} <0.75 tmpl={tw}x{th} search={search_gray.shape[1]}x{search_gray.shape[0]} region={self.inventory_ui_region}")
+                logger.debug("[INV_UI] fail: confidence=%.3f <0.75 tmpl=%sx%s search=%sx%s region=%s", best, tw, th, search_gray.shape[1], search_gray.shape[0], self.inventory_ui_region)
             else:
-                print(f"[INV_UI] pass: confidence={best:.3f} region={self.inventory_ui_region}")
+                logger.debug("[INV_UI] pass: confidence=%.3f region=%s", best, self.inventory_ui_region)
             return passed
         except Exception as e:
-            print(f"檢查背包UI可見性失敗: {e}")
+            logger.error("檢查背包UI可見性失敗: %s", e)
             return False
 
     def check_inventory_ui_exists(self, game_window):
@@ -2178,7 +2191,7 @@ class InventoryTab(QWidget):
 
             return (pass_count >= 3) or (mse_pass and color_pass) or (ssim_pass and hist_pass)
         except Exception as e:
-            print(f"檢查介面UI可見性失敗: {e}")
+            logger.error("檢查介面UI可見性失敗: %s", e)
             return False
 
     # ────────────────────────── 語言 ──────────────────────────
@@ -2231,7 +2244,7 @@ class InventoryTab(QWidget):
             self.refresh_config_display()
             self._update_preview_placeholder_state()
         except Exception as e:
-            print(f"更新一鍵清包分頁語言時發生錯誤: {e}")
+            logger.error("更新一鍵清包分頁語言時發生錯誤: %s", e)
 
     def _apply_config_to_ui(self):
         self.clear_click_left_radio.setChecked(self.clear_click_mode == "left")

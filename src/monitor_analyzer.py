@@ -11,10 +11,12 @@ All functions are designed to be self-contained, accepting callbacks and
 configuration values as parameters rather than depending on a class instance.
 """
 
+import logging
 import time
 import cv2
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 _last_printed_health = None
 
@@ -68,9 +70,9 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
             result = 100.0
             if health_count >= 6 and result != _last_printed_health:
                 _last_printed_health = result
-                print(f"血量分析結果: {result:.1f}%")
+                logger.debug("血量分析結果: %.1f%%", result)
                 for info in debug_info:
-                    print(info)
+                    logger.debug(info)
             return result
 
     # 量化由離散改連續：由底向上首個斷點（末位真值，5% 步階，誤差<2.5%，命中 10%）
@@ -94,9 +96,9 @@ def analyze_health(img, is_health_color_fn, get_health_color_ratio_fn, health_th
 
     if health_count >= 6 and result != _last_printed_health:
         _last_printed_health = result
-        print(f"血量分析結果: {result:.1f}%")
+        logger.debug("血量分析結果: %.1f%%", result)
         for info in debug_info:
-            print(info)
+            logger.debug(info)
     return result
 
 
@@ -199,9 +201,9 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
             result = 100.0
             if mana_count >= 6 and result != _last_printed_mana:
                 _last_printed_mana = result
-                print(f"魔力分析結果: {result:.1f}%")
+                logger.debug("魔力分析結果: %.1f%%", result)
                 for info in debug_info:
-                    print(info)
+                    logger.debug(info)
             return result
 
     if mana_count == 0:
@@ -223,9 +225,9 @@ def analyze_mana(img, is_mana_color_fn, get_mana_color_ratio_fn):
 
     if mana_count >= 6 and result != _last_printed_mana:
         _last_printed_mana = result
-        print(f"魔力分析結果: {result:.1f}%")
+        logger.debug("魔力分析結果: %.1f%%", result)
         for info in debug_info:
-            print(info)
+            logger.debug(info)
     return result
 
 
@@ -336,7 +338,7 @@ def _print_battle_state_once(state, message):
     global _last_battle_debug_state
     if _last_battle_debug_state != state:
         _last_battle_debug_state = state
-        print(message)
+        logger.info(message)
 
 
 def _battle_state_gate(
@@ -376,9 +378,9 @@ def _battle_state_gate(
         if not _ui_check_warned:
             _ui_check_warned = True
             if interface_ui_region:
-                print("血魔檢查: 已設定介面UI區域但無介面UI截圖，跳過戰鬥狀態檢查")
+                logger.info("血魔檢查: 已設定介面UI區域但無介面UI截圖，跳過戰鬥狀態檢查")
             else:
-                print("血魔檢查: 未設定介面UI區域，跳過戰鬥狀態檢查")
+                logger.info("血魔檢查: 未設定介面UI區域，跳過戰鬥狀態檢查")
     return True
 
 
@@ -433,28 +435,26 @@ def trigger_actions(
                 current_time = time.time()
                 time_diff = current_time - last_trigger
 
-                print(f" 血量觸發檢查: {health_percent}% <= {setting['percent']}% (設定閾值)")
-                print(f" 冷卻檢查: 上次觸發時間 {time_diff:.3f}秒前, 需要冷卻 {cooldown / 1000:.1f}秒")
+                logger.debug("血量觸發檢查: %s%% <= %s%% (設定閾值)", health_percent, setting["percent"])
+                logger.debug("冷卻檢查: 上次觸發時間 %.3f秒前, 需要冷卻 %.1f秒", time_diff, cooldown / 1000)
 
                 if time_diff >= cooldown / 1000:
                     try:
-                        print(f"[OK] 準備觸發: 血量{setting['percent']}%, 按鍵{setting['key']}")
+                        logger.debug("準備觸發: 血量%s%%, 按鍵%s", setting["percent"], setting["key"])
                         add_status_message_fn(get_text_fn("health_low_triggered").format(percent=setting["percent"], key=setting["key"]), "monitor")
                         press_key_sequence_fn(setting["key"], setting["percent"])
-                        print(f" 已完成按鍵序列: {setting['key']}")
+                        logger.debug("已完成按鍵序列: %s", setting["key"])
                     except Exception as e:
-                        print(f"[ERROR] 按鍵觸發失敗: {e}")
+                        logger.error("按鍵觸發失敗: %s", e)
                 else:
-                    remaining = cooldown - (time_diff) * 1000
-                    print(f"冷卻中: 還需等待 {remaining:.0f}ms")
+                    remaining = cooldown - time_diff * 1000
+                    logger.debug("冷卻中: 還需等待 %.0fms", remaining)
 
                 if not multi_trigger:
-                    print(" 單一觸發模式: 停止檢查其他設定")
+                    logger.debug("單一觸發模式: 停止檢查其他設定")
                     break
                 else:
-                    print(" 多重觸發模式: 繼續檢查其他設定")
-
-    if mana_percent is not None and mana_settings:
+                    logger.debug("多重觸發模式: 繼續檢查其他設定")
         for setting in mana_settings:
             if mana_percent <= setting["percent"]:
                 cooldown = setting.get("cooldown", 500)
@@ -536,7 +536,11 @@ if __name__ == "__main__":
 
     # 血魔檢查警示去噪：未設定時首輪印一次，之後靜默；狀態轉變才重印
     import io
-    from contextlib import redirect_stdout
+    import logging as _logging
+
+    handler = _logging.StreamHandler(io.StringIO())
+    logger.setLevel(_logging.INFO)
+    logger.addHandler(handler)
 
     def run_trigger(ui_region=None, ui_screenshot=None):
         return trigger_actions(
@@ -554,24 +558,29 @@ if __name__ == "__main__":
             interface_ui_screenshot=ui_screenshot,
         )
 
+    def _capture():
+        handler.stream.seek(0)
+        handler.stream.truncate(0)
+        run_trigger()
+        return handler.stream.getvalue()
+
     ui_region = {"x": 0, "y": 0, "width": 10, "height": 10}
     reset_battle_debug_state()
-    buf1 = io.StringIO()
-    with redirect_stdout(buf1):
-        run_trigger()
-    buf2 = io.StringIO()
-    with redirect_stdout(buf2):
-        run_trigger()
-    assert "未設定介面UI區域" in buf1.getvalue(), "首輪應印出未設定警告"
-    assert buf2.getvalue() == "", "狀態未變不應重複印出"
+    out1 = _capture()
+    out2 = _capture()
+    assert "未設定介面UI區域" in out1, "首輪應印出未設定警告"
+    assert out2 == "", "狀態未變不應重複印出"
 
     reset_battle_debug_state()
-    buf3 = io.StringIO()
-    with redirect_stdout(buf3):
-        run_trigger(ui_region, full)
-    assert "介面UI存在" in buf3.getvalue(), "已設定區域+截圖且 UI 可見，首輪應印出戰鬥狀態"
-    buf4 = io.StringIO()
-    with redirect_stdout(buf4):
-        run_trigger(ui_region, full)
-    assert buf4.getvalue() == "", "同狀態重複呼叫不應洗版"
+    handler.stream.seek(0)
+    handler.stream.truncate(0)
+    run_trigger(ui_region, full)
+    out3 = handler.stream.getvalue()
+    handler.stream.seek(0)
+    handler.stream.truncate(0)
+    run_trigger(ui_region, full)
+    out4 = handler.stream.getvalue()
+    assert "介面UI存在" in out3, "已設定區域+截圖且 UI 可見，首輪應印出戰鬥狀態"
+    assert out4 == "", "同狀態重複呼叫不應洗版"
+    logger.removeHandler(handler)
     print("monitor_analyzer self-check OK")

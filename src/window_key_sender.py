@@ -1,8 +1,11 @@
 import ctypes
+import logging
 import time
 from ctypes import wintypes
 
 import pygetwindow as gw
+
+logger = logging.getLogger(__name__)
 
 # ponytail: 參照 ocr-trigger 獨立 WinDLL，避免污染 ctypes.windll 全域（pygetwindow 等未設 argtypes 的呼叫端）
 _user32 = ctypes.WinDLL("user32")
@@ -110,10 +113,10 @@ class WindowKeySender:
             key_id = f"{hwnd}_{vk_code}"
             last_send_time = self._last_key_send_times.get(key_id, 0)
             if current_time - last_send_time < 0.2:
-                print(f" 血魔防重複: 跳過重複按鍵 {vk_code} (間隔 {(current_time - last_send_time) * 1000:.1f}ms)")
+                logger.debug("血魔防重複: 跳過重複按鍵 %s (間隔 %.1fms)", vk_code, (current_time - last_send_time) * 1000)
                 return
             self._last_key_send_times[key_id] = current_time
-            print(f" 血魔監控發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
+            logger.debug("血魔監控發送按鍵: VK_%s 到窗口 %s", vk_code, hwnd)
             try:
                 import keyboard
 
@@ -123,40 +126,40 @@ class WindowKeySender:
                     time.sleep(0.05)
                 key_name = self.vk_to_key_name(vk_code)
                 if key_name:
-                    print(f" 血魔使用keyboard庫發送: {key_name}")
+                    logger.debug("血魔使用keyboard庫發送: %s", key_name)
                     keyboard.press_and_release(key_name)
-                    print(f"[OK] 血魔keyboard庫發送成功: {key_name}")
+                    logger.debug("血魔keyboard庫發送成功: %s", key_name)
                 else:
                     self._send_with_postmessage(hwnd, vk_code)
             except ImportError:
-                print("[WARN] keyboard庫未安裝，血魔使用PostMessage方法")
+                logger.warning("keyboard庫未安裝，血魔使用PostMessage方法")
                 self._send_with_postmessage(hwnd, vk_code)
             except Exception as keyboard_error:
-                print(f"[WARN] keyboard庫發送失敗，血魔回退到PostMessage: {keyboard_error}")
+                logger.warning("keyboard庫發送失敗，血魔回退到PostMessage: %s", keyboard_error)
                 self._send_with_postmessage(hwnd, vk_code)
         except Exception as e:
-            print(f"[ERROR] 血魔按鍵發送失敗: {e}")
+            logger.error("血魔按鍵發送失敗: %s", e)
 
     def send_key_to_window_combo(self, hwnd, vk_code):
         try:
-            print(f"[SKILL] 技能連段發送按鍵: VK_{vk_code} 到窗口 {hwnd}")
+            logger.debug("技能連段發送按鍵: VK_%s 到窗口 %s", vk_code, hwnd)
             SendMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
             time.sleep(0.01)
             SendMessageW(hwnd, WM_KEYUP, vk_code, 0)
-            print(f"[OK] 技能連段SendMessage發送成功: VK_{vk_code}")
+            logger.debug("技能連段SendMessage發送成功: VK_%s", vk_code)
         except Exception as e:
-            print(f"[ERROR] 技能連段按鍵發送失敗: {e}")
+            logger.error("技能連段按鍵發送失敗: %s", e)
 
     def _send_with_postmessage(self, hwnd, vk_code):
         try:
             PostMessageW_local = _user32.PostMessageW
-            print(f" 使用PostMessage備用方法: VK_{vk_code}")
+            logger.debug("使用PostMessage備用方法: VK_%s", vk_code)
             result1 = PostMessageW_local(hwnd, WM_KEYDOWN, vk_code, 0)
             time.sleep(0.1)
             result2 = PostMessageW_local(hwnd, WM_KEYUP, vk_code, 0)
-            print(f"[OK] PostMessage發送成功: VK_{vk_code} (down:{result1}, up:{result2})")
+            logger.debug("PostMessage發送成功: VK_%s (down:%s, up:%s)", vk_code, result1, result2)
         except Exception as e:
-            print(f"[ERROR] PostMessage發送失敗: {e}")
+            logger.error("PostMessage發送失敗: %s", e)
 
     def vk_to_key_name(self, vk_code):
         vk_mapping = {
@@ -249,14 +252,14 @@ class WindowKeySender:
                 if windows:
                     game_window = windows[0]
                     game_window.activate()
-                    print(f"已激活遊戲視窗: {self._app.monitor_tab.window_var.get()}")
+                    logger.info("已激活遊戲視窗: %s", self._app.monitor_tab.window_var.get())
                     time.sleep(0.5)
                 else:
-                    print("找不到指定的遊戲視窗")
+                    logger.warning("找不到指定的遊戲視窗")
             else:
-                print("未設定遊戲視窗")
+                logger.warning("未設定遊戲視窗")
         except Exception as e:
-            print(f"激活遊戲視窗時發生錯誤: {e}")
+            logger.error("激活遊戲視窗時發生錯誤: %s", e)
 
     def is_game_window_foreground(self, window_title):
         try:
@@ -269,7 +272,7 @@ class WindowKeySender:
                 return window_title.lower() in foreground_title.lower()
             return False
         except Exception as e:
-            print(f"檢查前台視窗失敗: {e}")
+            logger.error("檢查前台視窗失敗: %s", e)
             return False
 
     def is_gui_foreground(self):
@@ -284,7 +287,7 @@ class WindowKeySender:
                 return gui_title.lower() in foreground_title.lower()
             return False
         except Exception as e:
-            print(f"檢查GUI前台狀態失敗: {e}")
+            logger.error("檢查GUI前台狀態失敗: %s", e)
             return False
 
     def _start_window_focus_watcher(self):

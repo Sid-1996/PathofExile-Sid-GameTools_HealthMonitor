@@ -4,6 +4,7 @@
 業務邏輯模組（config_manager / language_system / …）全保留。
 """
 
+import logging
 import sys
 import threading
 import time
@@ -42,6 +43,8 @@ from qt.version import VersionTab
 from usage_tracker import UsageTracker
 from utils import set_app_instance
 from window_key_sender import WindowKeySender
+
+logger = logging.getLogger(__name__)
 
 # ── 主題常數（與舊 dracula 色系對齊）──
 ACCENT = "#bd93f9"
@@ -231,7 +234,7 @@ class MainWindow(FluentWindow):
 
     def start_monitoring(self):
         if self.is_monitoring():
-            print("[WARN] 監控已在運行中，跳過重複啟動")
+            logger.warning("監控已在運行中，跳過重複啟動")
             return
         mt = self.monitor_tab
         if not mt.window_title:
@@ -268,7 +271,7 @@ class MainWindow(FluentWindow):
     def stop_monitoring(self):
         if not self.is_monitoring():
             return
-        print("[STOP] 正在停止監控")
+        logger.info("正在停止監控")
         self.set_monitoring(False)
         self.monitor_tab.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
@@ -368,7 +371,7 @@ class MainWindow(FluentWindow):
                             mana_percent = analyze_mana(mana_img, is_mana_color, get_mana_color_ratio)
                             self.monitor_tab.update_live_mana_preview(mana_img, mana_percent)
                     except Exception as e:
-                        print(f"魔力分析錯誤: {e}")
+                        logger.error("魔力分析錯誤: %s", e)
                         mana_percent = "--"
 
                 mana_value = int(mana_percent) if mana_percent != "--" else None
@@ -410,7 +413,7 @@ class MainWindow(FluentWindow):
                 interruptible_sleep(self.monitor_tab.monitor_interval_ms / 1000.0, self.is_monitoring)
 
             except Exception as e:
-                print(f"監控錯誤: {e}")
+                logger.error("監控錯誤: %s", e)
                 self.monitor_tab.update_status("--", "--", "--", self.get_text("error_prefix").format(error=str(e)))
                 interruptible_sleep(1.0, self.is_monitoring)
 
@@ -449,9 +452,9 @@ class MainWindow(FluentWindow):
             keyboard.add_hotkey("f9", self.toggle_global_pause)
             keyboard.add_hotkey("f10", self.f10_request.emit)
             keyboard.add_hotkey("f12", self.f12_request.emit)
-            print("已註冊 F3/F5/F6/F9/F10/F12 全局熱鍵")
+            logger.info("已註冊 F3/F5/F6/F9/F10/F12 全局熱鍵")
         except Exception as e:
-            print(f"註冊熱鍵失敗: {e}")
+            logger.error("註冊熱鍵失敗: %s", e)
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
@@ -464,7 +467,7 @@ class MainWindow(FluentWindow):
     def toggle_monitoring(self) -> None:
         """F10：血魔監控開關（安全網）。"""
         if self._global_pause:
-            print("[STOP] 全域暫停中，跳過 F10 熱鍵")
+            logger.info("全域暫停中，跳過 F10 熱鍵")
             self.add_status_message(self.get_text("f10_skip_global_pause"), "warning")
             return
         key = "f10_stop_monitoring" if self.is_monitoring() else "f10_start_monitoring"
@@ -500,7 +503,7 @@ class MainWindow(FluentWindow):
                 return True
             return False
         except Exception as e:
-            print(f"[WARN] 檢查遊戲視窗狀態失敗: {e}")
+            logger.warning("檢查遊戲視窗狀態失敗: %s", e)
             return False
 
     def change_language_display(self, display_name: str) -> None:
@@ -660,7 +663,7 @@ class MainWindow(FluentWindow):
         except Exception:
             pass
         runtime = datetime.now() - self.start_time
-        print(f"應用程式運行時間: {runtime}")
+        logger.info("應用程式運行時間: %s", runtime)
 
     def closeEvent(self, e):
         if self._is_closing:
@@ -670,5 +673,5 @@ class MainWindow(FluentWindow):
         try:
             self._shutdown()
         except Exception as err:
-            print(f"關閉清理失敗: {err}")
+            logger.error("關閉清理失敗: %s", err)
         e.accept()

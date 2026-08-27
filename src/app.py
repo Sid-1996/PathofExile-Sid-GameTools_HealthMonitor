@@ -8,6 +8,7 @@ smoke 模式（`python src/app.py --smoke`）：背景 thread 連發 5 條訊息
 """
 
 import json
+import logging
 import os
 import sys
 import threading
@@ -20,13 +21,16 @@ from PySide6.QtWidgets import QApplication
 from qfluentwidgets import Theme, setTheme
 
 from _version import __version__
+from logging_setup import configure as configure_logging
 from qt.main_window import MainWindow
 from utils import emergency_exit_handler, get_user_data_dir
+
+logger = logging.getLogger(__name__)
 
 
 def _install_exception_hook():
     def hook(exc_type, exc_value, exc_tb):
-        print(f"\n[ERROR] 未捕獲的異常: {exc_type.__name__}: {exc_value}")
+        logger.error("未捕獲的異常: %s: %s", exc_type.__name__, exc_value)
         traceback.print_exception(exc_type, exc_value, exc_tb)
         try:
             from utils import emergency_exit_handler
@@ -54,13 +58,16 @@ def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv
     smoke = "--smoke" in argv
 
+    # 統一 logging 設定需在最先（任何 console 輸出前）執行；--debug / GTOOLS_LOG_LEVEL
+    configure_logging()
+
     # Velopack builder 必須最先執行（安裝/更新 hook 可能重啟程序）；開發環境為 no-op
     try:
         import velopack
 
         velopack.App().run()
     except ImportError:
-        print("[WARN] velopack 未安裝，自動更新功能停用")
+        logger.warning("velopack 未安裝，自動更新功能停用")
 
     app = QApplication(argv)
     app.setApplicationName("GameTools Health Monitor")
@@ -263,7 +270,7 @@ def main(argv=None) -> int:
         QTimer.singleShot(1000, _verify_signal_path)
 
     code = app.exec()
-    print(f"APP EXIT {code}")
+    logger.info("APP EXIT %s", code)
     # closeEvent → _shutdown 已清理全部 Qt 資源；但第三方庫（keyboard/WGC/winrt）
     # 的非 daemon thread 可能讓 process 擱置、工作列圖示殘留。打包版實測確認會發生，
     # 故 event loop 結束後直接強制退出，確保 process 徹底清乾淨。

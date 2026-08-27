@@ -3,12 +3,15 @@
 包含應用程式的通用工具函數、緊急處理、系統級功能等
 """
 
+import logging
 import os
 import shutil
 import sys
 import keyboard
 import psutil
 import atexit
+
+logger = logging.getLogger(__name__)
 
 
 def get_app_dir():
@@ -36,7 +39,7 @@ def get_user_data_dir():
     try:
         os.makedirs(data_dir, exist_ok=True)
     except Exception as e:
-        print(f"[WARN] 建立使用者資料目錄失敗: {e}")
+        logger.warning("建立使用者資料目錄失敗: %s", e)
         return data_dir
     for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
         src = os.path.join(app_dir, name)
@@ -45,13 +48,13 @@ def get_user_data_dir():
             try:
                 shutil.copy2(src, dst)
             except Exception as e:
-                print(f"[WARN] 遷移 {name} 失敗: {e}")
+                logger.warning("遷移 %s 失敗: %s", name, e)
     legacy_shots = os.path.join(app_dir, "screenshots")
     if os.path.isdir(legacy_shots):
         try:
             shutil.copytree(legacy_shots, os.path.join(data_dir, "screenshots"), dirs_exist_ok=True)
         except Exception as e:
-            print(f"[WARN] 遷移 screenshots 失敗: {e}")
+            logger.warning("遷移 screenshots 失敗: %s", e)
     return data_dir
 
 
@@ -60,7 +63,7 @@ def emergency_cleanup():
     try:
         # 清理鍵盤監聽器
         keyboard.unhook_all()
-        print("鍵盤監聽器已清理")
+        logger.debug("鍵盤監聽器已清理")
     except Exception:
         pass
 
@@ -78,7 +81,7 @@ def emergency_cleanup():
                     child.kill()
                 except Exception:
                     pass
-        print("子進程已清理")
+        logger.debug("子進程已清理")
     except Exception:
         pass
 
@@ -100,7 +103,7 @@ def set_app_instance(instance):
 def global_f12_handler():
     """全局F12處理器 - 在任何情況下都能關閉應用程序"""
     global _app_instance
-    print("\n[STOP] F12緊急關閉被觸發")
+    logger.warning("F12緊急關閉被觸發")
     try:
         if _app_instance and hasattr(_app_instance, "close_app"):
             _app_instance.close_app()
@@ -117,7 +120,7 @@ def global_f12_handler():
 
 def emergency_exit_handler(signum=None, frame=None):
     """緊急退出處理器 - 確保在任何異常情況下都能關閉應用程序"""
-    print("\n[STOP] 收到緊急退出信號，正在強制關閉應用程式...")
+    logger.warning("收到緊急退出信號，正在強制關閉應用程式...")
     try:
         if _app_instance and hasattr(_app_instance, "close_app"):
             _app_instance.close_app()
@@ -130,8 +133,8 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     """全局異常處理器 - 捕獲所有未處理的異常"""
     import traceback
 
-    print(f"\n[ERROR] 發生未捕獲的異常: {exc_type.__name__}: {exc_value}")
-    print("📋 異常追蹤:")
+    logger.error("發生未捕獲的異常: %s: %s", exc_type.__name__, exc_value)
+    logger.error("異常追蹤:")
     traceback.print_exception(exc_type, exc_value, exc_traceback)
 
     # 嘗試緊急關閉應用程序

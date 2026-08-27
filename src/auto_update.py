@@ -6,6 +6,7 @@
 - 版本資訊以 InfoShim 暴露 .version，讓呼叫端（qt/version.py）與舊介面形狀一致
 """
 
+import logging
 import os
 import re
 
@@ -15,6 +16,8 @@ DEFAULT_REPO_URL = "https://github.com/Sid-1996/PathofExile-Sid-GameTools_Health
 REPO_OVERRIDE_ENV = "GTOOLS_UPDATE_REPO"
 # 放使用者資料目錄（Velopack 更新只替換 app 目錄，此檔可活過更新持續生效）
 REPO_OVERRIDE_FILENAME = "update_repo_override.txt"
+
+logger = logging.getLogger(__name__)
 
 
 def _user_data_dir_for_override():
@@ -58,7 +61,7 @@ def resolve_repo_url() -> str:
             normalized = _normalize_repo_url(content)
             if normalized:
                 return normalized
-            print(f"[WARN] {REPO_OVERRIDE_FILENAME} 內容無效（需 owner/repo 或 github URL），忽略")
+            logger.warning("%s 內容無效（需 owner/repo 或 github URL），忽略", REPO_OVERRIDE_FILENAME)
         except OSError:
             pass
     return DEFAULT_REPO_URL
@@ -117,7 +120,7 @@ def create_manager(explicit_channel=None):
     except Exception as e:
         if is_not_installed_error(e):
             return None  # 開發/portable 環境的正常情況，靜默降級
-        print(f"[WARN] UpdateManager 初始化失敗: {e}")
+        logger.warning("UpdateManager 初始化失敗: %s", e)
         return None
 
 

@@ -1,6 +1,9 @@
+import logging
 import winreg
 from datetime import datetime
 from utils import format_usage_time
+
+logger = logging.getLogger(__name__)
 
 
 class UsageTracker:
@@ -8,7 +11,7 @@ class UsageTracker:
         self._app = app
         self._usage_time_after_id = None
         self._app.total_usage_time = self.load_usage_time_from_registry()
-        print(f"載入總使用時間: {format_usage_time(self._app.total_usage_time)}")
+        logger.info("載入總使用時間: %s", format_usage_time(self._app.total_usage_time))
 
     def load_usage_time_from_registry(self):
         try:
@@ -19,7 +22,7 @@ class UsageTracker:
         except FileNotFoundError:
             return 0
         except Exception as e:
-            print(f"載入使用時間失敗: {e}")
+            logger.error("載入使用時間失敗: %s", e)
             return 0
 
     def save_usage_time_to_registry(self, total_seconds):
@@ -27,9 +30,9 @@ class UsageTracker:
             key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\SidGameTools\HealthMonitor")
             winreg.SetValueEx(key, "TotalUsageTime", 0, winreg.REG_DWORD, total_seconds)
             winreg.CloseKey(key)
-            print(f"已保存總使用時間: {format_usage_time(total_seconds)}")
+            logger.debug("已保存總使用時間: %s", format_usage_time(total_seconds))
         except Exception as e:
-            print(f"保存使用時間失敗: {e}")
+            logger.error("保存使用時間失敗: %s", e)
 
     def track_usage_time(self):
         try:
@@ -37,10 +40,10 @@ class UsageTracker:
             session_duration = int((end_time - self._app.start_time).total_seconds())
             self._app.total_usage_time += session_duration
             self.save_usage_time_to_registry(self._app.total_usage_time)
-            print(f"本次使用時間: {format_usage_time(session_duration)}")
-            print(f"累計總使用時間: {format_usage_time(self._app.total_usage_time)}")
+            logger.debug("本次使用時間: %s", format_usage_time(session_duration))
+            logger.debug("累計總使用時間: %s", format_usage_time(self._app.total_usage_time))
         except Exception as e:
-            print(f"追蹤使用時間失敗: {e}")
+            logger.error("追蹤使用時間失敗: %s", e)
 
     def update_usage_time_display(self):
         try:
@@ -48,7 +51,7 @@ class UsageTracker:
                 usage_time_text = format_usage_time(self._app.total_usage_time, lang=self._app.current_language)
                 self._app.usage_time_label.config(text=self._app.get_text("total_usage_time").format(time=usage_time_text))
         except Exception as e:
-            print(f"更新使用時間顯示時發生錯誤: {e}")
+            logger.error("更新使用時間顯示時發生錯誤: %s", e)
 
     def update_usage_time_periodically(self):
         if self._app.state._is_closing:
@@ -59,7 +62,7 @@ class UsageTracker:
             self.update_usage_time_display()
             self._usage_time_after_id = self._app.root.after(60000, self.update_usage_time_periodically)
         except Exception as e:
-            print(f"定期更新使用時間時發生錯誤: {e}")
+            logger.error("定期更新使用時間時發生錯誤: %s", e)
 
     def start_periodic_update(self):
         self._usage_time_after_id = self._app.root.after(60000, self.update_usage_time_periodically)

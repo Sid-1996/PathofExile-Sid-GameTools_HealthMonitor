@@ -6,6 +6,7 @@
 介面UI框選委派給 InventoryTab（start_interface_ui_selection），避免重複實作。
 """
 
+import logging
 import os
 import time
 import threading
@@ -48,6 +49,8 @@ from image_utils import (
 )
 from qt.monitor_dialogs import AdjustColorsDialog, AdjustInterfaceUiDialog
 from utils import get_user_data_dir
+
+logger = logging.getLogger(__name__)
 
 # ── 色票（與 tk 版 ui_theme 對齊）──
 ERROR = "#f38ba8"
@@ -659,7 +662,7 @@ class MonitorTab(QWidget):
             finally:
                 self.window_combo.blockSignals(False)
         except Exception as e:
-            print(f"[WARN] 重新整理視窗清單失敗: {e}")
+            logger.warning("重新整理視窗清單失敗: %s", e)
 
     def _on_window_changed(self, text):
         """遊戲視窗手動選擇變更：更新標題、排程儲存並刷新預覽佔位文字。"""
@@ -693,18 +696,18 @@ class MonitorTab(QWidget):
                     health_loaded = self.load_preview_image()
                     mana_loaded = self.load_mana_preview_image()
                     if health_loaded or mana_loaded:
-                        print(f"已自動載入設定：視窗={self._app.config['window_title']}")
+                        logger.info("已自動載入設定：視窗=%s", self._app.config["window_title"])
                     else:
-                        print("設定已載入，但預覽圖片需要更新")
+                        logger.info("設定已載入，但預覽圖片需要更新")
                 else:
-                    print(f"遊戲視窗 '{self._app.config['window_title']}' 未找到")
+                    logger.info("遊戲視窗 '%s' 未找到", self._app.config["window_title"])
                     self.window_var.set(self._app.config["window_title"])
                     if self._app.config.get("region"):
                         self._signals.health_placeholder.emit(self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]))
                     if self._app.config.get("mana_region"):
                         self._signals.mana_placeholder.emit(self._app.get_text("game_window_not_found").format(window_title=self._app.config["window_title"]))
             except Exception as e:
-                print(f"自動載入預覽失敗: {e}")
+                logger.error("自動載入預覽失敗: %s", e)
                 self._signals.health_placeholder.emit(self._app.get_text("settings_load_failed"))
                 self._signals.mana_placeholder.emit(self._app.get_text("settings_load_failed"))
         else:
@@ -712,7 +715,7 @@ class MonitorTab(QWidget):
                 self._signals.health_placeholder.emit(self._app.get_text("select_health_bar_first"))
             if not self._app.config.get("mana_region"):
                 self._signals.mana_placeholder.emit(self._app.get_text("select_mana_bar_first"))
-            print("沒有找到已儲存的設定")
+            logger.info("沒有找到已儲存的設定")
 
     def load_preview_image(self):
         path = os.path.join(get_user_data_dir(), "screenshots", "health_monitor_preview.png")
@@ -723,7 +726,7 @@ class MonitorTab(QWidget):
                 self._signals.health_preview.emit(resize_and_center_image(img, self.preview_size))
                 return True
             except Exception as e:
-                print(f"載入預覽圖片失敗: {e}")
+                logger.error("載入預覽圖片失敗: %s", e)
                 self._signals.health_placeholder.emit(self._app.get_text("ui_preview_failed"))
                 return False
         if self.selected_region:
@@ -741,7 +744,7 @@ class MonitorTab(QWidget):
                 self._signals.mana_preview.emit(resize_and_center_image(img, self.preview_size))
                 return True
             except Exception as e:
-                print(f"載入魔力預覽圖片失敗: {e}")
+                logger.error("載入魔力預覽圖片失敗: %s", e)
                 self._signals.mana_placeholder.emit(self._app.get_text("mana_preview_load_failed"))
                 return False
         if self.selected_mana_region:
@@ -916,7 +919,7 @@ class MonitorTab(QWidget):
                 self.last_preview_update = now
                 self.last_health_percent = health_percent
             except Exception as e:
-                print(f"預覽更新失敗: {e}")
+                logger.error("預覽更新失敗: %s", e)
 
     def update_live_mana_preview(self, img, mana_percent):
         if not self._app.preview_enabled:
@@ -929,7 +932,7 @@ class MonitorTab(QWidget):
                 self.last_mana_preview_update = now
                 self.last_mana_percent = mana_percent
             except Exception as e:
-                print(f"魔力預覽更新失敗: {e}")
+                logger.error("魔力預覽更新失敗: %s", e)
 
     def _make_preview_pil(self, cv_img, percent, is_mana):
         pil_img = Image.fromarray(cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB))
@@ -976,7 +979,7 @@ class MonitorTab(QWidget):
 
     def _on_preview_test_result(self, success_count, errors):
         for msg in errors:
-            print(msg)
+            logger.warning("%s", msg)
         if success_count > 0:
             QMessageBox.information(self, self._app.get_text("settings_applied"), self._app.get_text("preview_test_completed").format(success_count=success_count))
         else:

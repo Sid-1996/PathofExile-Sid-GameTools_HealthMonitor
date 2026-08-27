@@ -9,6 +9,7 @@ combo.py（Qt 版）— 技能連招分頁
 - 執行狀態（combo_sets / combo_enabled / combo_thread / combo_hotkeys）存於 tab 實例。
 """
 
+import logging
 import threading
 import time
 from ctypes import windll
@@ -34,6 +35,8 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import ComboBox, LineEdit, PrimaryPushButton, PushButton
 
 from qt.skill_timer import SkillTimerModule
+
+logger = logging.getLogger(__name__)
 
 SendMessageW = windll.user32.SendMessageW
 WM_KEYDOWN = 0x0100
@@ -440,13 +443,13 @@ class ComboTab(QWidget):
 
         enabled_count = len(enabled_sets)
         self._app.add_status_message(self._app.get_text("combo_system_started").format(count=enabled_count), "success")
-        print("技能連段系統已啟動")
+        logger.info("技能連段系統已啟動")
 
     def stop_combo_system(self):
         if not self.is_combo_running():
             return
 
-        print("[STOP] 正在停止連段系統...")
+        logger.info("正在停止連段系統...")
         self.set_combo_running(False)
 
         self.wait_combo_stopped(timeout=2.0)
@@ -464,10 +467,10 @@ class ComboTab(QWidget):
         self.combo_status_label.setStyleSheet(f"color: {ERROR}; font-size: 13px;")
 
         self._app.add_status_message(self._app.get_text("combo_system_stopped"), "info")
-        print("[STOP] 連段系統已完全停止")
+        logger.info("連段系統已完全停止")
 
     def run_combo_system(self):
-        print("連段系統線程已啟動")
+        logger.info("連段系統線程已啟動")
 
         for i, enabled in enumerate(self.combo_enabled):
             if enabled:
@@ -475,14 +478,14 @@ class ComboTab(QWidget):
                 try:
                     hotkey_id = keyboard.add_hotkey(trigger_key, partial(self.execute_combo, i), suppress=False)
                     self.combo_hotkeys[f"combo_{i}"] = hotkey_id
-                    print(f"註冊快捷鍵: {trigger_key} -> 連段套組 {i + 1}")
+                    logger.info("註冊快捷鍵: %s -> 連段套組 %s", trigger_key, i + 1)
                 except Exception as e:
-                    print(f"註冊快捷鍵失敗 {trigger_key}: {e}")
+                    logger.error("註冊快捷鍵失敗 %s: %s", trigger_key, e)
 
         while self.is_combo_running():
             time.sleep(0.1)
 
-        print("連段系統線程已結束")
+        logger.info("連段系統線程已結束")
 
     def execute_combo(self, set_index):
         if not self.is_combo_running():
@@ -490,7 +493,7 @@ class ComboTab(QWidget):
 
         if self._app.monitor_tab.window_var.get():
             if not self._app.window_key_sender.is_game_window_foreground(self._app.monitor_tab.window_var.get()):
-                print(f"遊戲視窗 '{self._app.monitor_tab.window_var.get()}' 不在前台，跳過連段執行")
+                logger.info("遊戲視窗 '%s' 不在前台，跳過連段執行", self._app.monitor_tab.window_var.get())
                 return
 
         combo_set = self.combo_sets[set_index]
@@ -506,7 +509,7 @@ class ComboTab(QWidget):
         if valid_keys:
             skills_text = " | ".join([f"{i + 1}:{key}" for i, key in enumerate(valid_keys)])
             self._app.add_status_message(self._app.get_text("combo_skill_sequence").format(sequence=skills_text), "monitor")
-        print(f"執行連段套組 {set_index + 1}: {valid_keys}")
+        logger.debug("執行連段套組 %s: %s", set_index + 1, valid_keys)
 
         if trigger_delay and trigger_delay != "off" and trigger_delay != "":
             try:
@@ -514,7 +517,7 @@ class ComboTab(QWidget):
                 if delay_ms > 0:
                     delay = delay_ms / 1000.0
                     self._app.add_status_message(self._app.get_text("combo_trigger_delay").format(delay=delay_ms), "info")
-                    print(f"  觸發延遲: {delay_ms}ms")
+                    logger.debug("觸發延遲: %sms", delay_ms)
                     time.sleep(delay)
             except (ValueError, TypeError):
                 pass
@@ -523,7 +526,7 @@ class ComboTab(QWidget):
             if not key or key == "off" or key == "" or not self.is_combo_running():
                 if not self.is_combo_running():
                     self._app.add_status_message(self._app.get_text("combo_set_interrupted").format(number=set_index + 1), "warning")
-                    print(f"連段套組 {set_index + 1} 被中斷")
+                    logger.info("連段套組 %s 被中斷", set_index + 1)
                     return
                 continue
 
@@ -551,7 +554,7 @@ class ComboTab(QWidget):
                                 ),
                                 "success",
                             )
-                            print(f"  原地攻擊模式: Shift+{key} (發送到遊戲窗口)")
+                            logger.debug("原地攻擊模式: Shift+%s (發送到遊戲窗口)", key)
                         else:
                             pyautogui.keyDown("shift")
                             pyautogui.press(key.lower())
@@ -562,7 +565,7 @@ class ComboTab(QWidget):
                                 ),
                                 "warning",
                             )
-                            print(f"  原地攻擊模式: Shift+{key} (全局按鍵)")
+                            logger.debug("原地攻擊模式: Shift+%s (全局按鍵)", key)
                     else:
                         vk_code = self._app.window_key_sender.map_key_to_vk_code(key.lower())
                         if vk_code:
@@ -571,14 +574,14 @@ class ComboTab(QWidget):
                                 self._app.get_text("combo_skill_execution").format(index=i + 1, skill=key, type=self._app.get_text("normal_attack"), method=self._app.get_text("selective_send")),
                                 "success",
                             )
-                            print(f"  [SKILL] 技能連段選擇性按下技能鍵: {key} (發送到遊戲窗口)")
+                            logger.debug("[SKILL] 技能連段選擇性按下技能鍵: %s (發送到遊戲窗口)", key)
                         else:
                             pyautogui.press(key.lower())
                             self._app.add_status_message(
                                 self._app.get_text("combo_skill_execution").format(index=i + 1, skill=key, type=self._app.get_text("normal_attack"), method=self._app.get_text("global_send")),
                                 "warning",
                             )
-                            print(f"  [SKILL] 技能連段全局按下技能鍵: {key} (鍵碼映射失敗)")
+                            logger.debug("[SKILL] 技能連段全局按下技能鍵: %s (鍵碼映射失敗)", key)
                 else:
                     if is_stationary:
                         pyautogui.keyDown("shift")
@@ -590,16 +593,16 @@ class ComboTab(QWidget):
                             ),
                             "warning",
                         )
-                        print(f"  原地攻擊模式: Shift+{key} (全局按鍵)")
+                        logger.debug("原地攻擊模式: Shift+%s (全局按鍵)", key)
                     else:
                         pyautogui.press(key.lower())
                         self._app.add_status_message(
                             self._app.get_text("combo_skill_execution").format(index=i + 1, skill=key, type=self._app.get_text("normal_attack"), method=self._app.get_text("global_send")), "warning"
                         )
-                        print(f"  全局按下技能鍵: {key} (無法獲取窗口句柄)")
+                        logger.debug("全局按下技能鍵: %s (無法獲取窗口句柄)", key)
             except Exception as e:
                 self._app.add_status_message(self._app.get_text("combo_skill_execution_failed").format(index=i + 1, key=key, error=str(e)), "error")
-                print(f"  按鍵模擬失敗 {key}: {e}")
+                logger.error("按鍵模擬失敗 %s: %s", key, e)
                 continue
 
             if i < len(combo_keys) - 1 and delays[i] and delays[i] != "off":
@@ -609,11 +612,11 @@ class ComboTab(QWidget):
                         delay = delay_ms / 1000.0
                         self._app.add_status_message(self._app.get_text("combo_skill_delay").format(delay=delay_ms), "info")
                         time.sleep(delay)
-                        print(f"  延遲: {delay_ms}ms")
+                        logger.debug("延遲: %sms", delay_ms)
                 except (ValueError, TypeError):
                     pass
 
-        print(f"連段套組 {set_index + 1} 執行完成")
+        logger.debug("連段套組 %s 執行完成", set_index + 1)
 
         self._app.add_status_message(self._app.get_text("combo_completed").format(set=set_index + 1, key=trigger_key, count=len(valid_keys)), "success")
 
