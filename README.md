@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.1-3fb950?style=flat-square" />
+  <img src="https://img.shields.io/badge/Version-1.2.1-3fb950?style=flat-square" /><!-- 單一事實源 src/_version.py，發版時同步 -->
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" />
   <img src="https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?style=flat-square" />
   <a href="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/"><img src="https://img.shields.io/badge/Web-GitHub%20Pages-58a6ff?style=flat-square&logo=github" /></a>
@@ -73,12 +73,12 @@
 
 <p align="center">
   <a class="btn" href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases">
-    <img src="https://img.shields.io/badge/⬇️_下載_v1.2.1-3fb950?style=for-the-badge" alt="Download" />
+    <img src="https://img.shields.io/badge/⬇️_下載_Setup.exe-3fb950?style=for-the-badge" alt="Download Setup.exe" />
   </a>
 </p>
 
 <p align="center">
-  <sub>下載後解壓即可執行，無需額外安裝依賴 · Windows 10 / 11</sub>
+  <sub>新用戶請下載 <code>Setup.exe</code> 安裝（支援自動更新，推薦）· Windows 10 / 11<br>舊版 ZIP 解壓用戶仍可更新，v1.3.0 後請改裝 Setup.exe（詳見發行說明）</sub>
 </p>
 
 ---
@@ -118,17 +118,18 @@ src/
   inventory_utils.py         # Inventory slot analysis
   config_manager.py          # Config load/save + backup
   language_system.py         # Translation system
-  utils.py                   # Runtime utilities + F12 emergency close
+  utils.py                   # Runtime utilities + get_user_data_dir + F12 emergency close
   auto_click_manager.py      # Auto-click (AHK) manager
   usage_tracker.py           # Usage time tracking
   window_key_sender.py       # Window-focus key sending
-  updater_core.py            # Update engine
+  auto_update.py             # Velopack GithubSource 更新引擎（主鏈，≥ v1.2.4-test）
+  updater_core.py            # Legacy update engine（過渡期保留，v1.4+ 刪除）
   language_packs.json        # UI strings
 scripts/                     # One-click workflows
-tools/build.py               # Build pipeline
+tools/build.py               # Build pipeline (PyInstaller onedir + 旁置資源)
 docs/                        # User/developer docs
-updater_main.py              # Standalone updater
-release.ps1                  # One-click publish script
+updater_main.py              # Standalone updater (Legacy, 過渡期保留)
+release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 ```
 
 </details>
@@ -140,6 +141,9 @@ release.ps1                  # One-click publish script
 <p>
   <img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=flat&logo=opencv&logoColor=white" />
+  <img src="https://img.shields.io/badge/PySide6-41CD52?style=flat&logo=qt&logoColor=white" />
+  <img src="https://img.shields.io/badge/Velopack-00A6ED?style=flat&logo=windows&logoColor=white" />
+  <img src="https://img.shields.io/badge/Windows.Graphics.Capture-0078D4?style=flat&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/AutoHotkey-334455?style=flat&logo=autohotkey&logoColor=white" />
   <img src="https://img.shields.io/badge/PyInstaller-FDAD04?style=flat&logo=pyinstaller&logoColor=black" />
   <img src="https://img.shields.io/badge/tkinter-0-9CA3AF?style=flat&logo=python&logoColor=white" />
