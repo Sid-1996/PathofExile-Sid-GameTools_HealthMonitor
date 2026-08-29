@@ -166,8 +166,7 @@ class VersionTab(QWidget):
     def _latest_style(color):
         return f"font-size: 16px; font-weight: 700; color: {color};"
 
-    def _allow_prerelease(self) -> bool:
-        return bool(self._app.config.get("allow_prerelease", False))
+    # 搶先版已移除（正式倉與測試倉隔離，穩定版為唯一通道）
 
     # ────────────────────────────────────────────────────
     #  版本檢查
@@ -191,8 +190,7 @@ class VersionTab(QWidget):
 
         def _check():
             try:
-                channel = "beta" if self._allow_prerelease() else None
-                manager = auto_update.create_manager(channel)
+                manager = auto_update.create_manager(None)
                 self._update_manager = manager
                 info = auto_update.check_for_update(manager)
                 self._sig.version_checked.emit(info)

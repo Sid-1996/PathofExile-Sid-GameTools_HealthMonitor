@@ -1,6 +1,6 @@
-"""SettingsTab — 設置分頁（熱鍵/通用/更新）。
+"""SettingsTab — 設置分頁（熱鍵/通用）。
 
-設計：單一 ScrollArea，四張卡，熱鍵卡為核心（Issue #1）。
+設計：單一 ScrollArea，三張卡，熱鍵卡為核心（Issue #1）。
 白名單：F1-F11 / Ctrl+F1-F11 / Alt+F1-F11（F12 保留為緊急關閉）。
 """
 
@@ -112,15 +112,6 @@ class SettingsTab(ScrollArea):
 
         lay.addWidget(hot_card)
 
-        # 更新
-        upd_group = SettingCardGroup(g("settings_group_update"), self.view)
-        self.prerelease_switch = SwitchButton(self.view)
-        self.prerelease_switch.setOnText("ON")
-        self.prerelease_switch.setOffText("OFF")
-        self.prerelease_switch.checkedChanged.connect(self._on_prerelease_changed)
-        upd_group.addSettingCard(self._mk_switch_card("allow_prerelease", self.prerelease_switch))
-        lay.addWidget(upd_group)
-
         lay.addStretch(1)
 
     def _mk_switch_card(self, key: str, switch: SwitchButton):
@@ -129,17 +120,14 @@ class SettingsTab(ScrollArea):
         icon_map = {
             "preview_enabled": FluentIcon.VIEW,
             "always_on_top": FluentIcon.PIN,
-            "allow_prerelease": FluentIcon.UPDATE,
         }
         title_map = {
             "preview_enabled": self._app.get_text("enable_preview"),
             "always_on_top": self._app.get_text("always_on_top"),
-            "allow_prerelease": self._app.get_text("allow_prerelease_label"),
         }
         content_map = {
             "preview_enabled": self._app.get_text("enable_preview_tip"),
             "always_on_top": self._app.get_text("always_on_top_tip"),
-            "allow_prerelease": self._app.get_text("allow_prerelease_tip"),
         }
         card = SettingCard(icon_map.get(key, FluentIcon.SETTING), title_map.get(key, key), content_map.get(key, ""), parent=self.view)
         card.hBoxLayout.addWidget(switch, 0, Qt.AlignmentFlag.AlignRight)
@@ -150,7 +138,6 @@ class SettingsTab(ScrollArea):
         cfg = self._app.config
         self.preview_switch.setChecked(bool(cfg.get("preview_enabled", True)))
         self.topmost_switch.setChecked(bool(cfg.get("always_on_top", False)))
-        self.prerelease_switch.setChecked(bool(cfg.get("allow_prerelease", False)))
         hk = cfg.get("hotkeys", {})
         for k, combo in self._combos.items():
             v = str(hk.get(k, k)).strip().lower()
@@ -182,15 +169,6 @@ class SettingsTab(ScrollArea):
                 self._app.show()
             except Exception:
                 pass
-
-    def _on_prerelease_changed(self, checked: bool) -> None:
-        self._app.config["allow_prerelease"] = bool(checked)
-        self._app.schedule_config_save()
-        # 下次檢查更新時生效
-        try:
-            self._app.add_status_message(self._app.get_text("prerelease_toggled_hint"), "info")
-        except Exception:
-            pass
 
     def _on_apply_hotkeys(self) -> None:
         from PySide6.QtWidgets import QMessageBox
