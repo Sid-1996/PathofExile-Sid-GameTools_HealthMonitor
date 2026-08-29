@@ -85,6 +85,8 @@
 
 ## 🚀 Quick Start / 快速開始
 
+> ⚠️ **遊戲視窗設定**：請將 Path of Exile 設為「視窗全螢幕」或「視窗模式」，工具才能正確背景截圖與顯示提示浮層。
+
 ### 從原始碼執行
 ```bat
 scripts\install_dependencies.bat
