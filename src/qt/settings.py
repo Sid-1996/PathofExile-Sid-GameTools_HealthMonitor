@@ -7,7 +7,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
-from qfluentwidgets import BodyLabel, ComboBox, FluentIcon, HeaderCardWidget, PushButton, ScrollArea, SettingCardGroup, SwitchButton
+from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
 
 
 _HOTKEY_OPTIONS = [
@@ -65,17 +65,22 @@ class SettingsTab(ScrollArea):
         group.addSettingCard(self._mk_switch_card("always_on_top", self.topmost_switch))
         lay.addWidget(group)
 
-        # 熱鍵
-        hot_group = SettingCardGroup(g("settings_group_hotkeys"), self.view)
-        hot_card = HeaderCardWidget(self.view)
-        hot_card.setTitle(f"{g('hotkey_settings_title')} — {g('hotkey_settings_desc')}")
+        # 熱鍵（CardWidget 垂直流，避免 HeaderCardWidget view 被壓扁）
+        hot_header = BodyLabel(g("settings_group_hotkeys"), self.view)
+        hot_header.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2;")
+        lay.addWidget(hot_header)
+        hot_card = CardWidget(self.view)
+        hot_lay = QVBoxLayout(hot_card)
+        hot_lay.setContentsMargins(16, 16, 16, 16)
+        hot_lay.setSpacing(12)
+        hot_title = BodyLabel(f"{g('hotkey_settings_title')} — {g('hotkey_settings_desc')}", hot_card)
+        hot_title.setStyleSheet("font-size: 13px; font-weight: 600; color: #f8f8f2;")
+        hot_title.setWordWrap(True)
+        hot_lay.addWidget(hot_title)
 
-        v = QVBoxLayout()
-        v.setSpacing(10)
-        v.setContentsMargins(16, 12, 16, 12)
         labels = self._hotkey_labels()
         for key in ("f3", "f5", "f6", "f9", "f10"):
-            row = QWidget(hot_card.view)
+            row = QWidget(hot_card)
             row_lay = QHBoxLayout(row)
             row_lay.setContentsMargins(0, 0, 0, 0)
             row_lay.setSpacing(12)
@@ -90,25 +95,22 @@ class SettingsTab(ScrollArea):
             row_lay.addWidget(label)
             row_lay.addWidget(combo)
             row_lay.addStretch(1)
-            v.addWidget(row)
+            hot_lay.addWidget(row)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch(1)
-        self.apply_btn = PushButton(g("apply"), hot_card.view)
+        self.apply_btn = PushButton(g("apply"), hot_card)
         self.apply_btn.clicked.connect(self._on_apply_hotkeys)
         btn_row.addWidget(self.apply_btn)
-        v.addLayout(btn_row)
+        hot_lay.addLayout(btn_row)
 
-        hint = BodyLabel(g("hotkey_settings_hint"), hot_card.view)
+        hint = BodyLabel(g("hotkey_settings_hint"), hot_card)
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #b8b8c8; font-size: 12px;")
         hint.setTextFormat(Qt.TextFormat.PlainText)
-        v.addWidget(hint)
+        hot_lay.addWidget(hint)
 
-        hot_card.viewLayout.setContentsMargins(0, 0, 0, 0)
-        hot_card.viewLayout.addLayout(v)
-        hot_group.addSettingCard(hot_card)
-        lay.addWidget(hot_group)
+        lay.addWidget(hot_card)
 
         # 更新
         upd_group = SettingCardGroup(g("settings_group_update"), self.view)
