@@ -86,8 +86,11 @@ class _FloatingNotice(QFrame):
 
         self._label = QLabel(self)
         self._label.setWordWrap(True)
+        # ponytail: 限制最大寬度使長文案自動折行，避免單行溢出螢幕被截斷
+        self.setMaximumWidth(420)
+        self._label.setMaximumWidth(380)
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(16, 10, 16, 10)
+        lay.setContentsMargins(10, 8, 10, 8)
         lay.addWidget(self._label)
 
         self._anim_timer = QTimer(self)
@@ -100,9 +103,10 @@ class _FloatingNotice(QFrame):
     def show_notice(self, text: str, color: str) -> None:
         self._label.setText(text)
         self._label.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 600; background: rgba(40,42,54,0.96); border: 1px solid #3d3d5c; border-radius: 6px; padding: 6px 12px;")
-        if not self._positioned:
-            self._reposition()
-            self._positioned = True
+        # ponytail: 先依最大寬度計算多行高度，再定位，避免單行溢出被螢幕裁切
+        self.adjustSize()
+        self._reposition()
+        self._positioned = True
         self.show()
         self.raise_()
         self._phase = 0
@@ -116,7 +120,10 @@ class _FloatingNotice(QFrame):
             return
         avail = screen.availableGeometry()
         self.adjustSize()
-        self.move(avail.right() - self.width() - 20, avail.bottom() - self.height() - 20)
+        x = avail.right() - self.width() - 20
+        # 寬度受限後仍可能溢出，clamp 到可視區內
+        x = max(avail.left() + 10, min(x, avail.right() - self.width() - 10))
+        self.move(x, avail.bottom() - self.height() - 20)
 
     def _tick(self) -> None:
         self._elapsed += self.STEP_MS
