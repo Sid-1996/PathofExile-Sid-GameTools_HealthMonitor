@@ -5,11 +5,14 @@
 """
 
 import logging
+import os
+import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional
 
 import pygetwindow as gw
@@ -648,39 +651,92 @@ class MainWindow(FluentWindow):
             logger.warning("檢查遊戲視窗狀態失敗: %s", e)
             return False
 
+    def _relaunch_detached(self, launch_args: list[str], cwd: str | None) -> bool:
+        """分離程序重啟自己；新程序等本程序退出後才初始化（與 app._relaunch_detached 一致）"""
+        cmd = [sys.executable, *launch_args, f"--wait-exit-pid={os.getpid()}"]
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
+        breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0x01000000)
+        for extra in (breakaway, 0):
+            try:
+                subprocess.Popen(cmd, creationflags=flags | extra, close_fds=True, cwd=cwd)  # noqa: S603
+                return True
+            except OSError:
+                continue
+        return False
+
     def change_language_display(self, display_name: str) -> None:
+        from language_system import normalize_language_code
+
         mapping = {"繁體中文": "zh-tw", "English": "en"}
-        new_language = mapping.get(display_name, "zh-tw")
+        new_language = normalize_language_code(mapping.get(display_name, "zh-tw"))
         if new_language == self.current_language:
             return
+        old_language = self.current_language
         self.current_language = new_language
         self.language_manager.change_language(new_language)
         self.config["language"] = new_language
-        self.schedule_config_save()
-        self.setWindowTitle(self.get_text("window_title"))
-        # 左側導航文案：FluentWindow 導航項文字在運行期無公開 API，僅刷新視窗標題；
-        # 其餘 Tab 內容由各自 update_language 刷新，導航保持建構語系（重啟後一致）
+        # 同步落盤（debounce 前先確保寫入，否則重啟後新程序讀不到）
         try:
-            self._refresh_status_bar()
+            self.config_manager.save_config(self.config)
         except Exception:
             pass
-        if hasattr(self, "monitor_tab"):
-            self.monitor_tab.update_monitor_tab_language()
-        if hasattr(self, "inventory_tab"):
-            self.inventory_tab.update_inventory_tab_language()
-        if hasattr(self, "combo_tab"):
-            self.combo_tab.update_combo_tab_language()
-        if hasattr(self, "status_tab"):
-            self.status_tab.update_status_tab_language()
-        if hasattr(self, "help_tab"):
-            self.help_tab.update_language()
-        if hasattr(self, "version_tab"):
-            self.version_tab.update_language()
-        if hasattr(self, "about_tab"):
-            self.about_tab.update_language()
-        if hasattr(self, "settings_tab"):
-            self.settings_tab.update_language()
-        self._refresh_status_bar()
+        self.schedule_config_save()
+
+        # 詢問是否立即重啟（與 ocr-trigger 一致：Yes 重啟，No 下次生效）
+        try:
+            title = self.get_text("language_restart_title")
+            msg = self.get_text("language_restart_message")
+            # fallback 若 key 缺失
+            if title.startswith("["):
+                title = "語言已變更" if new_language == "zh-tw" else "Language Changed"
+            if msg.startswith("["):
+                msg = "語言已變更，是否立即重啟程式？" if new_language == "zh-tw" else "Language has changed. Restart now?"
+            answer = QMessageBox.question(
+                self,
+                title,
+                msg,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+        except Exception:
+            answer = QMessageBox.StandardButton.No
+
+        if answer == QMessageBox.StandardButton.Yes:
+            # 決定啟動參數與 cwd（frozen vs 開發）
+            if getattr(sys, "frozen", False):
+                launch_args: list[str] = []
+                cwd = str(Path(sys.executable).parent)
+            else:
+                launch_args = ["src/app.py"]
+                if "--debug" in sys.argv:
+                    launch_args.append("--debug")
+                cwd = str(Path(__file__).resolve().parent.parent.parent)
+            if not self._relaunch_detached(launch_args, cwd):
+                logger.error("無法啟動重啟程序，將退出供使用者手動重啟")
+                try:
+                    hint = self.get_text("language_restart_failed")
+                    QMessageBox.warning(self, title, hint.format(error="Popen failed"))
+                except Exception:
+                    pass
+            # watchdog：若 close 卡住，3 秒後強制退出，保證新程序的 --wait-exit-pid 能繼續
+            threading.Thread(target=lambda: (time.sleep(3), os._exit(1)), daemon=True).start()
+            try:
+                self.close_app()
+            except Exception:
+                logger.exception("語言切換退出時例外")
+            os._exit(0)
+        else:
+            # 使用者選 No：僅刷新標題，其餘保持舊語系，下次啟動生效
+            try:
+                self.setWindowTitle(self.get_text("window_title"))
+                self._refresh_status_bar()
+                hint = self.get_text("language_restart_hint")
+                if not hint.startswith("["):
+                    self.add_status_message(hint, "info")
+            except Exception:
+                pass
+            # 回滾記憶體語系？不回滾 — 已寫入 config，重啟前 UI 保持新語系的標題即可；
+            # 若要完整一致，使用者下次重啟即生效
+            _ = old_language  # 保留供未來需要回滾時使用
 
     def _on_usage_tick(self) -> None:
         self.total_usage_time += 60
