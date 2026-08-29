@@ -1148,6 +1148,7 @@ class InventoryTab(QWidget):
         if self._app.is_global_pause():
             logger.info("全域暫停中，跳過 F5 熱鍵")
             self._app.add_status_message(self._app.get_text("f5_skip_global_pause"), "warning")
+            self._app.show_floating_notice(self._app.get_text("f5_skip_global_pause"), "warning")
             return
 
         self._app.add_status_message(self._app.get_text("f5_hotkey_pressed"), "hotkey")
@@ -1157,11 +1158,13 @@ class InventoryTab(QWidget):
             if not window_title:
                 logger.warning("F5: 未設定遊戲視窗，無法使用返回藏身處")
                 self._app.add_status_message(self._app.get_text("f5_fail_game_window_not_set"), "error")
+                self._app.show_floating_notice(self._app.get_text("f5_fail_game_window_not_set"), "warning")
                 return
 
             if not self._app.window_key_sender.is_game_window_foreground(window_title):
                 logger.warning("F5: 遊戲視窗 '%s' 不在前景，取消返回藏身處操作", window_title)
                 self._app.add_status_message(self._app.get_text("f5_cancel_game_window_not_foreground"), "warning")
+                self._app.show_floating_notice(self._app.get_text("f5_cancel_game_window_not_foreground"), "warning")
                 return
 
             self._app.add_status_message(self._app.get_text("f5_processing_return_to_hideout"), "info")
@@ -1181,32 +1184,35 @@ class InventoryTab(QWidget):
         except Exception as e:
             logger.error("F5: 返回藏身處失敗: %s", e)
             self._app.add_status_message(self._app.get_text("f5_fail_with_error").format(error=str(e)), "error")
+            self._app.show_floating_notice(self._app.get_text("f5_fail_with_error").format(error=str(e)), "error")
 
     def _validate_f3(self):
         if self._app.is_global_pause():
             logger.info("全域暫停中，跳過F3熱鍵")
             self._app.add_status_message(self._app.get_text("f3_skip_global_pause"), "warning")
+            self._app.show_floating_notice(self._app.get_text("f3_skip_global_pause"), "warning")
             return None
         self._app.inventory_clear_interrupt = False
         self._app.add_status_message(self._app.get_text("f3_hotkey_pressed"), "hotkey")
         if not self.inventory_region or not self.empty_inventory_colors:
             self._app.add_status_message(self._app.get_text("f3_fail_inventory_incomplete"), "error")
-            QMessageBox.warning(self, self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_setup_incomplete"))
+            self._app.show_floating_notice(self._app.get_text("f3_fail_inventory_incomplete"), "warning")
             return None
         if not self.inventory_ui_region or self.inventory_ui_screenshot is None:
             self._app.add_status_message(self._app.get_text("f3_fail_inventory_ui_not_set"), "error")
-            QMessageBox.warning(self, self._app.get_text("f3_inventory_reminder"), self._app.get_text("inventory_ui_screenshot_not_set"))
+            self._app.show_floating_notice(self._app.get_text("f3_fail_inventory_ui_not_set"), "warning")
             return None
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
             self._app.add_status_message(self._app.get_text("f3_fail_game_window_not_set"), "error")
-            QMessageBox.warning(self, self._app.get_text("f3_inventory_reminder"), self._app.get_text("set_game_window_first"))
+            self._app.show_floating_notice(self._app.get_text("f3_fail_game_window_not_set"), "warning")
             return None
         return window_title
 
     def _capture_and_prepare_f3_gui(self, window_title):
         if not self._app.window_key_sender.is_game_window_foreground(window_title):
             self._app.add_status_message(self._app.get_text("f3_cancel_game_not_foreground"), "warning")
+            self._app.show_floating_notice(self._app.get_text("f3_cancel_game_not_foreground"), "warning")
             logger.warning("F3: 遊戲視窗 '%s' 不在前台，將嘗試激活", window_title)
         win = self.window()
         gui_was_visible = not win.isMinimized() and not win.isHidden()
@@ -1258,6 +1264,7 @@ class InventoryTab(QWidget):
                 windows = gw.getWindowsWithTitle(window_title_local)
                 if not windows:
                     self._app.add_status_message(self._app.get_text("f3_fail_game_window_not_found"), "error")
+                    self._app.show_floating_notice(self._app.get_text("f3_fail_game_window_not_found"), "warning")
                     return
                 game_window = windows[0]
                 logger.info("F3(worker): 找到遊戲視窗: %s", game_window.title)
@@ -1276,11 +1283,13 @@ class InventoryTab(QWidget):
                 if not self.is_inventory_ui_visible(game_window):
                     logger.warning("F3(worker): 背包UI未開啟，跳過清包操作")
                     self._app.add_status_message(self._app.get_text("f3_cancel_inventory_not_open"), "warning")
+                    self._app.show_floating_notice(self._app.get_text("f3_cancel_inventory_not_open"), "warning")
                     return
                 self._execute_f3_clear(game_window, window_title_local)
             except Exception as e:
                 logger.error("F3(worker): 發生例外: %s", e)
                 self._app.add_status_message(self._app.get_text("f3_fail_with_error").format(error=str(e)), "error")
+                self._app.show_floating_notice(self._app.get_text("f3_fail_with_error").format(error=str(e)), "error")
             finally:
                 self._app.inventory_clear_interrupt = False
                 self._signals.restore_f3_gui.emit(gui_was_foreground_local, gui_was_topmost_local)
@@ -1748,6 +1757,7 @@ class InventoryTab(QWidget):
         if self._app.is_global_pause():
             logger.info("全域暫停中，跳過F6熱鍵")
             self._app.add_status_message(self._app.get_text("f6_skip_global_pause"), "warning")
+            self._app.show_floating_notice(self._app.get_text("f6_skip_global_pause"), "warning")
             return None
         self._app.add_status_message(self._app.get_text("f6_hotkey_pressed"), "hotkey")
         logger.info("=== F6取物功能被調用（非阻塞版） ===")
@@ -1871,6 +1881,7 @@ class InventoryTab(QWidget):
                 if not windows:
                     logger.warning("F6(worker): 找不到遊戲視窗")
                     self._app.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error")
+                    self._app.show_floating_notice(self._app.get_text("f6_fail_game_window_not_set"), "warning")
                     return
                 game_window = windows[0]
                 logger.info("F6(worker): 找到遊戲視窗: %s", game_window.title)
@@ -1884,11 +1895,13 @@ class InventoryTab(QWidget):
                 if not self.is_inventory_ui_visible(game_window):
                     logger.warning("F6(worker): 背包UI未打開，無法執行取物功能")
                     self._app.add_status_message(self._app.get_text("f6_cancel_inventory_ui_not_open"), "warning")
+                    self._app.show_floating_notice(self._app.get_text("f6_cancel_inventory_ui_not_open"), "warning")
                     return
                 self._execute_f6_pickup(game_window, valid_coords_local)
             except Exception as e:
                 logger.error("F6(worker): 發生例外: %s", e)
                 self._app.add_status_message(self._app.get_text("f6_fail_with_error").format(error=str(e)), "error")
+                self._app.show_floating_notice(self._app.get_text("f6_fail_with_error").format(error=str(e)), "error")
                 try:
                     pyautogui.keyUp("ctrl")
                 except Exception:

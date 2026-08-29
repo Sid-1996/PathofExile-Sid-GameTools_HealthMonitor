@@ -737,6 +737,12 @@ class MainWindow(FluentWindow):
         """顯示置頂浮層提示（toast）。背景運作時使用者仍可看到；不搶焦、自動消失。"""
         if self._is_closing:
             return
+        # ponytail: queued 到主執行緒，keyboard/worker 執行緒亦安全
+        QTimer.singleShot(0, lambda t=text, m=msg_type: self._show_notice_impl(t, m))
+
+    def _show_notice_impl(self, text: str, msg_type: str) -> None:
+        if self._is_closing:
+            return
         if self._floating_notice is None:
             self._floating_notice = _FloatingNotice(self)
         color = _NOTICE_COLORS.get(msg_type, _NOTICE_COLORS["info"])
