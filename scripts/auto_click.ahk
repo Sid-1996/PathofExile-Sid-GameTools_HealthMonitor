@@ -19,7 +19,7 @@ GetParentProcessName() {
     ; 檢查命令列參數
     if (A_Args.Length > 0) {
         parentProcessName := A_Args[1]
-        TrayTip("滑鼠連點工具", "從參數獲取進程名稱: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "從參數獲取進程名稱: " . parentProcessName, 16)
         return
     }
     
@@ -27,25 +27,25 @@ GetParentProcessName() {
     ; 優先偵測編譯後的exe名稱
     if (ProcessExist("GameTools_HealthMonitor.exe")) {
         parentProcessName := "GameTools_HealthMonitor.exe"
-        TrayTip("滑鼠連點工具", "偵測到編譯版本: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "偵測到編譯版本: " . parentProcessName, 16)
     }
     ; 其次偵測開發環境的python進程 - 目前統一使用 Python 3.13
     else if (ProcessExist("python3.13.exe")) {
         parentProcessName := "python3.13.exe"
-        TrayTip("滑鼠連點工具", "偵測到Python 3.13: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "偵測到Python 3.13: " . parentProcessName, 16)
     }
     else if (ProcessExist("python.exe")) {
         parentProcessName := "python.exe"
-        TrayTip("滑鼠連點工具", "偵測到Python: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "偵測到Python: " . parentProcessName, 16)
     }
     else if (ProcessExist("pythonw.exe")) {
         parentProcessName := "pythonw.exe"
-        TrayTip("滑鼠連點工具", "偵測到Pythonw: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "偵測到Pythonw: " . parentProcessName, 16)
     }
     else {
         ; 如果都找不到，設置預設值但延遲檢查
         parentProcessName := "GameTools_HealthMonitor.exe"
-        TrayTip("滑鼠連點工具", "使用預設值: " . parentProcessName, 16)
+        ; TrayTip("滑鼠連點工具", "使用預設值: " . parentProcessName, 16)
     }
 }
 
@@ -56,9 +56,9 @@ GetParentProcessName()
 if (parentProcessName != "") {
     ; 延遲5秒再開始監測，確保主程式完全啟動
     SetTimer(() => SetTimer(CheckParentProcess, monitorInterval), 5000)
-    TrayTip("滑鼠連點工具", "已啟動，將於5秒後開始監測進程: " . parentProcessName, 16)
+    ; TrayTip("滑鼠連點工具", "已啟動，將於5秒後開始監測進程: " . parentProcessName, 16)
 } else {
-    TrayTip("滑鼠連點工具", "警告：無法確定父進程名稱", 16)
+    ; TrayTip("滑鼠連點工具", "警告：無法確定父進程名稱", 16)
 }
 
 ; 檢查父進程是否仍然存在
@@ -72,7 +72,7 @@ CheckParentProcess() {
     ; 檢查指定名稱的進程是否仍然存在
     if (!ProcessExist(parentProcessName)) {
         ; 如果父進程不存在，自動關閉
-        TrayTip("滑鼠連點工具", "父進程(" . parentProcessName . ")已退出，自動關閉連點工具", 16)
+        ; TrayTip("滑鼠連點工具", "父進程(" . parentProcessName . ")已退出，自動關閉連點工具", 16)
         SetTimer(CheckParentProcess, 0)  ; 停止監測
         Sleep(500)  ; 等待0.5秒
         ExitApp()
