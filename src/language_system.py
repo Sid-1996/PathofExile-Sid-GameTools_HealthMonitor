@@ -6,12 +6,52 @@
 import json
 import os
 import sys
+import warnings
 
 # Import version from _version
 try:
     from _version import __version__ as APP_VERSION
 except ImportError:
     APP_VERSION = "1.2.1"
+
+# Windows LANGID primary language: 0x04 = Chinese, 0x11 = Japanese
+_LANG_CHINESE = 0x04
+_LANG_JAPANESE = 0x11
+
+
+def _langid_to_code(lang_id: int) -> str:
+    """ponytail: 預設英文；中文系統回 zh-tw，其他回 en（ja 尚無包，暫回 en）"""
+    primary = lang_id & 0xFF
+    if primary == _LANG_CHINESE:
+        return "zh-tw"
+    if primary == _LANG_JAPANESE:
+        return "en"
+    return "en"
+
+
+def detect_system_language() -> str:
+    """首次啟動的預設語系：中文系統→zh-tw，其他→en"""
+    try:
+        import ctypes
+
+        lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        if lang_id == 0:
+            lang_id = ctypes.windll.kernel32.GetSystemDefaultUILanguage()
+        return _langid_to_code(lang_id)
+    except Exception:
+        return "en"
+
+
+def normalize_language_code(raw: str | None) -> str:
+    """大小寫/分隔符容錯，正規化為 zh-tw / en"""
+    if not isinstance(raw, str):
+        return "zh-tw"
+    low = raw.strip().lower().replace("_", "-")
+    if low in ("zh-tw", "zh_tw", "zh", "tw") or low.startswith("zh"):
+        return "zh-tw"
+    if low == "en":
+        return "en"
+    return "zh-tw"
 
 
 def get_app_dir():
@@ -51,11 +91,16 @@ class LanguageManager:
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
 
     def get_text(self, key):
-        """獲取本地化文字"""
+        """獲取本地化文字（缺 key 時 fallback zh-tw 並 warn，與 ocr-trigger 一致）"""
         try:
-            result = LANGUAGE_PACKS.get(self.current_language, {}).get(key, f"[{key}]")
-            # Format window_title with current version
-            if key == "window_title":
+            result = LANGUAGE_PACKS.get(self.current_language, {}).get(key)
+            if result is None:
+                result = LANGUAGE_PACKS.get("zh-tw", {}).get(key, f"[{key}]")
+                if result == f"[{key}]":
+                    warnings.warn(f"[i18n] missing key '{key}' in '{self.current_language}'")
+                elif self.current_language != "zh-tw":
+                    warnings.warn(f"[i18n] missing key '{key}' in '{self.current_language}', fallback zh-tw")
+            if key == "window_title" and isinstance(result, str) and "{version}" in result:
                 result = result.format(version=APP_VERSION)
             return result
         except Exception:
@@ -67,7 +112,8 @@ class LanguageManager:
         return self.change_language(language_code)
 
     def change_language(self, new_language):
-        """切換語言"""
+        """切換語言（自動正規化）"""
+        new_language = normalize_language_code(new_language)
         if new_language == self.current_language:
             return False  # 如果選擇的語言和當前語言相同，不做任何動作
 
@@ -118,6 +164,7 @@ def set_current_language(language_code):
 if __name__ == "__main__":
     import tempfile
 
+    # basic load
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "language_packs.json"), "w", encoding="utf-8") as f:
         json.dump({"zh-tw": {"hello": "哈囉"}, "en": {"hello": "hello"}}, f)
@@ -133,4 +180,19 @@ if __name__ == "__main__":
         assert packs.get("en", {}).get("hello") == "hello", "en lookup failed"
     finally:
         get_app_dir = old_app_dir  # noqa: F811
+
+    # normalize
+    assert normalize_language_code("ZH-TW") == "zh-tw"
+    assert normalize_language_code("zh_TW") == "zh-tw"
+    assert normalize_language_code("EN") == "en"
+    assert normalize_language_code("ZH") == "zh-tw"
+    assert normalize_language_code(None) == "zh-tw"
+    # langid
+    assert _langid_to_code(0x0404) == "zh-tw"
+    assert _langid_to_code(0x0411) == "en"
+    assert _langid_to_code(0x0409) == "en"
+    # fallback get_text (needs LANGUAGE_PACKS populated)
+    LANGUAGE_PACKS["zh-tw"]["_fallback_test"] = "回退"
+    lm = LanguageManager(default_language="en")
+    assert lm.get_text("_fallback_test") == "回退", "fallback failed"
     print("language_system self-check OK")

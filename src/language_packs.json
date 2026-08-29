@@ -638,7 +638,12 @@
     "hotkey_settings_applied": "熱鍵已更新",
     "hotkey_apply_failed": "熱鍵套用失敗：{error}",
     "apply": "套用",
-    "hotkey_f12_reserved": "F12 為緊急關閉保留，請選擇其他按鍵"
+    "hotkey_f12_reserved": "F12 為緊急關閉保留，請選擇其他按鍵",
+    "language_restart_title": "語言已變更",
+    "language_restart_message": "語言已變更，是否立即重啟程式？\n\n重啟後所有介面將以新語言顯示。",
+    "language_restart_hint": "語言已儲存，下次啟動時生效",
+    "language_restart_failed": "無法重新啟動程式：{error}",
+    "settings.language_restart": "語言已變更，是否立即重啟程式？"
   },
   "en": {
     "window_title": "Sid Game Tools v{version} - Health Monitor + Auto Clear Inventory + Automation Tools",
@@ -1281,6 +1286,11 @@
     "hotkey_settings_applied": "Hotkeys updated",
     "hotkey_apply_failed": "Failed to apply hotkeys: {error}",
     "apply": "Apply",
-    "hotkey_f12_reserved": "F12 is reserved for emergency close"
+    "hotkey_f12_reserved": "F12 is reserved for emergency close",
+    "language_restart_title": "Language Changed",
+    "language_restart_message": "Language has changed. Restart now?\n\nAll UI will be displayed in the new language after restart.",
+    "language_restart_hint": "Language saved. It will take effect on next launch.",
+    "language_restart_failed": "Failed to restart: {error}",
+    "settings.language_restart": "Language has changed. Restart now?"
   }
 }

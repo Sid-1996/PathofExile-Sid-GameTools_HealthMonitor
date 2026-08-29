@@ -54,14 +54,85 @@ def _smoke_thread_test(window: MainWindow) -> None:
     threading.Thread(target=emit, daemon=True).start()
 
 
+def _wait_exit_pid_arg(timeout_s: float = 20.0) -> None:
+    """啟動參數含 --wait-exit-pid=N 時，等該 PID 退出後才繼續（內建 relaunch，與 ocr-trigger 一致）"""
+    keep: list[str] = []
+    pid: int | None = None
+    for a in sys.argv[1:]:
+        if a.startswith("--wait-exit-pid="):
+            try:
+                pid = int(a.split("=", 1)[1])
+            except ValueError:
+                pid = None
+        else:
+            keep.append(a)
+    sys.argv[1:] = keep
+    if pid is None:
+        return
+    try:
+        import ctypes
+
+        SYNCHRONIZE = 0x00100000
+        WAIT_TIMEOUT = 0x00000102
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(SYNCHRONIZE, False, pid)
+        if not h:
+            return
+        try:
+            deadline = time.monotonic() + timeout_s
+            while time.monotonic() < deadline:
+                if k32.WaitForSingleObject(h, 500) != WAIT_TIMEOUT:
+                    break
+        finally:
+            k32.CloseHandle(h)
+    except Exception:
+        pass
+
+
+def _relaunch_detached(launch_args: list[str], cwd: str | None) -> bool:
+    """分離程序重啟自己；新程序等本程序退出後才初始化"""
+    import subprocess
+    from pathlib import Path
+
+    cmd = [sys.executable, *launch_args, f"--wait-exit-pid={os.getpid()}"]
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
+    breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0x01000000)
+    for extra in (breakaway, 0):
+        try:
+            subprocess.Popen(cmd, creationflags=flags | extra, close_fds=True, cwd=cwd)  # noqa: S603
+            return True
+        except OSError:
+            continue
+    return False
+
+
 def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv
     smoke = "--smoke" in argv
 
+    # 內建 relaunch：帶 --wait-exit-pid=N 時先等舊程序退出（必須在 velopack 之前）
+    _wait_exit_pid_arg(timeout_s=20.0)
+
     # 統一 logging 設定需在最先（任何 console 輸出前）執行；--debug / GTOOLS_LOG_LEVEL
     configure_logging()
 
-    # Velopack builder 必須最先執行（安裝/更新 hook 可能重啟程序）；開發環境為 no-op
+    # 啟動前決定語系（在 QApplication 之前，與 ocr-trigger 一致：config 優先，缺省用系統語系）
+    try:
+        from language_system import detect_system_language, normalize_language_code, get_language_manager
+
+        _cfg_path = os.path.join(get_user_data_dir(), "health_monitor_config.json")
+        _detected = detect_system_language()
+        try:
+            with open(_cfg_path, encoding="utf-8") as _f:
+                _cfg = json.load(_f)
+            _lang = _cfg.get("language") or _detected
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            _lang = _detected
+        get_language_manager().change_language(normalize_language_code(_lang))
+    except Exception:
+        pass
+
+    # Velopack builder 必須在語系決定後、QApplication 前執行（安裝/更新 hook 可能重啟程序）；開發環境為 no-op
     try:
         import velopack
 

@@ -63,14 +63,21 @@ class ConfigManager:
                 v = DEFAULT_HOTKEYS[k]
             fixed[k] = v
         self.config["hotkeys"] = fixed
-        # 語言正規化（EN → en，手改大小寫容錯）
-        lang = self.config.get("language")
-        if isinstance(lang, str):
-            low = lang.strip().lower()
-            if low in ("zh-tw", "zh_tw", "zh", "tw"):
-                self.config["language"] = "zh-tw"
-            elif low == "en":
-                self.config["language"] = "en"
+        # 語言正規化（大小寫/分隔符容錯，與 language_system.normalize 一致）
+        try:
+            from language_system import normalize_language_code
+
+            lang = self.config.get("language")
+            if isinstance(lang, str):
+                self.config["language"] = normalize_language_code(lang)
+        except Exception:
+            lang = self.config.get("language")
+            if isinstance(lang, str):
+                low = lang.strip().lower()
+                if low in ("zh-tw", "zh_tw", "zh", "tw") or low.startswith("zh"):
+                    self.config["language"] = "zh-tw"
+                elif low == "en":
+                    self.config["language"] = "en"
 
     def save_config(self, config_data=None):
         """儲存設定檔案（帶備份和異常恢復機制）"""
