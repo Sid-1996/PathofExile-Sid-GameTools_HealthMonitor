@@ -1131,7 +1131,20 @@ class MonitorTab(QWidget):
         for attr, key in texts.items():
             widget = getattr(self, attr, None)
             if widget is not None:
-                widget.setText(self._app.get_text(key))
+                text = self._app.get_text(key)
+                try:
+                    # QGroupBox 用 setTitle，其餘用 setText
+                    from PySide6.QtWidgets import QGroupBox
+
+                    if isinstance(widget, QGroupBox):
+                        widget.setTitle(text)
+                    else:
+                        widget.setText(text)
+                except AttributeError:
+                    try:
+                        widget.setTitle(text)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
 
         # 鏡像：與設置頁語言卡同步，避免雙入口遞歸
         try:
