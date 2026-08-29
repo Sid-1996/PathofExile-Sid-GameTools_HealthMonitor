@@ -348,6 +348,7 @@ class MainWindow(FluentWindow):
         self.set_monitoring(True)
         mt.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_started"), "success")
+        self.show_floating_notice(self.get_text("health_monitor_started"), "success")
         self.setWindowOpacity(0.8)  # 非干擾模式
         self._refresh_status_bar()  # 狀態列監控燈
 
@@ -361,6 +362,7 @@ class MainWindow(FluentWindow):
         self.set_monitoring(False)
         self.monitor_tab.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
+        self.show_floating_notice(self.get_text("health_monitor_stopped"), "info")
         self.setWindowOpacity(1.0)
         self._refresh_status_bar()  # 狀態列監控燈
         self._monitor_thread = None  # daemon 執行緒會在下次 interruptible_sleep 檢查時退出
@@ -550,14 +552,17 @@ class MainWindow(FluentWindow):
         self.set_global_pause(not self._global_pause)
         if self._global_pause:
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
+            self.show_floating_notice(self.get_text("global_pause_activated"), "warning")
         else:
             self.add_status_message(self.get_text("global_pause_deactivated"), "success")
+            self.show_floating_notice(self.get_text("global_pause_deactivated_toast"), "success")
 
     def toggle_monitoring(self) -> None:
         """F10：血魔監控開關（安全網）。"""
         if self._global_pause:
             logger.info("全域暫停中，跳過 F10 熱鍵")
             self.add_status_message(self.get_text("f10_skip_global_pause"), "warning")
+            self.show_floating_notice(self.get_text("f10_skip_global_pause"), "warning")
             return
         key = "f10_stop_monitoring" if self.is_monitoring() else "f10_start_monitoring"
         self.add_status_message(self.get_text(key), "hotkey")
