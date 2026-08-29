@@ -13,6 +13,9 @@ from utils import get_user_data_dir
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_HOTKEYS = {"f3": "f3", "f5": "f5", "f6": "f6", "f9": "f9", "f10": "f10"}
+
+
 class ConfigManager:
     """配置管理器"""
 
@@ -28,14 +31,31 @@ class ConfigManager:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
+                self._ensure_hotkeys()
                 return True
             else:
                 self.config = {}
+                self._ensure_hotkeys()
                 return True
         except Exception as e:
             logger.error("載入設定檔案失敗: %s", e)
             self.config = {}
+            self._ensure_hotkeys()
             return False
+
+    def _ensure_hotkeys(self) -> None:
+        """舊檔回補 hotkeys，非法值回退預設（大小寫正規化）。"""
+        hk = self.config.get("hotkeys")
+        if not isinstance(hk, dict):
+            self.config["hotkeys"] = dict(DEFAULT_HOTKEYS)
+            return
+        fixed: dict[str, str] = {}
+        for k in ("f3", "f5", "f6", "f9", "f10"):
+            v = hk.get(k, DEFAULT_HOTKEYS[k])
+            if not isinstance(v, str) or not v.strip():
+                v = DEFAULT_HOTKEYS[k]
+            fixed[k] = v.strip().lower()
+        self.config["hotkeys"] = fixed
 
     def save_config(self, config_data=None):
         """儲存設定檔案（帶備份和異常恢復機制）"""

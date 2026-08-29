@@ -626,7 +626,21 @@
     "skill_timer_no_pyautogui": "⚠ 找不到 pyautogui，請執行： pip install pyautogui",
     "fallback_to_full_update": "差異更新不適用，改用完整更新…",
     "monitor_title": "⚡ 血魔監控",
-    "inventory_title": "🗑️ 一鍵清包"
+    "inventory_title": "🗑️ 一鍵清包",
+    "tab_settings": "設置",
+    "settings_title": "設置",
+    "settings_group_general": "通用",
+    "settings_group_hotkeys": "熱鍵",
+    "settings_group_update": "更新",
+    "hotkey_settings_title": "熱鍵自定義",
+    "hotkey_settings_desc": "修改後按套用立即生效；F12 固定為緊急關閉不可改",
+    "hotkey_settings_hint": "可選：F1-F12 / Ctrl+F1-F12 / Alt+F1-F12；五鍵不可重複。與比價軟體衝突時改此處即可。",
+    "hotkey_conflict": "熱鍵不可重複，請重新選擇",
+    "hotkey_settings_applied": "熱鍵已更新",
+    "hotkey_apply_failed": "熱鍵套用失敗：{error}",
+    "allow_prerelease_label": "搶先版更新",
+    "allow_prerelease_tip": "啟用後可收到搶先版（beta）更新",
+    "apply": "套用"
   },
   "en": {
     "window_title": "Sid Game Tools v{version} - Health Monitor + Auto Clear Inventory + Automation Tools",
@@ -1257,6 +1271,20 @@
     "skill_timer_no_pyautogui": "⚠ pyautogui not found. Run: pip install pyautogui",
     "fallback_to_full_update": "Delta update unavailable, using full update...",
     "monitor_title": "⚡ Health Monitor",
-    "inventory_title": "🗑️ Auto Clear Inventory"
+    "inventory_title": "🗑️ Auto Clear Inventory",
+    "tab_settings": "Settings",
+    "settings_title": "Settings",
+    "settings_group_general": "General",
+    "settings_group_hotkeys": "Hotkeys",
+    "settings_group_update": "Update",
+    "hotkey_settings_title": "Hotkey bindings",
+    "hotkey_settings_desc": "Click Apply to take effect immediately; F12 is fixed as emergency close",
+    "hotkey_settings_hint": "Options: F1-F12 / Ctrl+F1-F12 / Alt+F1-F12; 5 keys must be unique. Change here to avoid conflicts with price-check tools.",
+    "hotkey_conflict": "Hotkeys must be unique",
+    "hotkey_settings_applied": "Hotkeys updated",
+    "hotkey_apply_failed": "Failed to apply hotkeys: {error}",
+    "allow_prerelease_label": "Prerelease updates",
+    "allow_prerelease_tip": "Receive beta updates when enabled",
+    "apply": "Apply"
   }
 }

@@ -39,6 +39,7 @@ from qt.combo import ComboTab
 from qt.help import HelpTab
 from qt.inventory import InventoryTab
 from qt.monitor import MonitorTab
+from qt.settings import SettingsTab
 from qt.status import StatusTab
 from qt.version import VersionTab
 from usage_tracker import UsageTracker
@@ -546,20 +547,36 @@ class MainWindow(FluentWindow):
         self._refresh_status_bar()
 
     def setup_hotkeys(self) -> None:
-        """註冊全局熱鍵：F3 清包 / F5 回藏身處 / F6 拾取 / F9 全域暫停 / F10 監控切換 / F12 緊急關閉。"""
+        """註冊全局熱鍵：F3/F5/F6/F9/F10 可改鍵（設置分頁），F12 固定緊急關閉。"""
         try:
             import keyboard
 
-            keyboard.add_hotkey("f3", self.inventory_tab.request_f3)
-            keyboard.add_hotkey("f6", self.inventory_tab.request_f6)
+            hk = self.config.get("hotkeys") or {}
+
+            def _hk(key: str, default: str) -> str:
+                v = hk.get(key, default)
+                return str(v).strip().lower() if isinstance(v, str) and v.strip() else default
+
+            keyboard.add_hotkey(_hk("f3", "f3"), self.inventory_tab.request_f3)
+            keyboard.add_hotkey(_hk("f6", "f6"), self.inventory_tab.request_f6)
             if hasattr(self.inventory_tab, "return_to_hideout"):
-                keyboard.add_hotkey("f5", self.inventory_tab.return_to_hideout)
-            keyboard.add_hotkey("f9", self.toggle_global_pause)
-            keyboard.add_hotkey("f10", self.f10_request.emit)
+                keyboard.add_hotkey(_hk("f5", "f5"), self.inventory_tab.return_to_hideout)
+            keyboard.add_hotkey(_hk("f9", "f9"), self.toggle_global_pause)
+            keyboard.add_hotkey(_hk("f10", "f10"), self.f10_request.emit)
             keyboard.add_hotkey("f12", self.f12_request.emit)
-            logger.info("已註冊 F3/F5/F6/F9/F10/F12 全局熱鍵")
+            logger.info("已註冊全局熱鍵: %s + F12", ", ".join(_hk(k, k) for k in ("f3", "f5", "f6", "f9", "f10")))
         except Exception as e:
             logger.error("註冊熱鍵失敗: %s", e)
+
+    def reload_hotkeys(self) -> None:
+        """重載熱鍵（設置頁套用後立即生效）。"""
+        try:
+            import keyboard
+
+            keyboard.unhook_all_hotkeys()
+        except Exception:
+            pass
+        self.setup_hotkeys()
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
@@ -639,6 +656,8 @@ class MainWindow(FluentWindow):
             self.version_tab.update_language()
         if hasattr(self, "about_tab"):
             self.about_tab.update_language()
+        if hasattr(self, "settings_tab"):
+            self.settings_tab.update_language()
 
     def _on_usage_tick(self) -> None:
         self.total_usage_time += 60
@@ -679,6 +698,11 @@ class MainWindow(FluentWindow):
         self.status_tab = StatusTab(self)
         self.status_tab.setObjectName("tab_status")
         self.addSubInterface(self.status_tab, FluentIcon.HISTORY, self.get_text("tab_status"), NavigationItemPosition.TOP)
+
+        # ── SettingsTab（設置：熱鍵/通用/更新）──
+        self.settings_tab = SettingsTab(self)
+        self.settings_tab.setObjectName("tab_settings")
+        self.addSubInterface(self.settings_tab, FluentIcon.SETTING, self.get_text("tab_settings"), NavigationItemPosition.SCROLL)
 
         # ── HelpTab（已移植：Phase 7 使用說明）──
         self.help_tab = HelpTab(self)
