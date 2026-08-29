@@ -658,6 +658,12 @@ class MainWindow(FluentWindow):
         self.config["language"] = new_language
         self.schedule_config_save()
         self.setWindowTitle(self.get_text("window_title"))
+        # 左側導航文案：FluentWindow 導航項文字在運行期無公開 API，僅刷新視窗標題；
+        # 其餘 Tab 內容由各自 update_language 刷新，導航保持建構語系（重啟後一致）
+        try:
+            self._refresh_status_bar()
+        except Exception:
+            pass
         if hasattr(self, "monitor_tab"):
             self.monitor_tab.update_monitor_tab_language()
         if hasattr(self, "inventory_tab"):
@@ -674,6 +680,7 @@ class MainWindow(FluentWindow):
             self.about_tab.update_language()
         if hasattr(self, "settings_tab"):
             self.settings_tab.update_language()
+        self._refresh_status_bar()
 
     def _on_usage_tick(self) -> None:
         self.total_usage_time += 60

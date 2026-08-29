@@ -28,6 +28,7 @@ class SettingsTab(ScrollArea):
         self.enableTransparentBackground()
 
         self._combos: dict[str, ComboBox] = {}
+        self._hotkey_row_labels: dict[str, BodyLabel] = {}
         self._build_ui()
         self._load_from_config()
 
@@ -50,8 +51,34 @@ class SettingsTab(ScrollArea):
         title = BodyLabel(g("settings_title"), self.view)
         title.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
         lay.addWidget(title)
+        self._title_label = title
+
+        # 語言（置頂，唯一入口）
+        self._lang_card = CardWidget(self.view)
+        lang_lay = QHBoxLayout(self._lang_card)
+        lang_lay.setContentsMargins(16, 14, 16, 14)
+        lang_lay.setSpacing(12)
+        self._lang_label = BodyLabel(g("language"), self._lang_card)
+        self._lang_label.setStyleSheet("color: #f8f8f2;")
+        self._lang_label.setMinimumWidth(140)
+        self.lang_combo = ComboBox(self._lang_card)
+        self.lang_combo.addItems(["繁體中文", "English"])
+        self.lang_combo.setMinimumWidth(160)
+        # ponytail: 以 reverse_map 初始化，避免硬編碼
+        try:
+            cur = self._app.current_language
+            rev = self._app.language_manager.language_reverse_map
+            self.lang_combo.setCurrentText(rev.get(cur, "繁體中文"))
+        except Exception:
+            pass
+        self.lang_combo.currentTextChanged.connect(lambda t: self._app.change_language_display(t))
+        lang_lay.addWidget(self._lang_label)
+        lang_lay.addWidget(self.lang_combo)
+        lang_lay.addStretch(1)
+        lay.addWidget(self._lang_card)
 
         group = SettingCardGroup(g("settings_group_general"), self.view)
+        self._general_group = group
         self.preview_switch = SwitchButton(self.view)
         self.preview_switch.setOnText("ON")
         self.preview_switch.setOffText("OFF")
@@ -69,6 +96,7 @@ class SettingsTab(ScrollArea):
         hot_header = BodyLabel(g("settings_group_hotkeys"), self.view)
         hot_header.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2;")
         lay.addWidget(hot_header)
+        self._hot_header = hot_header
         hot_card = CardWidget(self.view)
         hot_lay = QVBoxLayout(hot_card)
         hot_lay.setContentsMargins(16, 16, 16, 16)
@@ -77,6 +105,7 @@ class SettingsTab(ScrollArea):
         hot_title.setStyleSheet("font-size: 13px; font-weight: 600; color: #f8f8f2;")
         hot_title.setWordWrap(True)
         hot_lay.addWidget(hot_title)
+        self._hot_title = hot_title
 
         labels = self._hotkey_labels()
         for key in ("f3", "f5", "f6", "f9", "f10"):
@@ -92,6 +121,7 @@ class SettingsTab(ScrollArea):
             combo.setCurrentText("F3")
             combo.setMinimumWidth(160)
             self._combos[key] = combo
+            self._hotkey_row_labels[key] = label
             row_lay.addWidget(label)
             row_lay.addWidget(combo)
             row_lay.addStretch(1)
@@ -109,6 +139,7 @@ class SettingsTab(ScrollArea):
         hint.setStyleSheet("color: #b8b8c8; font-size: 12px;")
         hint.setTextFormat(Qt.TextFormat.PlainText)
         hot_lay.addWidget(hint)
+        self._hot_hint = hint
 
         lay.addWidget(hot_card)
 
@@ -138,10 +169,29 @@ class SettingsTab(ScrollArea):
         cfg = self._app.config
         self.preview_switch.setChecked(bool(cfg.get("preview_enabled", True)))
         self.topmost_switch.setChecked(bool(cfg.get("always_on_top", False)))
+        # ponytail: blockSignals 避免 setCurrentText 誤觸語言/熱鍵回呼
+        try:
+            self.lang_combo.blockSignals(True)
+            rev = self._app.language_manager.language_reverse_map
+            self.lang_combo.setCurrentText(rev.get(self._app.current_language, "繁體中文"))
+        except Exception:
+            pass
+        finally:
+            try:
+                self.lang_combo.blockSignals(False)
+            except Exception:
+                pass
         hk = cfg.get("hotkeys", {})
         for k, combo in self._combos.items():
             v = str(hk.get(k, k)).strip().lower()
-            combo.setCurrentText(v.upper() if v.upper() in [o.upper() for o in _HOTKEY_OPTIONS] else k.upper())
+            try:
+                combo.blockSignals(True)
+                combo.setCurrentText(v.upper() if v.upper() in [o.upper() for o in _HOTKEY_OPTIONS] else k.upper())
+            finally:
+                try:
+                    combo.blockSignals(False)
+                except Exception:
+                    pass
 
     def _on_preview_changed(self, checked: bool) -> None:
         self._app.preview_enabled = bool(checked)
@@ -197,14 +247,28 @@ class SettingsTab(ScrollArea):
                 pass
 
     def update_language(self) -> None:
-        # 重建行標以套用新語系
+        g = self._app.get_text
+        # 標題與分組
+        try:
+            self._title_label.setText(g("settings_title"))
+            self._general_group.titleLabel.setText(g("settings_group_general"))  # pyright: ignore
+            self._hot_header.setText(g("settings_group_hotkeys"))
+            self._hot_title.setText(f"{g('hotkey_settings_title')} — {g('hotkey_settings_desc')}")
+            self._hot_hint.setText(g("hotkey_settings_hint"))
+            self._lang_label.setText(g("language"))
+            self.apply_btn.setText(g("apply"))
+        except Exception:
+            pass
+        # 行標精準化（不碰 ComboBox 內部子標）
         labels = self._hotkey_labels()
-        for k, combo in self._combos.items():
-            parent = combo.parent()
-            if parent is not None:
-                for child in parent.findChildren(BodyLabel):
-                    # 第一行標即該 key 的 label
-                    if child is not combo:
-                        child.setText(labels.get(k, k))
-                        break
+        for k, label in self._hotkey_row_labels.items():
+            try:
+                label.setText(labels.get(k, k))
+            except Exception:
+                pass
         self._load_from_config()
+        try:
+            self.view.adjustSize()
+            self.adjustSize()
+        except Exception:
+            pass

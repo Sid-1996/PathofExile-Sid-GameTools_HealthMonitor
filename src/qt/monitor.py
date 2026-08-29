@@ -1133,6 +1133,16 @@ class MonitorTab(QWidget):
             if widget is not None:
                 widget.setText(self._app.get_text(key))
 
+        # 鏡像：與設置頁語言卡同步，避免雙入口遞歸
+        try:
+            self._setting_language = True
+            rev = self.language_reverse_map
+            self.language_combo.setCurrentText(rev.get(self._app.current_language, "繁體中文"))
+        except Exception:
+            pass
+        finally:
+            self._setting_language = False
+
         self.update_toggle_btn()
 
         self.settings_tree.setHorizontalHeaderLabels([self._app.get_text("type"), self._app.get_text("percentage"), self._app.get_text("hotkey"), self._app.get_text("cooldown_ms")])
