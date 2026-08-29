@@ -648,12 +648,12 @@ class MainWindow(FluentWindow):
         # ── InventoryTab（已移植：Phase 5 UI 骨架 + 框選/預覽/排除/F3/F6）──
         self.inventory_tab = InventoryTab(self)
         self.inventory_tab.setObjectName("tab_inventory_clear")
-        self.addSubInterface(self.inventory_tab, FluentIcon.SHOPPING_CART, self.get_text("tab_inventory_clear"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.inventory_tab, FluentIcon.BROOM, self.get_text("tab_inventory_clear"), NavigationItemPosition.TOP)
 
         # ── ComboTab（已移植：Phase 6 連段套組 + 技能計時器）──
         self.combo_tab = ComboTab(self)
         self.combo_tab.setObjectName("tab_skill_combo")
-        self.addSubInterface(self.combo_tab, FluentIcon.GAME, self.get_text("tab_skill_combo"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.combo_tab, FluentIcon.ROBOT, self.get_text("tab_skill_combo"), NavigationItemPosition.TOP)
 
         # ── StatusTab（已移植）──
         self.status_tab = StatusTab(self)
