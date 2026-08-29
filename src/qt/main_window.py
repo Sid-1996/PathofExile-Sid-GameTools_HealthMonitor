@@ -413,7 +413,9 @@ class MainWindow(FluentWindow):
                 windows = gw.getWindowsWithTitle(self.monitor_tab.window_title)
                 if not windows:
                     self.monitor_tab.update_status("--", "--", self.get_text("window_not_found"), "")
-                    self.add_status_message(self.get_text("game_window_closed"), "warning")
+                    msg = self.get_text("game_window_closed")
+                    self.add_status_message(msg, "warning")
+                    self.show_floating_notice(msg, "warning")
                     interruptible_sleep(1.0, self.is_monitoring)
                     continue
 
@@ -422,7 +424,9 @@ class MainWindow(FluentWindow):
                 if window.isMinimized:
                     if not self.monitor_tab._preview_placeholder_shown:
                         self.monitor_tab._preview_placeholder_shown = True
-                        self.add_status_message(self.get_text("game_window_minimized"), "warning")
+                        msg = self.get_text("game_window_minimized")
+                        self.add_status_message(msg, "warning")
+                        self.show_floating_notice(msg, "warning")
                         self.monitor_tab._show_health_preview_placeholder(self.get_text("game_window_minimized"))
                         self.monitor_tab._show_mana_preview_placeholder(self.get_text("game_window_minimized"))
                     self.monitor_tab.update_status("--", "--", self.get_text("game_window_minimized"), "")
@@ -438,7 +442,9 @@ class MainWindow(FluentWindow):
                 if result is None:
                     if not self.monitor_tab._preview_placeholder_shown:
                         self.monitor_tab._preview_placeholder_shown = True
-                        self.add_status_message(self.get_text("waiting_for_game_window"), "warning")
+                        msg = self.get_text("waiting_for_game_window")
+                        self.add_status_message(msg, "warning")
+                        self.show_floating_notice(msg, "warning")
                         self.monitor_tab._show_health_preview_placeholder()
                         self.monitor_tab._show_mana_preview_placeholder()
                     self.monitor_tab.update_status("--", "--", self.get_text("waiting_for_game_window"), "")

@@ -67,6 +67,7 @@ class AutoClickManager:
                         msg = self._app.get_text("auto_click_exe_crashed")
                         logger.error("%s", msg)
                         self._app.status_tab.add_status_message(msg, "error")
+                        self._app.show_floating_notice(msg, "error")
                     else:
                         logger.info("AHK自動點擊(EXE版)已啟動")
                         logger.info("現在可以直接使用 CTRL+左鍵 進行自動連點")
@@ -77,6 +78,7 @@ class AutoClickManager:
                     msg = self._app.get_text("auto_click_start_failed").format(error=e)
                     logger.error("%s", msg)
                     self._app.status_tab.add_status_message(msg, "error")
+                    self._app.show_floating_notice(msg, "error")
                 return
 
             elif os.path.exists(self.auto_click_script_path):
@@ -99,6 +101,7 @@ class AutoClickManager:
                     msg = self._app.get_text("auto_click_ahk_not_found")
                     logger.error("%s", msg)
                     self._app.status_tab.add_status_message(msg, "error")
+                    self._app.show_floating_notice(msg, "error")
                     return
 
                 self.auto_click_process = subprocess.Popen([ahk_exe, self.auto_click_script_path, process_name], creationflags=subprocess.CREATE_NO_WINDOW)
@@ -113,11 +116,13 @@ class AutoClickManager:
                 msg = self._app.get_text("auto_click_files_missing").format(exe_path=self.auto_click_exe_path, script_path=self.auto_click_script_path)
                 logger.error("%s", msg)
                 self._app.status_tab.add_status_message(msg, "error")
+                self._app.show_floating_notice(msg, "error")
 
         except Exception as e:
             msg = self._app.get_text("auto_click_ahk_start_failed").format(error=e)
             logger.error("%s", msg)
             self._app.status_tab.add_status_message(msg, "error")
+            self._app.show_floating_notice(msg, "error")
 
     def stop_auto_click_ahk(self):
         """停止AHK自動點擊腳本"""

@@ -525,7 +525,9 @@ class ComboTab(QWidget):
         for i, key in enumerate(combo_keys):
             if not key or key == "off" or key == "" or not self.is_combo_running():
                 if not self.is_combo_running():
-                    self._app.add_status_message(self._app.get_text("combo_set_interrupted").format(number=set_index + 1), "warning")
+                    msg = self._app.get_text("combo_set_interrupted").format(number=set_index + 1)
+                    self._app.add_status_message(msg, "warning")
+                    self._app.show_floating_notice(msg, "warning")
                     logger.info("連段套組 %s 被中斷", set_index + 1)
                     return
                 continue
@@ -601,7 +603,9 @@ class ComboTab(QWidget):
                         )
                         logger.debug("全局按下技能鍵: %s (無法獲取窗口句柄)", key)
             except Exception as e:
-                self._app.add_status_message(self._app.get_text("combo_skill_execution_failed").format(index=i + 1, key=key, error=str(e)), "error")
+                msg = self._app.get_text("combo_skill_execution_failed").format(index=i + 1, key=key, error=str(e))
+                self._app.add_status_message(msg, "error")
+                self._app.show_floating_notice(msg, "error")
                 logger.error("按鍵模擬失敗 %s: %s", key, e)
                 continue
 
