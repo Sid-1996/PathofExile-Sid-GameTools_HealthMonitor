@@ -15,11 +15,12 @@ from typing import Dict, Optional
 import pygetwindow as gw
 
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal
-from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
 from auto_click_manager import AutoClickManager
 from inventory_utils import normalize_region
+from _version import __version__
 from monitor_analyzer import (
     analyze_health,
     analyze_mana,
@@ -264,6 +265,7 @@ class MainWindow(FluentWindow):
         mt.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_started"), "success")
         self.setWindowOpacity(0.8)  # 非干擾模式
+        self._refresh_status_bar()  # 狀態列監控燈
 
         self._monitor_thread = threading.Thread(target=self.monitor_health, daemon=True)
         self._monitor_thread.start()
@@ -276,6 +278,7 @@ class MainWindow(FluentWindow):
         self.monitor_tab.update_toggle_btn()
         self.add_status_message(self.get_text("health_monitor_stopped"), "info")
         self.setWindowOpacity(1.0)
+        self._refresh_status_bar()  # 狀態列監控燈
         self._monitor_thread = None  # daemon 執行緒會在下次 interruptible_sleep 檢查時退出
 
     def _is_interface_ui_visible(self, game_window) -> bool:
@@ -439,6 +442,7 @@ class MainWindow(FluentWindow):
 
     def set_global_pause(self, state: bool) -> None:
         self._global_pause = bool(state)
+        self._refresh_status_bar()
 
     def setup_hotkeys(self) -> None:
         """註冊全局熱鍵：F3 清包 / F5 回藏身處 / F6 拾取 / F9 全域暫停 / F10 監控切換 / F12 緊急關閉。"""
@@ -458,7 +462,8 @@ class MainWindow(FluentWindow):
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
-        self._global_pause = not self._global_pause
+        # 統一經 set_global_pause 改旗標，狀態列暫停燈只掛在單一變更點
+        self.set_global_pause(not self._global_pause)
         if self._global_pause:
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
         else:
@@ -548,6 +553,9 @@ class MainWindow(FluentWindow):
             QMessageBox.critical(self, self.get_text("error"), self.get_text("browser_open_failed").format(error=e))
 
     def _build_tabs(self) -> None:
+        # ── 底部狀態列（必須早於 addSubInterface / 連點啟動建立）──
+        self._build_status_bar()
+
         # ── MonitorTab（已移植：Phase 4a UI + 觸發列表 + 預覽）──
         self.monitor_tab = MonitorTab(self)
         self.monitor_tab.setObjectName("tab_health_monitor")
@@ -582,6 +590,64 @@ class MainWindow(FluentWindow):
         self.about_tab = AboutTab(self)
         self.about_tab.setObjectName("tab_about")
         self.addSubInterface(self.about_tab, FluentIcon.INFO, self.get_text("tab_about"), NavigationItemPosition.TOP)
+
+    # ── 底部狀態列（監控/連點/全域暫停/版本）──────────────────
+    def _build_status_bar(self) -> None:
+        """內容區底部的狀態列（導覽列右側）。在 _build_tabs 最前建立，
+        確保早於 addSubInterface 與連點(AHK)啟動，連點燈才不會撞上不存在的屬性。"""
+        # 把 stackedWidget 移入新的垂直巢層，底部騰出狀態列空間
+        self._status_container = QVBoxLayout()
+        self._status_container.setSpacing(0)
+        self._status_container.setContentsMargins(0, 0, 0, 0)
+        self.widgetLayout.removeWidget(self.stackedWidget)
+        self.widgetLayout.addLayout(self._status_container)
+        self._status_container.addWidget(self.stackedWidget, 1)
+
+        bar = QWidget(self)
+        bar.setObjectName("status_bar")
+        bar.setFixedHeight(28)
+        bar.setStyleSheet("#status_bar { background: rgba(30,30,46,0.85); border-top: 1px solid #3d3d5c; }QLabel { font-size: 12px; color: #b8b8c8; }")
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(16, 0, 16, 0)
+        layout.setSpacing(20)
+
+        self._status_monitor_label = QLabel()
+        self._status_click_label = QLabel()
+        self._status_pause_label = QLabel()
+        self._status_version_label = QLabel()
+        layout.addWidget(self._status_monitor_label)
+        layout.addWidget(self._status_click_label)
+        layout.addWidget(self._status_pause_label)
+        layout.addStretch(1)
+        layout.addWidget(self._status_version_label)
+
+        self._status_container.addWidget(bar, 0)
+
+        # ponytail: 連點燈初始 OFF；由 set_ahk_click_status 切換
+        self._ahk_click_on = False
+        self._refresh_status_bar()
+
+    def _refresh_status_bar(self) -> None:
+        if not hasattr(self, "_status_monitor_label"):
+            return
+        mon = self.is_monitoring()
+        self._status_monitor_label.setText(f"● {self.get_text('status_monitoring')}：{self.get_text('status_running') if mon else self.get_text('status_stopped')}")
+        self._status_monitor_label.setStyleSheet(f"color: {'#50fa7b' if mon else '#b8b8c8'};")
+
+        click_on = self._ahk_click_on
+        self._status_click_label.setText(f"● {self.get_text('status_clicking')}：{self.get_text('status_click_on') if click_on else self.get_text('status_click_off')}")
+        self._status_click_label.setStyleSheet(f"color: {'#50fa7b' if click_on else '#b8b8c8'};")
+
+        paused = self.is_global_pause()
+        self._status_pause_label.setText(f"● {self.get_text('status_pause')}：{self.get_text('status_pause_on') if paused else self.get_text('status_pause_off')}")
+        self._status_pause_label.setStyleSheet(f"color: {'#f1fa8c' if paused else '#b8b8c8'};")
+
+        self._status_version_label.setText(f"{self.get_text('status_version')} v{__version__}")
+
+    def set_ahk_click_status(self, on: bool) -> None:
+        """連點(AHK)開關燈。由 AutoClickManager 呼叫（純 GUI 回呼，不改 AHK 行為）。"""
+        self._ahk_click_on = bool(on)
+        self._refresh_status_bar()
 
     def _center_on_screen(self) -> None:
         screen = QApplication.primaryScreen()

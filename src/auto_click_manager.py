@@ -72,6 +72,7 @@ class AutoClickManager:
                         logger.info("現在可以直接使用 CTRL+左鍵 進行自動連點")
                         logger.info("當主程式退出時，AHK腳本會自動關閉")
                         self._app.status_tab.add_status_message(self._app.get_text("auto_click_started"), "success")
+                        self._app.set_ahk_click_status(True)
                 except Exception as e:
                     msg = self._app.get_text("auto_click_start_failed").format(error=e)
                     logger.error("%s", msg)
@@ -105,6 +106,8 @@ class AutoClickManager:
                 logger.info("AHK自動點擊已啟動")
                 logger.info("現在可以直接使用 CTRL+左鍵 進行自動連點")
                 logger.info("當主程式退出時，AHK腳本會自動關閉")
+                self._app.status_tab.add_status_message(self._app.get_text("auto_click_started"), "success")
+                self._app.set_ahk_click_status(True)
 
             else:
                 msg = self._app.get_text("auto_click_files_missing").format(exe_path=self.auto_click_exe_path, script_path=self.auto_click_script_path)
@@ -149,6 +152,10 @@ class AutoClickManager:
             logger.error("停止AHK自動點擊時發生錯誤: %s", e)
         finally:
             self.auto_click_process = None
+            try:
+                self._app.set_ahk_click_status(False)
+            except Exception:
+                pass
 
     def toggle_auto_click(self):
         """切換自動點擊狀態（備用方案）"""
