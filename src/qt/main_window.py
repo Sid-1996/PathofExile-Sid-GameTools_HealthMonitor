@@ -150,6 +150,7 @@ class MainWindow(FluentWindow):
     # 改走 queued signal 送回主執行緒（修 F10 停止監控 GUI 死結）。
     f10_request = Signal()
     f12_request = Signal()
+    floating_notice_request = Signal(str, str)
 
     def __init__(self):
         self._initialized = False  # 必須在 super().__init__() 之前，避免建構期事件誤觸
@@ -215,6 +216,7 @@ class MainWindow(FluentWindow):
         self.window_key_sender = WindowKeySender(self)
         self.f10_request.connect(self.toggle_monitoring)
         self.f12_request.connect(self.close_app)
+        self.floating_notice_request.connect(self._show_notice_impl)
         self.setup_hotkeys()
 
         # ── 自動點擊（AHK，沿用 auto_click_manager 保留模組）──
@@ -755,8 +757,8 @@ class MainWindow(FluentWindow):
         """顯示置頂浮層提示（toast）。背景運作時使用者仍可看到；不搶焦、自動消失。"""
         if self._is_closing:
             return
-        # ponytail: queued 到主執行緒，keyboard/worker 執行緒亦安全
-        QTimer.singleShot(0, lambda t=text, m=msg_type: self._show_notice_impl(t, m))
+        # ponytail: Signal queued 到主執行緒，keyboard/worker 執行緒亦安全（QTimer.singleShot 在無事件循環執行緒不觸發）
+        self.floating_notice_request.emit(text, msg_type)
 
     def _show_notice_impl(self, text: str, msg_type: str) -> None:
         if self._is_closing:
