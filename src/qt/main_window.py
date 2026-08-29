@@ -15,7 +15,7 @@ from typing import Dict, Optional
 import pygetwindow as gw
 
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
 
 from auto_click_manager import AutoClickManager
@@ -53,6 +53,89 @@ MUTED = "#b8b8c8"
 
 # ── 最大化/還原檔位：還原時固定縮到這個尺寸（小螢幕自動 clamp）──
 RESTORE_SIZE = (1600, 900)
+# ── 置頂浮層提示（toast）色系（dracula 對齊）──
+_NOTICE_COLORS = {
+    "success": "#50fa7b",
+    "warning": "#f1fa8c",
+    "error": "#ff5555",
+    "info": "#8be9fd",
+}
+
+
+class _FloatingNotice(QFrame):
+    """右下角非搶焦置頂浮層（toast）。監控工具背景運作時仍在使用者可見處提示。
+
+    特性：無邊框、置頂、不接收焦點（不搶走遊戲操作）、淡入→停留→淡出自動消失。
+    複用單一實例（重複觸發時重啟動畫，不疊加）。
+    """
+
+    FADE_MS = 220  # 淡入/淡出時間
+    HOLD_MS = 2600  # 停留時間
+    STEP_MS = 25
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.WindowDoesNotAcceptFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setObjectName("floating_notice")
+
+        self._opacity = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self._opacity)
+        self._opacity.setOpacity(0.0)
+
+        self._label = QLabel(self)
+        self._label.setWordWrap(True)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(16, 10, 16, 10)
+        lay.addWidget(self._label)
+
+        self._anim_timer = QTimer(self)
+        self._anim_timer.setInterval(self.STEP_MS)
+        self._anim_timer.timeout.connect(self._tick)
+        self._phase = 0  # 0=淡入 1=停留 2=淡出
+        self._elapsed = 0
+        self._positioned = False
+
+    def show_notice(self, text: str, color: str) -> None:
+        self._label.setText(text)
+        self._label.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 600; background: rgba(40,42,54,0.96); border: 1px solid #3d3d5c; border-radius: 6px; padding: 6px 12px;")
+        if not self._positioned:
+            self._reposition()
+            self._positioned = True
+        self.show()
+        self.raise_()
+        self._phase = 0
+        self._elapsed = 0
+        self._anim_timer.start()
+
+    def _reposition(self) -> None:
+        screen = QApplication.primaryScreen()
+        if not screen:
+            self.adjustSize()
+            return
+        avail = screen.availableGeometry()
+        self.adjustSize()
+        self.move(avail.right() - self.width() - 20, avail.bottom() - self.height() - 20)
+
+    def _tick(self) -> None:
+        self._elapsed += self.STEP_MS
+        if self._phase == 0:
+            self._opacity.setOpacity(min(self._elapsed / self.FADE_MS, 1.0))
+            if self._elapsed >= self.FADE_MS:
+                self._phase, self._elapsed = 1, 0
+        elif self._phase == 1:
+            if self._elapsed >= self.HOLD_MS:
+                self._phase, self._elapsed = 2, 0
+        elif self._phase == 2:
+            self._opacity.setOpacity(max(1.0 - self._elapsed / self.FADE_MS, 0.0))
+            if self._elapsed >= self.FADE_MS:
+                self._anim_timer.stop()
+                self.hide()
+
+    def hide_notice(self) -> None:
+        self._anim_timer.stop()
+        self.hide()
 
 
 class MainWindow(FluentWindow):
@@ -84,6 +167,7 @@ class MainWindow(FluentWindow):
         # ── 全域暫停 / F3 清包中斷旗標（InventoryTab F3/F6 流程用）──
         self._global_pause = False
         self.inventory_clear_interrupt = False
+        self._floating_notice = None  # 置頂浮層提示（lazy：首次呼叫才建立）
 
         # ── 使用時間統計（沿用 usage_tracker 保留模組：registry 載入/儲存）──
         self._usage_tracker = UsageTracker(self)  # 設定 self.total_usage_time
@@ -649,6 +733,15 @@ class MainWindow(FluentWindow):
         self._ahk_click_on = bool(on)
         self._refresh_status_bar()
 
+    def show_floating_notice(self, text: str, msg_type: str = "warning") -> None:
+        """顯示置頂浮層提示（toast）。背景運作時使用者仍可看到；不搶焦、自動消失。"""
+        if self._is_closing:
+            return
+        if self._floating_notice is None:
+            self._floating_notice = _FloatingNotice(self)
+        color = _NOTICE_COLORS.get(msg_type, _NOTICE_COLORS["info"])
+        self._floating_notice.show_notice(text, color)
+
     def _center_on_screen(self) -> None:
         screen = QApplication.primaryScreen()
         if screen:
@@ -685,6 +778,8 @@ class MainWindow(FluentWindow):
         for timer in self._pending_timers:
             timer.stop()
         self._pending_timers.clear()
+        if self._floating_notice is not None:
+            self._floating_notice.hide_notice()
         try:
             if hasattr(self, "combo_tab"):
                 if self.combo_tab.is_combo_running():

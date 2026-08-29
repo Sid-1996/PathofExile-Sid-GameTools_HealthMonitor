@@ -1755,6 +1755,7 @@ class InventoryTab(QWidget):
         if not window_title:
             logger.warning("F6: 未設定遊戲視窗，無法使用一鍵取物功能")
             self._app.add_status_message(self._app.get_text("f6_fail_game_window_not_set"), "error")
+            self._app.show_floating_notice(self._app.get_text("f6_fail_game_window_not_set"), "warning")
             return None
         logger.info("F6: 遊戲視窗已設定為: %s", window_title)
         return window_title
@@ -1835,12 +1836,8 @@ class InventoryTab(QWidget):
             except Exception as e:
                 logger.error("F6(worker): 恢復 GUI 失敗: %s", e)
 
-    def f6_pickup_items(self):
-        window_title = self._validate_f6()
-        if not window_title:
-            return
-        gui_was_foreground, gui_was_topmost = self._capture_and_prepare_f6_gui()
-
+    def _collect_valid_coords(self):
+        """回傳非零取物座標（去重）。未設定時回 None。"""
         valid_coords = []
         seen = set()
         if self.pickup_coordinates:
@@ -1851,10 +1848,22 @@ class InventoryTab(QWidget):
                         valid_coords.append((x, y))
                         seen.add(t)
         logger.debug("F6: 有效取物座標 %s 個", len(valid_coords))
+        return valid_coords or None
+
+    def f6_pickup_items(self):
+        window_title = self._validate_f6()
+        if not window_title:
+            return
+
+        # 防呆：未設定有效取物座標時，先浮層提示再略過（不縮 GUI、不發 worker）
+        valid_coords = self._collect_valid_coords()
         if not valid_coords:
             logger.info("F6: 無有效座標，跳過背景執行")
-            self._app.add_status_message(self._app.get_text("f6_no_valid_coordinates"), "warning")
+            self._app.add_status_message(self._app.get_text("f6_fail_coordinates_not_set"), "warning")
+            self._app.show_floating_notice(self._app.get_text("f6_fail_coordinates_not_set"), "warning")
             return
+
+        gui_was_foreground, gui_was_topmost = self._capture_and_prepare_f6_gui()
 
         def _worker(window_title_local, valid_coords_local, gui_was_foreground_local, gui_was_topmost_local):
             try:
