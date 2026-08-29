@@ -640,7 +640,9 @@
     "hotkey_apply_failed": "熱鍵套用失敗：{error}",
     "allow_prerelease_label": "搶先版更新",
     "allow_prerelease_tip": "啟用後可收到搶先版（beta）更新",
-    "apply": "套用"
+    "apply": "套用",
+    "hotkey_f12_reserved": "F12 為緊急關閉保留，請選擇其他按鍵",
+    "prerelease_toggled_hint": "搶先版設定已更新，下次檢查更新時生效"
   },
   "en": {
     "window_title": "Sid Game Tools v{version} - Health Monitor + Auto Clear Inventory + Automation Tools",
@@ -1285,6 +1287,8 @@
     "hotkey_apply_failed": "Failed to apply hotkeys: {error}",
     "allow_prerelease_label": "Prerelease updates",
     "allow_prerelease_tip": "Receive beta updates when enabled",
-    "apply": "Apply"
+    "apply": "Apply",
+    "hotkey_f12_reserved": "F12 is reserved for emergency close",
+    "prerelease_toggled_hint": "Prerelease setting updated, takes effect on next update check"
   }
 }

@@ -43,8 +43,11 @@ class ConfigManager:
             self._ensure_hotkeys()
             return False
 
+    # ponytail: 白名單與 settings.py 同步（F1-F12 / Ctrl+F1-F12 / Alt+F1-F12）
+    _HOTKEY_WHITELIST = {f"f{i}" for i in range(1, 13)} | {f"ctrl+f{i}" for i in range(1, 13)} | {f"alt+f{i}" for i in range(1, 13)}
+
     def _ensure_hotkeys(self) -> None:
-        """舊檔回補 hotkeys，非法值回退預設（大小寫正規化）。"""
+        """舊檔回補 hotkeys，非法值/非白名單回退預設（大小寫正規化）。"""
         hk = self.config.get("hotkeys")
         if not isinstance(hk, dict):
             self.config["hotkeys"] = dict(DEFAULT_HOTKEYS)
@@ -54,7 +57,11 @@ class ConfigManager:
             v = hk.get(k, DEFAULT_HOTKEYS[k])
             if not isinstance(v, str) or not v.strip():
                 v = DEFAULT_HOTKEYS[k]
-            fixed[k] = v.strip().lower()
+            v = v.strip().lower()
+            if v not in self._HOTKEY_WHITELIST:
+                logger.warning("hotkeys 非法值 %s=%r 回退為 %s", k, v, DEFAULT_HOTKEYS[k])
+                v = DEFAULT_HOTKEYS[k]
+            fixed[k] = v
         self.config["hotkeys"] = fixed
 
     def save_config(self, config_data=None):

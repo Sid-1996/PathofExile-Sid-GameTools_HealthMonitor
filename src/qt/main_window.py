@@ -548,25 +548,32 @@ class MainWindow(FluentWindow):
 
     def setup_hotkeys(self) -> None:
         """註冊全局熱鍵：F3/F5/F6/F9/F10 可改鍵（設置分頁），F12 固定緊急關閉。"""
-        try:
-            import keyboard
+        import keyboard
 
-            hk = self.config.get("hotkeys") or {}
+        hk = self.config.get("hotkeys") or {}
 
-            def _hk(key: str, default: str) -> str:
-                v = hk.get(key, default)
-                return str(v).strip().lower() if isinstance(v, str) and v.strip() else default
+        def _hk(key: str, default: str) -> str:
+            v = hk.get(key, default)
+            return str(v).strip().lower() if isinstance(v, str) and v.strip() else default
 
-            keyboard.add_hotkey(_hk("f3", "f3"), self.inventory_tab.request_f3)
-            keyboard.add_hotkey(_hk("f6", "f6"), self.inventory_tab.request_f6)
-            if hasattr(self.inventory_tab, "return_to_hideout"):
-                keyboard.add_hotkey(_hk("f5", "f5"), self.inventory_tab.return_to_hideout)
-            keyboard.add_hotkey(_hk("f9", "f9"), self.toggle_global_pause)
-            keyboard.add_hotkey(_hk("f10", "f10"), self.f10_request.emit)
-            keyboard.add_hotkey("f12", self.f12_request.emit)
-            logger.info("已註冊全局熱鍵: %s + F12", ", ".join(_hk(k, k) for k in ("f3", "f5", "f6", "f9", "f10")))
-        except Exception as e:
-            logger.error("註冊熱鍵失敗: %s", e)
+        # per-key try：單鍵非法不影響其餘
+        def _add(hotkey: str, handler) -> None:
+            try:
+                keyboard.add_hotkey(hotkey, handler)
+            except Exception as e:
+                logger.error("註冊熱鍵 %s 失敗: %s", hotkey, e)
+                msg = f"熱鍵 {hotkey.upper()} 註冊失敗: {e}"
+                self.add_status_message(msg, "warning")
+                self.show_floating_notice(msg, "warning")
+
+        _add(_hk("f3", "f3"), self.inventory_tab.request_f3)
+        _add(_hk("f6", "f6"), self.inventory_tab.request_f6)
+        if hasattr(self.inventory_tab, "return_to_hideout"):
+            _add(_hk("f5", "f5"), self.inventory_tab.return_to_hideout)
+        _add(_hk("f9", "f9"), self.toggle_global_pause)
+        _add(_hk("f10", "f10"), self.f10_request.emit)
+        _add("f12", self.f12_request.emit)
+        logger.info("已註冊全局熱鍵: %s + F12", ", ".join(_hk(k, k) for k in ("f3", "f5", "f6", "f9", "f10")))
 
     def reload_hotkeys(self) -> None:
         """重載熱鍵（設置頁套用後立即生效）。"""
@@ -577,6 +584,15 @@ class MainWindow(FluentWindow):
         except Exception:
             pass
         self.setup_hotkeys()
+        # combo 熱鍵被 unhook_all 清掉，需重綁已啟用的套組
+        if hasattr(self, "combo_tab"):
+            try:
+                was_running = self.combo_tab.is_combo_running()
+                if was_running:
+                    self.combo_tab.stop_combo_system()
+                    self.combo_tab.start_combo_system()
+            except Exception as e:
+                logger.warning("重綁 combo 熱鍵失敗: %s", e)
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
@@ -699,25 +715,25 @@ class MainWindow(FluentWindow):
         self.status_tab.setObjectName("tab_status")
         self.addSubInterface(self.status_tab, FluentIcon.HISTORY, self.get_text("tab_status"), NavigationItemPosition.TOP)
 
-        # ── SettingsTab（設置：熱鍵/通用/更新）──
-        self.settings_tab = SettingsTab(self)
-        self.settings_tab.setObjectName("tab_settings")
-        self.addSubInterface(self.settings_tab, FluentIcon.SETTING, self.get_text("tab_settings"), NavigationItemPosition.SCROLL)
-
         # ── HelpTab（已移植：Phase 7 使用說明）──
         self.help_tab = HelpTab(self)
         self.help_tab.setObjectName("tab_help")
-        self.addSubInterface(self.help_tab, FluentIcon.HELP, self.get_text("tab_help"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.help_tab, FluentIcon.HELP, self.get_text("tab_help"), NavigationItemPosition.SCROLL)
 
         # ── VersionTab（已移植：Phase 7 版本檢查/下載/更新）──
         self.version_tab = VersionTab(self)
         self.version_tab.setObjectName("tab_version")
-        self.addSubInterface(self.version_tab, FluentIcon.UPDATE, self.get_text("tab_version"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.version_tab, FluentIcon.UPDATE, self.get_text("tab_version"), NavigationItemPosition.SCROLL)
 
         # ── AboutTab（已移植：Phase 7 關於本工具）──
         self.about_tab = AboutTab(self)
         self.about_tab.setObjectName("tab_about")
-        self.addSubInterface(self.about_tab, FluentIcon.INFO, self.get_text("tab_about"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.about_tab, FluentIcon.INFO, self.get_text("tab_about"), NavigationItemPosition.SCROLL)
+
+        # ── SettingsTab（設置：熱鍵/通用/更新，置底）──
+        self.settings_tab = SettingsTab(self)
+        self.settings_tab.setObjectName("tab_settings")
+        self.addSubInterface(self.settings_tab, FluentIcon.SETTING, self.get_text("tab_settings"), NavigationItemPosition.SCROLL)
 
     # ── 底部狀態列（監控/連點/全域暫停/版本）──────────────────
     def _build_status_bar(self) -> None:

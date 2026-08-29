@@ -5,9 +5,9 @@
 """
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
-from qfluentwidgets import BodyLabel, ComboBox, ExpandLayout, FluentIcon, HeaderCardWidget, PushButton, ScrollArea, SettingCardGroup, SwitchButton
+from qfluentwidgets import BodyLabel, ComboBox, FluentIcon, HeaderCardWidget, PushButton, ScrollArea, SettingCardGroup, SwitchButton
 
 
 _HOTKEY_OPTIONS = [
@@ -15,8 +15,6 @@ _HOTKEY_OPTIONS = [
     *[f"ctrl+f{i}" for i in range(1, 13)],
     *[f"alt+f{i}" for i in range(1, 13)],
 ]
-
-_HOTKEY_LABELS = {"f3": "F3 一鍵清包", "f5": "F5 返藏身處", "f6": "F6 一鍵取物", "f9": "F9 全域暫停", "f10": "F10 監控開關"}
 
 
 class SettingsTab(ScrollArea):
@@ -33,17 +31,27 @@ class SettingsTab(ScrollArea):
         self._build_ui()
         self._load_from_config()
 
+    def _hotkey_labels(self) -> dict[str, str]:
+        g = self._app.get_text
+        return {
+            "f3": g("hotkey_f3_desc"),
+            "f5": g("hotkey_f5_desc"),
+            "f6": g("hotkey_f6_desc"),
+            "f9": g("hotkey_f9_desc"),
+            "f10": g("hotkey_f10_desc"),
+        }
+
     def _build_ui(self) -> None:
+        g = self._app.get_text
         lay = QVBoxLayout(self.view)
         lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(12)
 
-        title = BodyLabel(self._app.get_text("settings_title"), self.view)
+        title = BodyLabel(g("settings_title"), self.view)
         title.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
         lay.addWidget(title)
 
-        group = SettingCardGroup(self._app.get_text("settings_group_general"), self.view)
-        # 通用
+        group = SettingCardGroup(g("settings_group_general"), self.view)
         self.preview_switch = SwitchButton(self.view)
         self.preview_switch.setOnText("ON")
         self.preview_switch.setOffText("OFF")
@@ -58,42 +66,52 @@ class SettingsTab(ScrollArea):
         lay.addWidget(group)
 
         # 熱鍵
-        hot_group = SettingCardGroup(self._app.get_text("settings_group_hotkeys"), self.view)
+        hot_group = SettingCardGroup(g("settings_group_hotkeys"), self.view)
         hot_card = HeaderCardWidget(self.view)
-        hot_card.setTitle(f"{self._app.get_text('hotkey_settings_title')} — {self._app.get_text('hotkey_settings_desc')}")
+        hot_card.setTitle(f"{g('hotkey_settings_title')} — {g('hotkey_settings_desc')}")
 
-        expand = ExpandLayout()
+        v = QVBoxLayout()
+        v.setSpacing(10)
+        v.setContentsMargins(16, 12, 16, 12)
+        labels = self._hotkey_labels()
         for key in ("f3", "f5", "f6", "f9", "f10"):
             row = QWidget(hot_card.view)
-            row_lay = QVBoxLayout(row)
-            row_lay.setContentsMargins(16, 6, 16, 6)
-            label = BodyLabel(f"{_HOTKEY_LABELS[key]}", row)
+            row_lay = QHBoxLayout(row)
+            row_lay.setContentsMargins(0, 0, 0, 0)
+            row_lay.setSpacing(12)
+            label = BodyLabel(labels.get(key, key), row)
             label.setStyleSheet("color: #f8f8f2;")
+            label.setMinimumWidth(140)
             combo = ComboBox(row)
             combo.addItems([o.upper() for o in _HOTKEY_OPTIONS])
             combo.setCurrentText("F3")
+            combo.setMinimumWidth(160)
             self._combos[key] = combo
             row_lay.addWidget(label)
             row_lay.addWidget(combo)
-            expand.addWidget(row)
+            row_lay.addStretch(1)
+            v.addWidget(row)
 
-        apply_btn = PushButton(self._app.get_text("apply"), hot_card.view)
-        apply_btn.clicked.connect(self._on_apply_hotkeys)
-        expand.addWidget(apply_btn)
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        self.apply_btn = PushButton(g("apply"), hot_card.view)
+        self.apply_btn.clicked.connect(self._on_apply_hotkeys)
+        btn_row.addWidget(self.apply_btn)
+        v.addLayout(btn_row)
 
-        hint = BodyLabel(self._app.get_text("hotkey_settings_hint"), hot_card.view)
+        hint = BodyLabel(g("hotkey_settings_hint"), hot_card.view)
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #b8b8c8; font-size: 12px;")
         hint.setTextFormat(Qt.TextFormat.PlainText)
-        expand.addWidget(hint)
+        v.addWidget(hint)
 
         hot_card.viewLayout.setContentsMargins(0, 0, 0, 0)
-        hot_card.viewLayout.addLayout(expand)
+        hot_card.viewLayout.addLayout(v)
         hot_group.addSettingCard(hot_card)
         lay.addWidget(hot_group)
 
         # 更新
-        upd_group = SettingCardGroup(self._app.get_text("settings_group_update"), self.view)
+        upd_group = SettingCardGroup(g("settings_group_update"), self.view)
         self.prerelease_switch = SwitchButton(self.view)
         self.prerelease_switch.setOnText("ON")
         self.prerelease_switch.setOffText("OFF")
@@ -146,23 +164,42 @@ class SettingsTab(ScrollArea):
         self._app.config["always_on_top"] = bool(checked)
         self._app.schedule_config_save()
         try:
+            # FluentWindow 需 hide/show 重算置頂陰影
+            was_visible = self._app.isVisible()
+            self._app.hide()
             self._app.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, bool(checked))
-            self._app.show()
+            if was_visible:
+                self._app.show()
+            else:
+                self._app.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, bool(checked))
+                self._app.show()
+                self._app.hide()
         except Exception:
-            pass
+            try:
+                self._app.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, bool(checked))
+                self._app.show()
+            except Exception:
+                pass
 
     def _on_prerelease_changed(self, checked: bool) -> None:
         self._app.config["allow_prerelease"] = bool(checked)
         self._app.schedule_config_save()
+        # 下次檢查更新時生效
+        try:
+            self._app.add_status_message(self._app.get_text("prerelease_toggled_hint"), "info")
+        except Exception:
+            pass
 
     def _on_apply_hotkeys(self) -> None:
         from PySide6.QtWidgets import QMessageBox
 
         chosen = {k: c.currentText().strip().lower() for k, c in self._combos.items()}
-        # 重複檢測（F12 不在集內）
         vals = list(chosen.values())
         if len(vals) != len(set(vals)):
             QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("hotkey_conflict"))
+            return
+        if any(v == "f12" for v in vals):
+            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("hotkey_f12_reserved"))
             return
         self._app.config["hotkeys"] = chosen
         self._app.schedule_config_save()
@@ -174,7 +211,20 @@ class SettingsTab(ScrollArea):
             from PySide6.QtWidgets import QMessageBox as MB
 
             MB.critical(self, self._app.get_text("error"), self._app.get_text("hotkey_apply_failed").format(error=e))
+            try:
+                self._app.show_floating_notice(self._app.get_text("hotkey_apply_failed").format(error=e), "error")
+            except Exception:
+                pass
 
     def update_language(self) -> None:
-        # 語言切換時重建標題（簡化：下次進入時生效，狀態由 MainWindow.update_language 觸發重載）
+        # 重建行標以套用新語系
+        labels = self._hotkey_labels()
+        for k, combo in self._combos.items():
+            parent = combo.parent()
+            if parent is not None:
+                for child in parent.findChildren(BodyLabel):
+                    # 第一行標即該 key 的 label
+                    if child is not combo:
+                        child.setText(labels.get(k, k))
+                        break
         self._load_from_config()
