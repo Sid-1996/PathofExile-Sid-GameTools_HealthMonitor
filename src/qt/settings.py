@@ -1,7 +1,7 @@
 """SettingsTab — 設置分頁（熱鍵/通用/更新）。
 
 設計：單一 ScrollArea，四張卡，熱鍵卡為核心（Issue #1）。
-白名單：F1-F12 / Ctrl+F1-F12 / Alt+F1-F12（map_key_to_vk_code 已支援）。
+白名單：F1-F11 / Ctrl+F1-F11 / Alt+F1-F11（F12 保留為緊急關閉）。
 """
 
 from PySide6.QtCore import Qt
@@ -11,9 +11,9 @@ from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButt
 
 
 _HOTKEY_OPTIONS = [
-    *[f"f{i}" for i in range(1, 13)],
-    *[f"ctrl+f{i}" for i in range(1, 13)],
-    *[f"alt+f{i}" for i in range(1, 13)],
+    *[f"f{i}" for i in range(1, 12)],
+    *[f"ctrl+f{i}" for i in range(1, 12)],
+    *[f"alt+f{i}" for i in range(1, 12)],
 ]
 
 

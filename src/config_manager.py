@@ -43,8 +43,8 @@ class ConfigManager:
             self._ensure_hotkeys()
             return False
 
-    # ponytail: 白名單與 settings.py 同步（F1-F12 / Ctrl+F1-F12 / Alt+F1-F12）
-    _HOTKEY_WHITELIST = {f"f{i}" for i in range(1, 13)} | {f"ctrl+f{i}" for i in range(1, 13)} | {f"alt+f{i}" for i in range(1, 13)}
+    # ponytail: 白名單與 settings.py 同步（F1-F11 / Ctrl+F1-F11 / Alt+F1-F11，F12 保留）
+    _HOTKEY_WHITELIST = {f"f{i}" for i in range(1, 12)} | {f"ctrl+f{i}" for i in range(1, 12)} | {f"alt+f{i}" for i in range(1, 12)}
 
     def _ensure_hotkeys(self) -> None:
         """舊檔回補 hotkeys，非法值/非白名單回退預設（大小寫正規化）。"""
