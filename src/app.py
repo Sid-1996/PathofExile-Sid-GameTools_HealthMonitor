@@ -139,6 +139,12 @@ def main(argv=None) -> int:
         velopack.App().run()
     except ImportError:
         logger.warning("velopack 未安裝，自動更新功能停用")
+    except Exception as e:
+        # ponytail: 開發/可攜環境 NotInstalled 屬正常，不以 ERROR 洗版
+        if "NotInstalled" in type(e).__name__ or "not properly installed" in str(e).lower():
+            logger.debug("velopack 未安裝環境，跳過更新 hook")
+        else:
+            logger.warning("velopack 啟動失敗: %s", e)
 
     app = QApplication(argv)
     app.setApplicationName("GameTools Health Monitor")

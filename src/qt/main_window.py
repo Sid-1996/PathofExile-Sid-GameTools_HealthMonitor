@@ -152,6 +152,7 @@ class _FloatingNotice(QFrame):
 class MainWindow(FluentWindow):
     # 熱鍵 callback 跑在 keyboard 函式庫監聽執行緒，不能在此直接碰 Qt widget；
     # 改走 queued signal 送回主執行緒（修 F10 停止監控 GUI 死結）。
+    f9_request = Signal()
     f10_request = Signal()
     f12_request = Signal()
     skill_timer_toggle_request = Signal()
@@ -219,6 +220,7 @@ class MainWindow(FluentWindow):
 
         self._build_tabs()
         self.window_key_sender = WindowKeySender(self)
+        self.f9_request.connect(self.toggle_global_pause)
         self.f10_request.connect(self.toggle_monitoring)
         self.f12_request.connect(self.close_app)
         self.skill_timer_toggle_request.connect(self.toggle_skill_timer)
@@ -631,7 +633,7 @@ class MainWindow(FluentWindow):
         _add(_hk("f6", "f6"), self.inventory_tab.request_f6)
         if hasattr(self.inventory_tab, "return_to_hideout"):
             _add(_hk("f5", "f5"), self.inventory_tab.return_to_hideout)
-        _add(_hk("f9", "f9"), self.toggle_global_pause)
+        _add(_hk("f9", "f9"), self.f9_request.emit)
         _add(_hk("f10", "f10"), self.f10_request.emit)
         _add(_hk("skill_timer", "ins"), self.skill_timer_toggle_request.emit)
         _add("f12", self.f12_request.emit)
@@ -957,7 +959,8 @@ class MainWindow(FluentWindow):
         if self._is_closing:
             return
         if self._floating_notice is None:
-            self._floating_notice = _FloatingNotice(self)
+            # ponytail: 用 None 為父（桌面級 Tool），避免 keyboard 線程 setParent 跨線程
+            self._floating_notice = _FloatingNotice(None)
         color = _NOTICE_COLORS.get(msg_type, _NOTICE_COLORS["info"])
         self._floating_notice.show_notice(text, color)
 
