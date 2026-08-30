@@ -333,40 +333,52 @@ class SettingsTab(ScrollArea):
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         try:
-            from utils import get_user_data_dir
+            from utils import get_app_dir, get_user_data_dir
             import os
             import shutil
+            import sys
+            import threading
+            import time
+            from pathlib import Path
 
             base = get_user_data_dir()
-            for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
-                p = os.path.join(base, name)
-                if os.path.exists(p):
-                    os.remove(p)
-            if cb.isChecked():
-                shots = os.path.join(base, "screenshots")
-                if os.path.isdir(shots):
-                    shutil.rmtree(shots)
-            # 同步處理 legacy app_dir 殘留
-            from utils import get_app_dir
-
             app_dir = get_app_dir()
-            if os.path.abspath(app_dir) != os.path.abspath(base):
-                for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
-                    p2 = os.path.join(app_dir, name)
-                    if os.path.exists(p2):
+            for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
+                for b in {base, app_dir}:
+                    p = os.path.join(b, name)
+                    if os.path.exists(p):
                         try:
-                            os.remove(p2)
+                            os.remove(p)
                         except Exception:
                             pass
-            self._app.config_manager.load_config()
-            self._app.config = self._app.config_manager.config
-            self._load_from_config()
+            if cb.isChecked():
+                for b in {base, app_dir}:
+                    shots = os.path.join(b, "screenshots")
+                    if os.path.isdir(shots):
+                        try:
+                            shutil.rmtree(shots)
+                        except Exception:
+                            pass
+            # ponytail: 一律重啟以清記憶體預覽與區域快取（最乾淨）
+            if getattr(sys, "frozen", False):
+                launch_args: list[str] = []
+                cwd = str(Path(sys.executable).parent)
+            else:
+                launch_args = ["src/app.py"]
+                if "--debug" in sys.argv:
+                    launch_args.append("--debug")
+                cwd = str(Path(__file__).resolve().parent.parent.parent)
+            if not self._app._relaunch_detached(launch_args, cwd):
+                from PySide6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(self, g("warning"), g("language_restart_failed").format(error="Popen failed"))
+                return
+            threading.Thread(target=lambda: (time.sleep(3), os._exit(1)), daemon=True).start()
             try:
-                self._app.refresh_hotkey_ui()
+                self._app.close_app()
             except Exception:
                 pass
-            self._app.add_status_message(g("reset_success"), "success")
-            self._app.show_floating_notice(g("reset_success"), "success")
+            os._exit(0)
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox
 
