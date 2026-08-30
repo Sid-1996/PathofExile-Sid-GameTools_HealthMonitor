@@ -1,4 +1,4 @@
-opencv-python
+opencv-python-headless
 numpy
 Pillow
 mss
@@ -10,6 +10,6 @@ requests
 pyperclip
 pywin32
 windows-capture
-PySide6
+PySide6-Essentials
 PySide6-Fluent-Widgets
 velopack

@@ -190,6 +190,10 @@ class GameToolBuilder:
                 "traceback",
                 # 排除與本專案無關的大型套件（來自其他專案的環境污染）
                 "--exclude-module",
+                "tkinter",
+                "--exclude-module",
+                "_tkinter",
+                "--exclude-module",
                 "torch",
                 "--exclude-module",
                 "torchvision",
