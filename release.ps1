@@ -200,7 +200,7 @@ if ($TestRepo) {
 
 # ── Git commit + push ────────────────────────────────────
 Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/tab_version.py src/updater_core.py src/auto_update.py src/qt/version.py src/app.py updater_main.py tools/build.py tools/make_delta.py scripts/requirements.txt release.ps1 index.html sitemap.xml manifest.json delta_info.json
+git add src/_version.py latest_version.txt latest_version_prerelease.txt src/updater_core.py src/auto_update.py src/qt/version.py src/app.py updater_main.py tools/build.py tools/make_delta.py scripts/requirements.txt release.ps1 index.html sitemap.xml manifest.json delta_info.json
 if ($Preview) {
     git commit -m "chore: release v$currentVersion (preview)"
 } else {
