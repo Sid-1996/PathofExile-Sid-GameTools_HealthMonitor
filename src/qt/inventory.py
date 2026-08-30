@@ -1922,11 +1922,30 @@ class InventoryTab(QWidget):
             self.pickup_coordinates = [[0, 0] for _ in range(5)]
         while len(self.pickup_coordinates) < 5:
             self.pickup_coordinates.append([0, 0])
-        dlg = _PickupSetupDialog(self, self.window())
+        dlg = _PickupSetupDialog(self, None)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         self._setup_dialog = dlg
         dlg.update_display()
-        dlg.exec()
-        self._setup_dialog = None
+        try:
+            # 置中於主視窗
+            try:
+                geo = self.window().geometry()
+                dlg.move(geo.center() - dlg.rect().center())
+            except Exception:
+                pass
+            dlg.exec()
+        finally:
+            self._setup_dialog = None
+            # 對話框關閉後再同步置頂旗標，避免 exec 期間重建父 HWND 導致懸空
+            try:
+                want_top = bool(self._app.should_keep_topmost())
+                has_top = bool(self.window().windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+                if want_top != has_top:
+                    self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, want_top)
+                    if self.window().isVisible():
+                        self.window().show()
+            except Exception:
+                pass
 
     def start_continuous_setup(self, parent_window):  # noqa: C901
         """開始連續設定5個取物座標（對應 tk 版；同步流程）。"""
@@ -2053,15 +2072,16 @@ class InventoryTab(QWidget):
         finally:
             try:
                 self.window().showNormal()
-                # 對稱處理置頂旗標，避免殘留
-                try:
-                    want_top = bool(self._app.should_keep_topmost())
-                    has_top = bool(self.window().windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
-                    if want_top != has_top:
-                        self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, want_top)
-                        self.window().show()
-                except Exception:
-                    pass
+                # 對話框仍在 exec 期間不重建 MainWindow，避免懸空父 HWND
+                if self._setup_dialog is None:
+                    try:
+                        want_top = bool(self._app.should_keep_topmost())
+                        has_top = bool(self.window().windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+                        if want_top != has_top:
+                            self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, want_top)
+                            self.window().show()
+                    except Exception:
+                        pass
             except Exception:
                 pass
             try:
