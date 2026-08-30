@@ -82,14 +82,31 @@ class HelpTab(QWidget):
         row_grid = QGridLayout()
         row_grid.setSpacing(12)
 
+        def _hk(k, d):
+            try:
+                if hasattr(self._app, "get_hotkey"):
+                    return self._app.get_hotkey(k, d).upper()
+            except Exception:
+                pass
+            return d.upper()
+
+        def _short(hk):
+            try:
+                if hasattr(self._app, "hotkey_short"):
+                    return self._app.hotkey_short(hk.lower())
+            except Exception:
+                pass
+            return hk
+
         hotkey_card = self._info_card(
             g("global_hotkeys_title"),
             [
-                ("F3", g("hotkey_f3_desc"), ERROR),
-                ("F5", g("hotkey_f5_desc"), INFO),
-                ("F6", g("hotkey_f6_desc"), SUCCESS),
-                ("F9", g("hotkey_f9_desc"), WARNING),
-                ("F10", g("hotkey_f10_desc"), HOTKEY),
+                (_short(_hk("f3", "f3")), g("hotkey_f3_desc"), ERROR),
+                (_short(_hk("f5", "f5")), g("hotkey_f5_desc"), INFO),
+                (_short(_hk("f6", "f6")), g("hotkey_f6_desc"), SUCCESS),
+                (_short(_hk("skill_timer", "ins")), g("hotkey_skill_timer_desc"), HOTKEY),
+                (_short(_hk("f9", "f9")), g("hotkey_f9_desc"), WARNING),
+                (_short(_hk("f10", "f10")), g("hotkey_f10_desc"), HOTKEY),
                 ("F12", g("hotkey_f12_desc"), MUTED),
                 ("CTRL+Click", g("hotkey_ctrl_click_desc"), INFO),
             ],

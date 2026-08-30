@@ -2319,11 +2319,10 @@ class InventoryTab(QWidget):
 
             self.record_status_label.setText(self._app.get_text("record_status"))
             self.inventory_ui_status_label.setText(self._app.get_text("inventory_ui_status"))
-            self.inventory_f3_label.setText(self._app.get_text("f3_hotkey"))
+            self._refresh_hotkey_labels()
             self.pause_status_label_title.setText(self._app.get_text("global_pause"))
             self.pause_status_label.setText(self._app.get_text("normal_operation"))
             self.coordinates_set_label.setText(self._app.get_text("coordinates_set"))
-            self.pickup_f6_label.setText(self._app.get_text("f6_hotkey"))
             self.occupied_label_title.setText(self._app.get_text("occupied_slots"))
             self.grid_adjustment_label.setText(self._app.get_text("grid_alignment_adjustment"))
             self.horizontal_label.setText(self._app.get_text("horizontal"))
@@ -2346,12 +2345,43 @@ class InventoryTab(QWidget):
         except Exception as e:
             logger.error("更新一鍵清包分頁語言時發生錯誤: %s", e)
 
+    def _refresh_hotkey_labels(self):
+        """刷新 F3/F6 顯示的熱鍵（含縮寫與 ToolTip 後備）。"""
+        try:
+            get_hk = getattr(self._app, "get_hotkey", None)
+            short_fn = getattr(self._app, "hotkey_short", None)
+            f3 = get_hk("f3", "f3") if callable(get_hk) else "f3"
+            f6 = get_hk("f6", "f6") if callable(get_hk) else "f6"
+            f3_full = f3.upper()
+            f6_full = f6.upper()
+            f3_short = short_fn(f3) if callable(short_fn) else f3_full
+            f6_short = short_fn(f6) if callable(short_fn) else f6_full
+            # ponytail: 保留翻譯前綴，僅替換括號內熱鍵
+            base_f3 = self._app.get_text("f3_hotkey")  # e.g. "F3熱鍵:"
+            base_f6 = self._app.get_text("f6_hotkey")
+            # 若翻譯仍含 F3/F6，替換為實際熱鍵；否則附加
+            if "F3" in base_f3.upper():
+                txt_f3 = base_f3.upper().replace("F3", f3_short)
+            else:
+                txt_f3 = f"{base_f3} [{f3_short}]"
+            if "F6" in base_f6.upper():
+                txt_f6 = base_f6.upper().replace("F6", f6_short)
+            else:
+                txt_f6 = f"{base_f6} [{f6_short}]"
+            self.inventory_f3_label.setText(txt_f3)
+            self.inventory_f3_label.setToolTip(f"F3 → {f3_full}")
+            self.pickup_f6_label.setText(txt_f6)
+            self.pickup_f6_label.setToolTip(f"F6 → {f6_full}")
+        except Exception:
+            pass
+
     def _apply_config_to_ui(self):
         self.clear_click_left_radio.setChecked(self.clear_click_mode == "left")
         self.clear_click_right_radio.setChecked(self.clear_click_mode == "right")
         self.always_on_top_check.setChecked(bool(self._app.always_on_top))
         self.update_offset_labels()
         self.refresh_config_display()
+        self._refresh_hotkey_labels()
         self._update_preview_placeholder_state()
         self.update_ui_preview()
         self.update_interface_ui_preview()

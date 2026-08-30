@@ -211,8 +211,7 @@ class SkillTimerModule(QWidget):
 
         self._status_labels: list[QLabel] = []
         self._toggle_btns: list[PushButton] = []
-        self._btn_start_all: PushButton | None = None
-        self._btn_stop_all: PushButton | None = None
+        self._btn_toggle_all: PushButton | None = None
 
         self._build_ui()
 
@@ -229,6 +228,44 @@ class SkillTimerModule(QWidget):
             except Exception:
                 pass
         return default
+
+    def _hotkey(self) -> str:
+        try:
+            # ponytail: SkillTimerModule 透過 parent 鏈取得 app config
+            cur = self.parent()
+            while cur is not None:
+                cfg = getattr(cur, "_app", None)
+                if cfg is not None and hasattr(cfg, "config"):
+                    hk = cfg.config.get("hotkeys", {}).get("skill_timer", "ins")
+                    return str(hk).strip() if isinstance(hk, str) and hk.strip() else "ins"
+                cfg2 = getattr(cur, "config", None)
+                if isinstance(cfg2, dict) and "hotkeys" in cfg2:
+                    hk = cfg2.get("hotkeys", {}).get("skill_timer", "ins")
+                    return str(hk).strip() if isinstance(hk, str) and hk.strip() else "ins"
+                cur = cur.parent() if hasattr(cur, "parent") else None
+        except Exception:
+            pass
+        return "ins"
+
+    @staticmethod
+    def _hotkey_short(hk: str) -> str:
+        return hk.replace("ctrl+", "C+").replace("alt+", "A+").upper()
+
+    def _update_toggle_all_btn(self):
+        btn = self._btn_toggle_all
+        if btn is None:
+            return
+        hk = self._hotkey()
+        hk_full = hk.upper()
+        hk_short = self._hotkey_short(hk)
+        if self.is_any_running:
+            base = self._t("skill_timer_stop_all", "■ 全部停止")
+            tip_base = self._t("stop_combo_system_tip", "全部停止")
+        else:
+            base = self._t("skill_timer_start_all", "▶▶ 全部啟動")
+            tip_base = self._t("start_combo_system_tip", "全部啟動")
+        btn.setText(f"{base} [{hk_short}]")
+        btn.setToolTip(f"{base} [{hk_full}]\n{tip_base}")
 
     # ────────────────────────────────────────────────────
     #  UI 建構
@@ -331,16 +368,12 @@ class SkillTimerModule(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
-        self._btn_start_all = PushButton(self._t("skill_timer_start_all", "▶▶ 全部啟動"))
-        self._btn_start_all.setToolTip(self._t("start_combo_system_tip", "全部啟動"))
-        self._btn_start_all.clicked.connect(self.start_all)
-        btn_layout.addWidget(self._btn_start_all)
-        self._btn_stop_all = PushButton(self._t("skill_timer_stop_all", "■ 全部停止"))
-        self._btn_stop_all.setToolTip(self._t("stop_combo_system_tip", "全部停止"))
-        self._btn_stop_all.clicked.connect(self.stop_all)
-        btn_layout.addWidget(self._btn_stop_all)
+        self._btn_toggle_all = PushButton(self._t("skill_timer_start_all", "▶▶ 全部啟動"))
+        self._btn_toggle_all.clicked.connect(self.toggle_all)
+        btn_layout.addWidget(self._btn_toggle_all)
         btn_layout.addStretch(1)
         grid.addLayout(btn_layout, ctrl_row + 1, 0, 1, len(headers))
+        self._update_toggle_all_btn()
 
         if not _PYAUTOGUI_OK:
             warn = QLabel(self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"))
@@ -407,6 +440,7 @@ class SkillTimerModule(QWidget):
         if self._on_log:
             msg = self._t("skill_timer_log_all_start", "[SkillTimer] 全部啟動，共 {count} 個技能")
             self._on_log(msg.format(count=started), "info")
+        self._update_toggle_all_btn()
 
     def stop_all(self):
         for i, slot in enumerate(self.slots):
@@ -415,6 +449,7 @@ class SkillTimerModule(QWidget):
                 self._set_status(i, False)
         if self._on_log:
             self._on_log(self._t("skill_timer_log_all_stop", "[SkillTimer] 全部停止"), "info")
+        self._update_toggle_all_btn()
 
     def toggle_all(self):
         """單鍵開關：任一在跑→全停，否則全開（未啟用槽忽略）。"""
@@ -447,6 +482,8 @@ class SkillTimerModule(QWidget):
         if restored and self._on_log:
             msg = self._t("skill_timer_log_restore", "[SkillTimer] 恢復暫停前的技能槽，共 {count} 個")
             self._on_log(msg.format(count=restored), "info")
+        if restored:
+            self._update_toggle_all_btn()
 
     # ────────────────────────────────────────────────────
     #  Config 介面
@@ -468,11 +505,7 @@ class SkillTimerModule(QWidget):
             if slot._interval_spin is not None:
                 slot._interval_spin.setToolTip(self._t("delay_entry_tip", "間隔時間（毫秒）"))
             self._toggle_btns[i].setToolTip(self._t("toggle_monitoring_tip", "啟動/停止此技能"))
-        if self._btn_start_all is not None and self._btn_stop_all is not None:
-            self._btn_start_all.setText(self._t("skill_timer_start_all", "▶▶ 全部啟動"))
-            self._btn_start_all.setToolTip(self._t("start_combo_system_tip", "全部啟動"))
-            self._btn_stop_all.setText(self._t("skill_timer_stop_all", "■ 全部停止"))
-            self._btn_stop_all.setToolTip(self._t("stop_combo_system_tip", "全部停止"))
+        self._update_toggle_all_btn()
 
     def get_config(self) -> list[dict]:
         return [

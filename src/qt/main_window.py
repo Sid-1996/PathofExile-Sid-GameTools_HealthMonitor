@@ -545,6 +545,40 @@ class MainWindow(FluentWindow):
         """GUI 是否保持在最上方（對應 tk 版同名方法）。"""
         return bool(self.always_on_top)
 
+    def get_hotkey(self, key: str, default: str) -> str:
+        hk = self.config.get("hotkeys") or {}
+        v = hk.get(key, default)
+        return str(v).strip().lower() if isinstance(v, str) and v.strip() else default
+
+    def hotkey_short(self, hk: str) -> str:
+        return hk.replace("ctrl+", "C+").replace("alt+", "A+").upper()
+
+    def refresh_hotkey_ui(self) -> None:
+        """熱鍵改鍵或語言切換後，刷新所有顯示熱鍵的按鈕/標籤。"""
+        try:
+            if hasattr(self, "monitor_tab") and hasattr(self.monitor_tab, "update_toggle_btn"):
+                self.monitor_tab.update_toggle_btn()
+        except Exception:
+            pass
+        try:
+            tab = getattr(self, "combo_tab", None)
+            timer = getattr(tab, "skill_timer", None) if tab else None
+            if timer is not None and hasattr(timer, "_update_toggle_all_btn"):
+                timer._update_toggle_all_btn()
+        except Exception:
+            pass
+        try:
+            if hasattr(self, "inventory_tab") and hasattr(self.inventory_tab, "_refresh_hotkey_labels"):
+                self.inventory_tab._refresh_hotkey_labels()
+        except Exception:
+            pass
+        try:
+            if hasattr(self, "help_tab") and hasattr(self.help_tab, "update_language"):
+                # Help 重建時會讀取最新 hotkeys
+                self.help_tab.update_language()
+        except Exception:
+            pass
+
     def is_global_pause(self) -> bool:
         return bool(self._global_pause)
 
@@ -569,6 +603,7 @@ class MainWindow(FluentWindow):
             return
         try:
             timer.toggle_all()
+            self.refresh_hotkey_ui()
         except Exception as e:
             logger.warning("技能計時器切換失敗: %s", e)
 
@@ -620,6 +655,7 @@ class MainWindow(FluentWindow):
                     self.combo_tab.start_combo_system()
             except Exception as e:
                 logger.warning("重綁 combo 熱鍵失敗: %s", e)
+        self.refresh_hotkey_ui()
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
@@ -643,6 +679,7 @@ class MainWindow(FluentWindow):
         if self._global_pause:
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
             self.show_floating_notice(self.get_text("global_pause_activated"), "warning")
+            self.refresh_hotkey_ui()
         else:
             # 恢復暫停前運行中的槽位
             try:
@@ -658,6 +695,7 @@ class MainWindow(FluentWindow):
             self._skill_timer_paused_slots = set()
             self.add_status_message(self.get_text("global_pause_deactivated"), "success")
             self.show_floating_notice(self.get_text("global_pause_deactivated_toast"), "success")
+            self.refresh_hotkey_ui()
 
     def toggle_monitoring(self) -> None:
         """F10：血魔監控開關（安全網）。"""
@@ -776,10 +814,11 @@ class MainWindow(FluentWindow):
                 logger.exception("語言切換退出時例外")
             os._exit(0)
         else:
-            # 使用者選 No：僅刷新標題，其餘保持舊語系，下次啟動生效
+            # 使用者選 No：刷新可即時更新的 UI（標題、狀態列、熱鍵鈕）
             try:
                 self.setWindowTitle(self.get_text("window_title"))
                 self._refresh_status_bar()
+                self.refresh_hotkey_ui()
                 hint = self.get_text("language_restart_hint")
                 if not hint.startswith("["):
                     self.add_status_message(hint, "info")

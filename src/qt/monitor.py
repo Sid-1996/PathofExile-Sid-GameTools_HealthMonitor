@@ -557,9 +557,22 @@ class MonitorTab(QWidget):
         vbox.addLayout(preview_row)
 
     def update_toggle_btn(self) -> None:
-        """依監控狀態更新切換按鈕文字（啟動/停止 + [F10]）。"""
+        """依監控狀態更新切換按鈕文字（啟動/停止 + [熱鍵]）。"""
         key = "stop_monitoring" if self._app.is_monitoring() else "start_monitoring"
-        self.toggle_btn.setText(f"{self._app.get_text(key)}[F10]")
+        try:
+            hk = self._app.get_hotkey("f10", "f10") if hasattr(self._app, "get_hotkey") else "f10"
+            short = self._app.hotkey_short(hk) if hasattr(self._app, "hotkey_short") else hk.upper()
+            hk_full = hk.upper()
+        except Exception:
+            short = "F10"
+            hk_full = "F10"
+        base = self._app.get_text(key)
+        self.toggle_btn.setText(f"{base} [{short}]")
+        try:
+            tip = self._app.get_text("toggle_monitoring_tip")
+            self.toggle_btn.setToolTip(f"{base} [{hk_full}]\n{tip}")
+        except Exception:
+            pass
 
     def _build_status_group(self, layout):
         self.real_time_status_frame = self._styled_group(self._app.get_text("real_time_status"))
