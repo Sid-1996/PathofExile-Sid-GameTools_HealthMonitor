@@ -103,6 +103,16 @@ scripts\build_exe.bat
 Run.bat
 ```
 
+### 資料與重設 / Data
+
+- 設定檔：`%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json`（`*.backup` 自動備份、`screenshots\` 截圖）
+- 工具內 `工具設置 > 資料與重設` 可 `開啟資料夾 / 複製路徑 / 重設為預設`（截圖預設保留，勾選才一併刪除）
+
+### 移除 / Uninstall
+
+- **Setup.exe 安裝**：`Windows 設定 > 應用程式 > 已安裝應用程式 > Sid.GameToolsHealthMonitor > 解除安裝`，再手動刪 `%LOCALAPPDATA%\GameTools_HealthMonitor`（如需清截圖/設定）
+- **ZIP 可攜**：刪解壓目錄 + 上述資料夾
+
 ---
 
 ## 📂 Project Structure / 專案結構

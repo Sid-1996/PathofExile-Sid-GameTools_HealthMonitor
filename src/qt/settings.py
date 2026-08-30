@@ -4,8 +4,9 @@
 白名單：F1-F11 / Ins/Home/PgUp/PgDn/End 各含 Ctrl/Alt（F12 保留為緊急關閉）。
 """
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
 
@@ -148,6 +149,48 @@ class SettingsTab(ScrollArea):
 
         lay.addWidget(hot_card)
 
+        # ── 資料與重設（精簡版）──
+        data_header = BodyLabel(g("settings_group_data"), self.view)
+        data_header.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2;")
+        lay.addWidget(data_header)
+        self._data_header = data_header
+        data_card = CardWidget(self.view)
+        data_lay = QVBoxLayout(data_card)
+        data_lay.setContentsMargins(16, 16, 16, 16)
+        data_lay.setSpacing(10)
+        # 路徑列
+        path_row = QHBoxLayout()
+        path_row.setSpacing(8)
+        self._data_label = BodyLabel(g("data_dir_label"), data_card)
+        self._data_label.setStyleSheet("color: #f8f8f2;")
+        from utils import get_user_data_dir
+
+        data_dir = get_user_data_dir()
+        self._data_path_label = QLabel(data_dir, data_card)
+        self._data_path_label.setStyleSheet("color: #b8b8c8; font-size: 12px;")
+        self._data_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._data_path_label.setWordWrap(True)
+        path_row.addWidget(self._data_label)
+        path_row.addWidget(self._data_path_label, 1)
+        data_lay.addLayout(path_row)
+        btn_row2 = QHBoxLayout()
+        btn_row2.setSpacing(8)
+        self._open_data_btn = PushButton(g("open_data_dir"), data_card)
+        self._open_data_btn.setIcon(FluentIcon.FOLDER)
+        self._open_data_btn.clicked.connect(self._on_open_data_dir)
+        btn_row2.addWidget(self._open_data_btn)
+        self._copy_path_btn = PushButton(g("copy_path"), data_card)
+        self._copy_path_btn.setIcon(FluentIcon.COPY)
+        self._copy_path_btn.clicked.connect(self._on_copy_path)
+        btn_row2.addWidget(self._copy_path_btn)
+        btn_row2.addStretch(1)
+        self._reset_btn = PushButton(g("reset_settings"), data_card)
+        self._reset_btn.setIcon(FluentIcon.DELETE)
+        self._reset_btn.clicked.connect(self._on_reset_settings)
+        btn_row2.addWidget(self._reset_btn)
+        data_lay.addLayout(btn_row2)
+        lay.addWidget(data_card)
+
         lay.addStretch(1)
 
     def _mk_switch_card(self, key: str, switch: SwitchButton):
@@ -251,6 +294,84 @@ class SettingsTab(ScrollArea):
             except Exception:
                 pass
 
+    def _on_open_data_dir(self) -> None:
+        from utils import get_user_data_dir
+
+        path = get_user_data_dir()
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, self._app.get_text("warning"), str(e))
+
+    def _on_copy_path(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        from utils import get_user_data_dir
+
+        try:
+            QApplication.clipboard().setText(get_user_data_dir())
+            self._app.show_floating_notice(self._app.get_text("copied"), "success")
+        except Exception:
+            pass
+
+    def _on_reset_settings(self) -> None:
+        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+
+        g = self._app.get_text
+        dlg = QDialog(self)
+        dlg.setWindowTitle(g("confirm_reset_title"))
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel(g("confirm_reset_msg")))
+        cb = QCheckBox(g("delete_screenshots_too"))
+        lay.addWidget(cb)
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        lay.addWidget(btns)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            from utils import get_user_data_dir
+            import os
+            import shutil
+
+            base = get_user_data_dir()
+            for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
+                p = os.path.join(base, name)
+                if os.path.exists(p):
+                    os.remove(p)
+            if cb.isChecked():
+                shots = os.path.join(base, "screenshots")
+                if os.path.isdir(shots):
+                    shutil.rmtree(shots)
+            # 同步處理 legacy app_dir 殘留
+            from utils import get_app_dir
+
+            app_dir = get_app_dir()
+            if os.path.abspath(app_dir) != os.path.abspath(base):
+                for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
+                    p2 = os.path.join(app_dir, name)
+                    if os.path.exists(p2):
+                        try:
+                            os.remove(p2)
+                        except Exception:
+                            pass
+            self._app.config_manager.load_config()
+            self._app.config = self._app.config_manager.config
+            self._load_from_config()
+            try:
+                self._app.refresh_hotkey_ui()
+            except Exception:
+                pass
+            self._app.add_status_message(g("reset_success"), "success")
+            self._app.show_floating_notice(g("reset_success"), "success")
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(self, g("error"), g("reset_failed").format(error=e))
+
     def update_language(self) -> None:
         g = self._app.get_text
         # 標題與分組
@@ -262,6 +383,12 @@ class SettingsTab(ScrollArea):
             self._hot_hint.setText(g("hotkey_settings_hint"))
             self._lang_label.setText(g("language"))
             self.apply_btn.setText(g("apply"))
+            if hasattr(self, "_data_header"):
+                self._data_header.setText(g("settings_group_data"))
+                self._data_label.setText(g("data_dir_label"))
+                self._open_data_btn.setText(g("open_data_dir"))
+                self._copy_path_btn.setText(g("copy_path"))
+                self._reset_btn.setText(g("reset_settings"))
         except Exception:
             pass
         # 行標精準化（不碰 ComboBox 內部子標）
