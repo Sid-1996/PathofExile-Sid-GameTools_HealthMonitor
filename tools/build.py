@@ -119,9 +119,6 @@ class GameToolBuilder:
                 "GameTools_HealthMonitor",
                 "--icon",
                 self.icon_file,
-                # Bootloader splash（Python 啟動前即顯示，覆蓋 import 空窗）
-                "--splash",
-                os.path.join(self.project_dir, "assets", "PoeSidTools.png"),
                 # Hidden imports
                 "--hidden-import",
                 "PIL",
