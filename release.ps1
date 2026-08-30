@@ -231,12 +231,14 @@ if ($Preview) {
         gh release create $tagName `
             --title "v$currentVersion" `
             --generate-notes `
+            --draft `
             @("$fixedZip", "$deltaZip") @($vpkAssets)
         Write-Host "  delta asset attached: GameTools_HealthMonitor-delta.zip"
     } else {
         gh release create $tagName `
             --title "v$currentVersion" `
             --generate-notes `
+            --draft `
             @("$fixedZip") @($vpkAssets)
     }
     Write-Host "`n========================================" -ForegroundColor Green
