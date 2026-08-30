@@ -416,6 +416,13 @@ class SkillTimerModule(QWidget):
         if self._on_log:
             self._on_log(self._t("skill_timer_log_all_stop", "[SkillTimer] 全部停止"), "info")
 
+    def toggle_all(self):
+        """單鍵開關：任一在跑→全停，否則全開（未啟用槽忽略）。"""
+        if self.is_any_running:
+            self.stop_all()
+        else:
+            self.start_all()
+
     def _notify_change(self):
         if self._on_change:
             self._on_change()

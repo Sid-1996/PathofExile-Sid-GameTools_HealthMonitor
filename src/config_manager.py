@@ -13,7 +13,7 @@ from utils import get_user_data_dir
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_HOTKEYS = {"f3": "f3", "f5": "f5", "f6": "f6", "f9": "f9", "f10": "f10"}
+DEFAULT_HOTKEYS = {"f3": "f3", "f5": "f5", "f6": "f6", "f9": "f9", "f10": "f10", "skill_timer": "ins"}
 
 
 class ConfigManager:
@@ -43,8 +43,16 @@ class ConfigManager:
             self._ensure_hotkeys()
             return False
 
-    # ponytail: 白名單與 settings.py 同步（F1-F11 / Ctrl+F1-F11 / Alt+F1-F11，F12 保留）
-    _HOTKEY_WHITELIST = {f"f{i}" for i in range(1, 12)} | {f"ctrl+f{i}" for i in range(1, 12)} | {f"alt+f{i}" for i in range(1, 12)}
+    # ponytail: 白名單與 settings.py 同步（F1-F11 / ins/home/pgup/pgdn/end 各含 Ctrl/Alt，F12 保留）
+    _NAV_KEYS = ("ins", "home", "pgup", "pgdn", "end")
+    _HOTKEY_WHITELIST = (
+        {f"f{i}" for i in range(1, 12)}
+        | {f"ctrl+f{i}" for i in range(1, 12)}
+        | {f"alt+f{i}" for i in range(1, 12)}
+        | set(_NAV_KEYS)
+        | {f"ctrl+{k}" for k in _NAV_KEYS}
+        | {f"alt+{k}" for k in _NAV_KEYS}
+    )
 
     def _ensure_hotkeys(self) -> None:
         """舊檔回補 hotkeys，非法值/非白名單回退預設（大小寫正規化）。"""
@@ -53,7 +61,7 @@ class ConfigManager:
             self.config["hotkeys"] = dict(DEFAULT_HOTKEYS)
             return
         fixed: dict[str, str] = {}
-        for k in ("f3", "f5", "f6", "f9", "f10"):
+        for k in ("f3", "f5", "f6", "f9", "f10", "skill_timer"):
             v = hk.get(k, DEFAULT_HOTKEYS[k])
             if not isinstance(v, str) or not v.strip():
                 v = DEFAULT_HOTKEYS[k]

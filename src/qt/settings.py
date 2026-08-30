@@ -1,7 +1,7 @@
 """SettingsTab — 設置分頁（熱鍵/通用）。
 
 設計：單一 ScrollArea，三張卡，熱鍵卡為核心（Issue #1）。
-白名單：F1-F11 / Ctrl+F1-F11 / Alt+F1-F11（F12 保留為緊急關閉）。
+白名單：F1-F11 / Ins/Home/PgUp/PgDn/End 各含 Ctrl/Alt（F12 保留為緊急關閉）。
 """
 
 from PySide6.QtCore import Qt
@@ -10,10 +10,14 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
 
 
+_NAV_KEYS = ["ins", "home", "pgup", "pgdn", "end"]
 _HOTKEY_OPTIONS = [
     *[f"f{i}" for i in range(1, 12)],
     *[f"ctrl+f{i}" for i in range(1, 12)],
     *[f"alt+f{i}" for i in range(1, 12)],
+    *_NAV_KEYS,
+    *[f"ctrl+{k}" for k in _NAV_KEYS],
+    *[f"alt+{k}" for k in _NAV_KEYS],
 ]
 
 
@@ -40,6 +44,7 @@ class SettingsTab(ScrollArea):
             "f6": g("hotkey_f6_desc"),
             "f9": g("hotkey_f9_desc"),
             "f10": g("hotkey_f10_desc"),
+            "skill_timer": g("hotkey_skill_timer_desc"),
         }
 
     def _build_ui(self) -> None:
@@ -108,7 +113,7 @@ class SettingsTab(ScrollArea):
         self._hot_title = hot_title
 
         labels = self._hotkey_labels()
-        for key in ("f3", "f5", "f6", "f9", "f10"):
+        for key in ("f3", "f5", "f6", "f9", "f10", "skill_timer"):
             row = QWidget(hot_card)
             row_lay = QHBoxLayout(row)
             row_lay.setContentsMargins(0, 0, 0, 0)

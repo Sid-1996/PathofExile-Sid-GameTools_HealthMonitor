@@ -154,6 +154,7 @@ class MainWindow(FluentWindow):
     # 改走 queued signal 送回主執行緒（修 F10 停止監控 GUI 死結）。
     f10_request = Signal()
     f12_request = Signal()
+    skill_timer_toggle_request = Signal()
     floating_notice_request = Signal(str, str)
 
     def __init__(self):
@@ -220,7 +221,9 @@ class MainWindow(FluentWindow):
         self.window_key_sender = WindowKeySender(self)
         self.f10_request.connect(self.toggle_monitoring)
         self.f12_request.connect(self.close_app)
+        self.skill_timer_toggle_request.connect(self.toggle_skill_timer)
         self.floating_notice_request.connect(self._show_notice_impl)
+        self._skill_timer_paused_slots: set[int] = set()
         self.setup_hotkeys()
 
         # ── 自動點擊（AHK，沿用 auto_click_manager 保留模組）──
@@ -549,8 +552,28 @@ class MainWindow(FluentWindow):
         self._global_pause = bool(state)
         self._refresh_status_bar()
 
+    def toggle_skill_timer(self) -> None:
+        """Ins：技能計時器單鍵開關（任一在跑→全停，否則全開）。"""
+        if self._is_closing:
+            return
+        if self.is_global_pause():
+            logger.info("全域暫停中，跳過技能計時器熱鍵")
+            self.add_status_message(self.get_text("skill_timer_skip_global_pause"), "warning")
+            self.show_floating_notice(self.get_text("skill_timer_skip_global_pause"), "warning")
+            return
+        tab = getattr(self, "combo_tab", None)
+        timer = getattr(tab, "skill_timer", None) if tab else None
+        if timer is None:
+            timer = getattr(self, "skill_timer", None)
+        if timer is None:
+            return
+        try:
+            timer.toggle_all()
+        except Exception as e:
+            logger.warning("技能計時器切換失敗: %s", e)
+
     def setup_hotkeys(self) -> None:
-        """註冊全局熱鍵：F3/F5/F6/F9/F10 可改鍵（設置分頁），F12 固定緊急關閉。"""
+        """註冊全局熱鍵：F3/F5/F6/F9/F10/Ins 可改鍵（設置分頁），F12 固定緊急關閉。"""
         import keyboard
 
         hk = self.config.get("hotkeys") or {}
@@ -575,8 +598,9 @@ class MainWindow(FluentWindow):
             _add(_hk("f5", "f5"), self.inventory_tab.return_to_hideout)
         _add(_hk("f9", "f9"), self.toggle_global_pause)
         _add(_hk("f10", "f10"), self.f10_request.emit)
+        _add(_hk("skill_timer", "ins"), self.skill_timer_toggle_request.emit)
         _add("f12", self.f12_request.emit)
-        logger.info("已註冊全局熱鍵: %s + F12", ", ".join(_hk(k, k) for k in ("f3", "f5", "f6", "f9", "f10")))
+        logger.info("已註冊全局熱鍵: %s + F12", ", ".join(_hk(k, k) for k in ("f3", "f5", "f6", "f9", "f10", "skill_timer")))
 
     def reload_hotkeys(self) -> None:
         """重載熱鍵（設置頁套用後立即生效）。"""
@@ -599,12 +623,39 @@ class MainWindow(FluentWindow):
 
     def toggle_global_pause(self) -> None:
         """F9：全域暫停 - 暫停/恢復全部熱鍵與監控（安全網）。"""
-        # 統一經 set_global_pause 改旗標，狀態列暫停燈只掛在單一變更點
-        self.set_global_pause(not self._global_pause)
+        will_pause = not self._global_pause
+        # 暫停前快照技能計時器運行槽，暫停時全停（與 tk 版一致）
+        if will_pause:
+            try:
+                tab = getattr(self, "combo_tab", None)
+                timer = getattr(tab, "skill_timer", None) if tab else None
+                if timer is None:
+                    timer = getattr(self, "skill_timer", None)
+                if timer is not None and timer.is_any_running:
+                    self._skill_timer_paused_slots = set(timer.running_slot_indices)
+                    timer.stop_all()
+                else:
+                    self._skill_timer_paused_slots = set()
+            except Exception as e:
+                logger.warning("F9 暫停技能計時器失敗: %s", e)
+                self._skill_timer_paused_slots = set()
+        self.set_global_pause(will_pause)
         if self._global_pause:
             self.add_status_message(self.get_text("global_pause_activated"), "warning")
             self.show_floating_notice(self.get_text("global_pause_activated"), "warning")
         else:
+            # 恢復暫停前運行中的槽位
+            try:
+                if getattr(self, "_skill_timer_paused_slots", None):
+                    tab = getattr(self, "combo_tab", None)
+                    timer = getattr(tab, "skill_timer", None) if tab else None
+                    if timer is None:
+                        timer = getattr(self, "skill_timer", None)
+                    if timer is not None and self._skill_timer_paused_slots:
+                        timer.restore_slots(self._skill_timer_paused_slots)
+            except Exception as e:
+                logger.warning("F9 恢復技能計時器失敗: %s", e)
+            self._skill_timer_paused_slots = set()
             self.add_status_message(self.get_text("global_pause_deactivated"), "success")
             self.show_floating_notice(self.get_text("global_pause_deactivated_toast"), "success")
 
