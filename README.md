@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.1-3fb950?style=flat-square" /><!-- 單一事實源 src/_version.py，發版時同步 -->
+  <img src="https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?style=flat-square&label=Version" />
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" />
   <img src="https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?style=flat-square" />
   <a href="https://sid-1996.github.io/PathofExile-Sid-GameTools_HealthMonitor/"><img src="https://img.shields.io/badge/Web-GitHub%20Pages-58a6ff?style=flat-square&logo=github" /></a>
@@ -78,7 +78,7 @@
 </p>
 
 <p align="center">
-  <sub>新用戶請下載 <code>Setup.exe</code> 安裝（支援自動更新，推薦）· Windows 10 / 11<br>舊版 ZIP 解壓用戶仍可更新，v1.3.0 後請改裝 Setup.exe（詳見發行說明）</sub>
+  <sub>⚠️ <b>v1.2.1（含更早）請務必手動重裝</b>：自動更新會在下載階段失敗，請下載 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 覆蓋安裝（設定保留）· Windows 10 / 11<br>新用戶亦請下載 <code>Setup.exe</code>（推薦） — Users on v1.2.1 or earlier must reinstall manually with <code>Setup.exe</code></sub>
 </p>
 
 ---
