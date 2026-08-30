@@ -14,7 +14,7 @@ import pygetwindow as gw
 
 from PIL import Image
 
-from PySide6.QtCore import QObject, QPoint, QRect, Qt, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -1001,7 +1001,6 @@ class InventoryTab(QWidget):
         self._sync_inventory_config()
 
     def _on_preview_resize(self):
-        from PySide6.QtCore import QTimer
 
         QTimer.singleShot(150, self._render_preview_resize)
 
@@ -1929,18 +1928,25 @@ class InventoryTab(QWidget):
         dlg.exec()
         self._setup_dialog = None
 
-    def start_continuous_setup(self, parent_window):
+    def start_continuous_setup(self, parent_window):  # noqa: C901
         """開始連續設定5個取物座標（對應 tk 版；同步流程）。"""
         if self.pickup_coordinates is None:
             self.pickup_coordinates = [[0, 0] for _ in range(5)]
         window_title = self._app.monitor_tab.window_var.get()
         if window_title and self._app.check_game_window_minimized(window_title):
             return
+        # 避免在 dlg.exec() 期間 hide() 對話框導致模態狀態錯亂：改禁用而非隱藏
+        parent_enabled_prev = None
+        hint = None
         try:
-            parent_window.hide()
+            try:
+                parent_enabled_prev = parent_window.isEnabled()
+                parent_window.setEnabled(False)
+            except Exception:
+                pass
             self.window().hide()
             time.sleep(0.5)
-            QMessageBox.information(self.window(), self._app.get_text("start_setup_title"), self._app.get_text("start_setup_message"))
+            QMessageBox.information(None, self._app.get_text("start_setup_title"), self._app.get_text("start_setup_message"))
 
             import keyboard
 
@@ -1956,14 +1962,14 @@ class InventoryTab(QWidget):
             try:
                 for i in range(5):
                     if cancel_setup:
-                        QMessageBox.information(self.window(), self._app.get_text("setup_cancelled"), self._app.get_text("setup_cancelled_message"))
+                        QMessageBox.information(None, self._app.get_text("setup_cancelled"), self._app.get_text("setup_cancelled_message"))
                         break
 
                     logger.info("等待設定座標 %s... (按ESC取消)", i + 1)
                     hint = _CoordHintWindow(
                         self._app.get_text("setup_coordinate_title").format(current=i + 1, total=5),
                         self._app.get_text("setup_coordinate_hint").format(number=i + 1),
-                        self.window(),
+                        None,
                     )
                     hint.show()
                     QApplication.processEvents()
@@ -1976,12 +1982,20 @@ class InventoryTab(QWidget):
 
                     keyboard.on_press_key("enter", lambda _: on_enter_press())
 
-                    while not enter_pressed and not cancel_setup:
-                        time.sleep(0.1)
+                    try:
+                        while not enter_pressed and not cancel_setup:
+                            QApplication.processEvents()
+                            time.sleep(0.05)
+                    finally:
+                        try:
+                            if hint is not None:
+                                hint.close()
+                        except Exception:
+                            pass
+                        hint = None
 
                     if cancel_setup:
-                        hint.close()
-                        QMessageBox.information(self.window(), self._app.get_text("setup_cancelled"), self._app.get_text("setup_cancelled_message"))
+                        QMessageBox.information(None, self._app.get_text("setup_cancelled"), self._app.get_text("setup_cancelled_message"))
                         break
 
                     abs_x, abs_y = pyautogui.position()
@@ -2002,12 +2016,16 @@ class InventoryTab(QWidget):
                         logger.warning("未設定遊戲視窗，使用絕對座標 %s: (%s, %s)", i + 1, abs_x, abs_y)
 
                     self._app.schedule_config_save()
-                    hint.close()
                     time.sleep(0.3)
             except Exception as e:
                 logger.error("連續設定失敗: %s", e)
-                QMessageBox.critical(self.window(), self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
+                QMessageBox.critical(None, self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
             finally:
+                try:
+                    if hint is not None:
+                        hint.close()
+                except Exception:
+                    pass
                 try:
                     keyboard.unhook_all()
                     self._app.setup_hotkeys()
@@ -2015,29 +2033,62 @@ class InventoryTab(QWidget):
                     pass
 
             if not cancel_setup:
-                self.update_coordinate_display()
-                self.save_pickup_coordinates(parent_window)
-                QMessageBox.information(self.window(), self._app.get_text("setup_completed_title"), self._app.get_text("setup_completed_message"))
-                self.window().raise_()
-                self.window().activateWindow()
-                if self._app.should_keep_topmost():
-                    self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-                    self.window().show()
+                try:
+                    self.update_coordinate_display()
+                    self.save_pickup_coordinates(parent_window)
+                except Exception as e:
+                    logger.error("更新座標顯示失敗: %s", e)
+                QMessageBox.information(None, self._app.get_text("setup_completed_title"), self._app.get_text("setup_completed_message"))
+                try:
+                    self.window().raise_()
+                    self.window().activateWindow()
+                except Exception:
+                    pass
         except Exception as e:
             logger.error("連續設定失敗: %s", e)
-            QMessageBox.critical(self.window(), self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
+            QMessageBox.critical(None, self._app.get_text("setup_failed"), f"{self._app.get_text('setup_failed')}: {str(e)}")
         finally:
             try:
                 self.window().showNormal()
-                parent_window.show()
+                # 對稱處理置頂旗標，避免殘留
+                try:
+                    want_top = bool(self._app.should_keep_topmost())
+                    has_top = bool(self.window().windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+                    if want_top != has_top:
+                        self.window().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, want_top)
+                        self.window().show()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            try:
+                if parent_window is not None:
+                    try:
+                        parent_window.setEnabled(parent_enabled_prev if parent_enabled_prev is not None else True)
+                    except Exception:
+                        pass
+                    try:
+                        parent_window.raise_()
+                        parent_window.activateWindow()
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
     def update_coordinate_display(self):
-        if self._setup_dialog is not None:
-            self._setup_dialog.update_display()
-        self.refresh_config_display()
-        self.update_pickup_status()
+        try:
+            if self._setup_dialog is not None:
+                self._setup_dialog.update_display()
+        except Exception as e:
+            logger.warning("更新取物對話框顯示失敗: %s", e)
+        try:
+            self.refresh_config_display()
+        except Exception as e:
+            logger.warning("refresh_config_display 失敗: %s", e)
+        try:
+            self.update_pickup_status()
+        except Exception as e:
+            logger.warning("update_pickup_status 失敗: %s", e)
 
     def clear_all_coordinates(self):
         if QMessageBox.question(self.window(), self._app.get_text("confirm"), self._app.get_text("confirm_clear_coordinates")) == QMessageBox.StandardButton.Yes:
