@@ -163,6 +163,22 @@ release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 
 ---
 
+## 🙏 Acknowledgements / 致謝
+
+感謝以下開源專案，讓這個小工具得以專注在 PoE 自動化本質，而無需重造輪子。
+
+Thanks to the open source projects that let this small toolkit focus on the task itself.
+
+- Velopack — 安裝與更新
+- PySide6 / qfluentwidgets — 介面
+- OpenCV — 影像辨識
+- Windows.Graphics.Capture — 視窗擷取
+- AutoHotkey / PyInstaller — 連點與打包
+
+如有遺漏，歡迎提醒。
+
+---
+
 ## 🤝 Community / 社群
 
 <p>
