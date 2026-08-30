@@ -223,7 +223,7 @@ class SkillTimerModule(QWidget):
         if self._get_text:
             try:
                 result = self._get_text(key)
-                if result and not result.startswith("["):
+                if result and result != f"[{key}]":
                     return result
             except Exception:
                 pass
