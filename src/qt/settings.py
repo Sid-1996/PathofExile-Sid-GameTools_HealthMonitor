@@ -333,7 +333,7 @@ class SettingsTab(ScrollArea):
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         try:
-            from utils import get_app_dir, get_user_data_dir
+            from utils import get_user_data_dir
             import os
             import shutil
             import sys
@@ -342,23 +342,22 @@ class SettingsTab(ScrollArea):
             from pathlib import Path
 
             base = get_user_data_dir()
-            app_dir = get_app_dir()
             for name in ("health_monitor_config.json", "health_monitor_config.json.backup"):
-                for b in {base, app_dir}:
-                    p = os.path.join(b, name)
-                    if os.path.exists(p):
-                        try:
-                            os.remove(p)
-                        except Exception:
-                            pass
+                p = os.path.join(base, name)
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
             if cb.isChecked():
-                for b in {base, app_dir}:
-                    shots = os.path.join(b, "screenshots")
-                    if os.path.isdir(shots):
-                        try:
-                            shutil.rmtree(shots)
-                        except Exception:
-                            pass
+                shots = os.path.join(base, "screenshots")
+                if os.path.isdir(shots):
+                    try:
+                        shutil.rmtree(shots)
+                    except Exception:
+                        pass
+            # ponytail: 標記重設重啟，_shutdown 將跳過 save_config 避免刪後復活
+            self._app._reset_no_save = True
             # ponytail: 一律重啟以清記憶體預覽與區域快取（最乾淨）
             if getattr(sys, "frozen", False):
                 launch_args: list[str] = []

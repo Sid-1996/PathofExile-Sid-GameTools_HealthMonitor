@@ -286,12 +286,14 @@ class MainWindow(FluentWindow):
 
     def schedule_config_save(self) -> None:
         """即時儲存入口：debounce 400ms 後統一整包寫入。關閉/初始化期間忽略。"""
-        if self._is_closing or not self._initialized:
+        if getattr(self, "_reset_no_save", False) or self._is_closing or not self._initialized:
             return
         self._config_save_timer.start(400)
 
     def save_config(self) -> None:
         """血魔監控相關設定的 Qt 版儲存（對應 tk 版 save_config）。"""
+        if getattr(self, "_reset_no_save", False):
+            return
         try:
             if hasattr(self, "monitor_tab"):
                 mt = self.monitor_tab
