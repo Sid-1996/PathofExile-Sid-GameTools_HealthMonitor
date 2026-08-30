@@ -32,7 +32,8 @@ import auto_update
 from _version import __version__
 
 CURRENT_VERSION = f"v{__version__}"
-GITHUB_REPO = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
+# 跟隨更新源解析（環境變數/override 檔可切測試倉），僅用於抓 release notes
+GITHUB_REPO = auto_update.GITHUB_REPO_URL.rstrip("/").removeprefix("https://github.com/")
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 SUCCESS = "#50fa7b"
