@@ -207,9 +207,16 @@ class VersionTab(QWidget):
 
     def _on_version_checked(self, info):
         if info is None:
-            self.latest_version_label.setText(self._app.get_text("using_latest_version"))
-            self.latest_version_label.setStyleSheet(self._latest_style(SUCCESS))
-            self.version_status_label.setText(self._app.get_text("using_latest_version"))
+            if self._update_manager is None:
+                # 非 Velopack 安裝環境（ZIP 解壓/原始碼）：check 回 None 不代表最新，
+                # 顯示可攜模式提示而非誤導性的「已是最新版本」
+                self.latest_version_label.setText(self._app.get_text("portable_mode_hint"))
+                self.latest_version_label.setStyleSheet(self._latest_style(INFO))
+                self.version_status_label.setText(self._app.get_text("portable_mode_hint"))
+            else:
+                self.latest_version_label.setText(self._app.get_text("using_latest_version"))
+                self.latest_version_label.setStyleSheet(self._latest_style(SUCCESS))
+                self.version_status_label.setText(self._app.get_text("using_latest_version"))
             self.download_btn.setEnabled(False)
             return
         skipped = self._app.config.get("skipped_version", "")
