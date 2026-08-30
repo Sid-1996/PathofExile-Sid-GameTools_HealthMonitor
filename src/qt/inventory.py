@@ -1935,13 +1935,16 @@ class InventoryTab(QWidget):
         window_title = self._app.monitor_tab.window_var.get()
         if window_title and self._app.check_game_window_minimized(window_title):
             return
-        # 避免在 dlg.exec() 期間 hide() 對話框導致模態狀態錯亂：改禁用而非隱藏
         parent_enabled_prev = None
         hint = None
         try:
             try:
                 parent_enabled_prev = parent_window.isEnabled()
                 parent_window.setEnabled(False)
+            except Exception:
+                pass
+            try:
+                parent_window.hide()
             except Exception:
                 pass
             self.window().hide()
@@ -2063,6 +2066,10 @@ class InventoryTab(QWidget):
                 pass
             try:
                 if parent_window is not None:
+                    try:
+                        parent_window.show()
+                    except Exception:
+                        pass
                     try:
                         parent_window.setEnabled(parent_enabled_prev if parent_enabled_prev is not None else True)
                     except Exception:
