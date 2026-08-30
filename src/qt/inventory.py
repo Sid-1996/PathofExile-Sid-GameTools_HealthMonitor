@@ -1692,20 +1692,30 @@ class InventoryTab(QWidget):
     def test_inventory_clearing(self):
         """測試背包清空功能 - 增強版本，自動檢測並開啟背包（對應 tk 版）。"""
         if not self.inventory_region:
-            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("select_inventory_region_first"))
+            msg = self._app.get_text("select_inventory_region_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if not self.empty_inventory_colors:
-            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("record_empty_color_first"))
+            msg = self._app.get_text("record_empty_color_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if not self.inventory_ui_region:
-            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("select_inventory_ui_region_first"))
+            msg = self._app.get_text("select_inventory_ui_region_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if not self.inventory_grid_positions:
-            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("please_adjust_inventory_region_first"))
+            msg = self._app.get_text("please_adjust_inventory_region_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         window_title = self._app.monitor_tab.window_var.get()
         if not window_title:
-            QMessageBox.warning(self, self._app.get_text("warning"), self._app.get_text("set_game_window_first"))
+            msg = self._app.get_text("set_game_window_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if self._app.check_game_window_minimized(window_title):
             return

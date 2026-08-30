@@ -343,15 +343,21 @@ class MainWindow(FluentWindow):
             return
         mt = self.monitor_tab
         if not mt.window_title:
-            QMessageBox.warning(self, self.get_text("error"), self.get_text("select_game_window_first"))
+            msg = self.get_text("select_game_window_first")
+            self.add_status_message(msg, "warning")
+            self.show_floating_notice(msg, "warning")
             return
         if self.check_game_window_minimized(mt.window_title):
             return
         if not self.config.get("region"):
-            QMessageBox.warning(self, self.get_text("error"), self.get_text("select_health_bar_region_first"))
+            msg = self.get_text("select_health_bar_region_first")
+            self.add_status_message(msg, "warning")
+            self.show_floating_notice(msg, "warning")
             return
         if not self.config.get("settings"):
-            QMessageBox.warning(self, self.get_text("error"), self.get_text("set_at_least_one_trigger"))
+            msg = self.get_text("set_at_least_one_trigger")
+            self.add_status_message(msg, "warning")
+            self.show_floating_notice(msg, "warning")
             return
 
         reset_battle_debug_state()
@@ -737,7 +743,9 @@ class MainWindow(FluentWindow):
             if not windows:
                 return False
             if windows[0].isMinimized:
-                QMessageBox.warning(self, self.get_text("warning"), self.get_text("game_window_minimized_warning"))
+                msg = self.get_text("game_window_minimized_warning")
+                self.add_status_message(msg, "warning")
+                self.show_floating_notice(msg, "warning")
                 return True
             return False
         except Exception as e:

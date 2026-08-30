@@ -806,14 +806,18 @@ class MonitorTab(QWidget):
 
     def test_preview(self):
         if not self.window_title:
-            QMessageBox.warning(self, self._app.get_text("error"), self._app.get_text("select_game_window_first"))
+            msg = self._app.get_text("select_game_window_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if self._app.check_game_window_minimized(self.window_title):
             return
         try:
             windows = gw.getWindowsWithTitle(self.window_title)
             if not windows:
-                QMessageBox.warning(self, self._app.get_text("error"), self._app.get_text("game_window_not_found_with_title").format(window_title=self.window_title))
+                msg = self._app.get_text("game_window_not_found_with_title").format(window_title=self.window_title)
+                self._app.add_status_message(msg, "warning")
+                self._app.show_floating_notice(msg, "warning")
                 return
 
             def _perform():
@@ -872,7 +876,9 @@ class MonitorTab(QWidget):
             self.on_type_changed()
             self._app.schedule_config_save()
         except ValueError as e:
-            QMessageBox.warning(self, self._app.get_text("input_error"), str(e))
+            msg = str(e)
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
         except Exception as e:
             QMessageBox.critical(self, self._app.get_text("error"), self._app.get_text("add_setting_failed").format(error=str(e)))
 
@@ -888,7 +894,9 @@ class MonitorTab(QWidget):
     def remove_setting(self):
         row = self.settings_tree.currentRow()
         if row < 0:
-            QMessageBox.warning(self, self._app.get_text("important_reminder"), self._app.get_text("select_setting_to_remove_first"))
+            msg = self._app.get_text("select_setting_to_remove_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if QMessageBox.question(self, self._app.get_text("confirm"), self._app.get_text("confirm_remove_setting")) != QMessageBox.StandardButton.Yes:
             return
@@ -1008,7 +1016,9 @@ class MonitorTab(QWidget):
 
     def _start_selection(self, is_mana):
         if not self.window_title:
-            QMessageBox.warning(self, self._app.get_text("error"), self._app.get_text("select_game_window_first"))
+            msg = self._app.get_text("select_game_window_first")
+            self._app.add_status_message(msg, "warning")
+            self._app.show_floating_notice(msg, "warning")
             return
         if self._app.check_game_window_minimized(self.window_title):
             return
