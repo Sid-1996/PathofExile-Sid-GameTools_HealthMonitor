@@ -122,3 +122,7 @@ auto_generated/
 # Project-specific misc
 src/llm_report.txt
 src/skeleton.txt
+
+# Build-generated release metadata (repo root)
+/delta_info.json
+/manifest.json
