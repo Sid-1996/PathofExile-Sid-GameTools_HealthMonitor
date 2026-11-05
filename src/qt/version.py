@@ -51,7 +51,7 @@ class _VersionSignals(QObject):
     status_text = Signal(str)  # 設定狀態列文字
     latest_text = Signal(str)  # 設定最新版本文字
     release_notes = Signal(str)
-    download_progress = Signal(float, float)  # downloaded, total
+    download_progress = Signal(int)  # Velopack progress_callback：單一 int 0–100
     download_done = Signal(object, object)  # (None 佔位, InfoShim)
     download_fail = Signal(str)
 
@@ -302,14 +302,14 @@ class VersionTab(QWidget):
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
         dialog_layout.addWidget(self._progress_bar)
-        self._progress_status_label = QLabel("0 KB / ? KB")
+        self._progress_status_label = QLabel("0%")
         self._progress_status_label.setStyleSheet("font-family: Consolas; font-size: 11px; color: #f8f8f2;")
         dialog_layout.addWidget(self._progress_status_label, 0, Qt.AlignmentFlag.AlignCenter)
         # Velopack 下載不支援中途取消（delta 傳輸量小、速度快），不提供取消按鈕
         self._progress_dialog = dialog
 
-        def _progress_cb(downloaded, total):
-            self._sig.download_progress.emit(downloaded, total)
+        def _progress_cb(pct):
+            self._sig.download_progress.emit(int(pct))
 
         def _do_download():
             try:
@@ -321,13 +321,10 @@ class VersionTab(QWidget):
         threading.Thread(target=_do_download, daemon=True).start()
         dialog.exec()
 
-    def _on_progress(self, downloaded, total):
-        if total > 0:
-            pct = downloaded / total * 100
-            self._progress_bar.setValue(int(pct))
-            self._progress_status_label.setText(f"{downloaded / 1024:.0f} KB / {total / 1024:.0f} KB ({pct:.0f}%)")
-        else:
-            self._progress_status_label.setText(f"{downloaded / 1024:.0f} KB")
+    def _on_progress(self, pct):
+        pct = max(0, min(100, int(pct)))
+        self._progress_bar.setValue(pct)
+        self._progress_status_label.setText(f"{pct}%")
 
     def _close_progress_dialog(self):
         if self._progress_dialog is not None:
