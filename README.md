@@ -87,21 +87,32 @@
 
 > ⚠️ **遊戲視窗設定**：請將 Path of Exile 設為「視窗全螢幕」或「視窗模式」，工具才能正確背景截圖與顯示提示浮層。
 
-### 從原始碼執行
-```bat
-scripts\install_dependencies.bat
+### 安全自建（推薦先看）
+
+> 近期 AI 攻擊與仿冒下載站頻傳，先認唯一可信入口：**僅 https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases**。完整三條路（源碼直跑 / 自建 EXE / 官方套件）見 [`docs/安全自建.md`](docs/安全自建.md) —— 選一條做就可以，本節只給指令。
+
+### 路徑 A — 源碼直跑
+
+```powershell
+git clone https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor.git
+cd PathofExile-Sid-GameTools_HealthMonitor
+uv sync --locked
 Run.bat
 ```
 
-### 打包 EXE
-```bat
+（舊命令 `scripts\install_dependencies.bat` 仍可用，會 fallback 至全域安裝。）
+
+### 路徑 B — 自建 EXE
+
+```powershell
+uv sync --locked
 scripts\build_exe.bat
-```
-
-### 測試打包結果
-```bat
 Run.bat
 ```
+
+### 路徑 C — 官方套件
+
+直接到上方 [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) 下載 `Setup.exe`（見 Download 區段）。
 
 ### 資料與重設 / Data
 

@@ -24,6 +24,18 @@ if exist "%~dp0dist\GameTools_HealthMonitor.exe" (
 :: 3. Run from source
 echo [INFO] EXE not found, running from source...
 
+:: 3a-venv. Prefer .venv (uv sync --locked, reproducible)
+if exist "%~dp0.venv\Scripts\python.exe" (
+    "%~dp0.venv\Scripts\python.exe" -c "import PySide6, cv2" 2>nul
+    if not errorlevel 1 (
+        "%~dp0.venv\Scripts\python.exe" "%~dp0src\app.py" %*
+        if errorlevel 1 echo [WARN] Script exited with code %ERRORLEVEL%
+        goto check_restart
+    ) else (
+        echo [WARN] .venv exists but dependencies check failed, falling back to system Python... Please re-run: uv sync --locked
+    )
+)
+
 :: 3a. Prefer python (unified Python 3.13)
 where python >nul 2>&1
 if not errorlevel 1 (

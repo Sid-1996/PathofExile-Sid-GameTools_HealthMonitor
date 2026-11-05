@@ -5,6 +5,8 @@ cd /d "%~dp0.."
 
 echo ========================================
 echo  GameTools Health Monitor - 依賴項安裝
+echo  優先: uv sync --locked（可重現，自動建 .venv）
+echo  fallback: 全域 pip install -r requirements.txt
 echo ========================================
 echo.
 echo 正在檢查 uv...
@@ -30,6 +32,27 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+if exist "pyproject.toml" if exist "uv.lock" (
+    echo 正在以 uv sync --locked 建立 .venv 並安裝鎖定版本...
+    uv sync --locked
+    if %errorlevel% neq 0 (
+        echo.
+        echo uv sync 失敗，改用全域 fallback...
+        goto fallback
+    )
+    echo.
+    echo ========================================
+    echo  安裝完成（uv sync，.venv 已建立）!
+    echo.
+    echo 運行方法:
+    echo   uv run python src/app.py
+    echo   或 Run.bat（會優先偵測 .venv）
+    echo ========================================
+    pause
+    exit /b 0
+)
+
+:fallback
 echo 正在以全域模式安裝依賴項（uv，統一 Python 3.13）...
 if not exist "scripts\requirements.txt" (
     echo 錯誤: 找不到 scripts\requirements.txt
@@ -49,9 +72,10 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ========================================
-echo  安裝完成!
+echo  安裝完成（全域 fallback）!
 echo.
 echo 運行方法:
 echo   python src/app.py
+echo   或 Run.bat
 echo ========================================
 pause
