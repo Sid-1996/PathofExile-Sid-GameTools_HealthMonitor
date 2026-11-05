@@ -20,34 +20,79 @@ _LANG_JAPANESE = 0x11
 
 
 def _langid_to_code(lang_id: int) -> str:
-    """ponytail: 預設英文；中文系統回 zh-tw，其他回 en（ja 尚無包，暫回 en）"""
-    primary = lang_id & 0xFF
-    if primary == _LANG_CHINESE:
+    """預設英文；LANGID 中文依子語言區分: 0x0804/0x0004 等簡中，其餘繁中"""
+    # LANGID 子語言: 0x0804=zh-CN, 0x0404=zh-TW, 0x0C04=zh-HK, 0x1004=zh-SG
+    if lang_id & 0xFF == _LANG_CHINESE:
+        sub = lang_id >> 10
+        if sub in (0x02, 0x04, 0x06, 0x08):  # zh-CN(0x0804) -> sub 0x02, zh_SG 0x1004 -> 0x04, etc.
+            return "zh-cn"
+        # More precise by locale name handled below
+        if lang_id in (0x0804, 0x1004):
+            return "zh-cn"
         return "zh-tw"
-    if primary == _LANG_JAPANESE:
+    if lang_id & 0xFF == _LANG_JAPANESE:
         return "en"
     return "en"
 
 
+def _locale_name_to_code(name: str | None) -> str | None:
+    if not name:
+        return None
+    low = name.strip().lower().replace("_", "-")
+    if low.startswith("zh"):
+        if low.startswith("zh-cn") or low.startswith("zh-hans") or low in ("zh-sg",):
+            return "zh-cn"
+        if low.startswith("zh-tw") or low.startswith("zh-hk") or low.startswith("zh-hant"):
+            return "zh-tw"
+        # zh-* other -> fallback later by langid
+        return None
+    if low.startswith("en"):
+        return "en"
+    return None
+
+
 def detect_system_language() -> str:
-    """首次啟動的預設語系：中文系統→zh-tw，其他→en"""
+    """首次啟動預設語系：先讀 locale 名字區分簡繁，失敗 fallback LANGID"""
     try:
         import ctypes
 
-        lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        kernel32 = ctypes.windll.kernel32
+        # 1) Locale name finer than LANGID
+        try:
+            buf = ctypes.create_unicode_buffer(256)
+            n = kernel32.GetUserDefaultLocaleName(buf, 256)
+            if n > 0:
+                code = _locale_name_to_code(buf.value)
+                if code:
+                    return code
+        except Exception:
+            pass
+        # 2) LANGID fallback (stable)
+        lang_id = kernel32.GetUserDefaultUILanguage()
         if lang_id == 0:
-            lang_id = ctypes.windll.kernel32.GetSystemDefaultUILanguage()
+            lang_id = kernel32.GetSystemDefaultUILanguage()
         return _langid_to_code(lang_id)
     except Exception:
         return "en"
 
 
 def normalize_language_code(raw: str | None) -> str:
-    """大小寫/分隔符容錯，正規化為 zh-tw / en"""
+    """大小寫/分隔符容錯，正規化為 zh-tw / zh-cn / en"""
     if not isinstance(raw, str):
         return "zh-tw"
     low = raw.strip().lower().replace("_", "-")
-    if low in ("zh-tw", "zh_tw", "zh", "tw") or low.startswith("zh"):
+    if low in ("zh-tw", "tw", "zh-hant", "zh-hk", "zh-hant-tw", "zh-hant-hk"):
+        return "zh-tw"
+    if low in ("zh-cn", "zh-hans", "zh-sg", "zh-hans-cn"):
+        return "zh-cn"
+    if low == "zh":
+        return "zh-tw"
+    if low.startswith("zh"):
+        # zh-CN / zh-SG / zh-Hans
+        if "cn" in low or "hans" in low or "sg" in low:
+            return "zh-cn"
+        if "tw" in low or "hant" in low or "hk" in low:
+            return "zh-tw"
         return "zh-tw"
     if low == "en":
         return "en"
@@ -87,7 +132,7 @@ class LanguageManager:
 
     def __init__(self, default_language="zh-tw"):
         self.current_language = default_language
-        self.language_display_map = {"繁體中文": "zh-tw", "English": "en"}
+        self.language_display_map = {"繁體中文": "zh-tw", "简体中文": "zh-cn", "English": "en"}
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
 
     def get_text(self, key):
