@@ -64,6 +64,10 @@ _Avoid_: region（泛用）
 背包專用的相對視窗矩形，絕對座標。
 _Avoid_: region（泛用）
 
+**CaptureResult**:
+視窗區域截取結果：`("wgc" | "mss" | None)`。`"wgc"` 為 Background 可截結果，`"mss"` 為僅 Foreground 可截結果；`None` 涵蓋視窗 `Missing` / `Minimized` / WGC 不可用且非 Foreground。呼叫端不分支 `backend`。
+_Avoid_: valid 布林、backend 分支
+
 ## Health / Mana Monitor
 
 **HealthManaMonitor**:
