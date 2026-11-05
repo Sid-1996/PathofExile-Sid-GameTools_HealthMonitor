@@ -768,7 +768,7 @@ class MainWindow(FluentWindow):
     def change_language_display(self, display_name: str) -> None:
         from language_system import normalize_language_code
 
-        mapping = {"繁體中文": "zh-tw", "English": "en"}
+        mapping = {"繁體中文": "zh-tw", "简体中文": "zh-cn", "English": "en"}
         new_language = normalize_language_code(mapping.get(display_name, "zh-tw"))
         if new_language == self.current_language:
             return

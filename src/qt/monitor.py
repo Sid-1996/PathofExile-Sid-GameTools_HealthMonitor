@@ -510,7 +510,7 @@ class MonitorTab(QWidget):
         lang_row.setSpacing(8)
         self.language_label = QLabel(self._app.get_text("language"))
         lang_row.addWidget(self.language_label)
-        self.language_display_map = {"繁體中文": "zh-tw", "English": "en"}
+        self.language_display_map = {"繁體中文": "zh-tw", "简体中文": "zh-cn", "English": "en"}
         self.language_reverse_map = {v: k for k, v in self.language_display_map.items()}
         self.language_combo = ComboBox()
         self.language_combo.addItems(list(self.language_display_map.keys()))

@@ -68,7 +68,7 @@ class SettingsTab(ScrollArea):
         self._lang_label.setStyleSheet("color: #f8f8f2;")
         self._lang_label.setMinimumWidth(140)
         self.lang_combo = ComboBox(self._lang_card)
-        self.lang_combo.addItems(["繁體中文", "English"])
+        self.lang_combo.addItems(["繁體中文", "简体中文", "English"])
         self.lang_combo.setMinimumWidth(160)
         # ponytail: 以 reverse_map 初始化，避免硬編碼
         try:
