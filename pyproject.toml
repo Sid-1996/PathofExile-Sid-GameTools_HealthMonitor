@@ -28,7 +28,7 @@ addopts = "-v --tb=short --cov --cov-report=term-missing"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "1.2.1"
+version = "1.3.2"
 version_files = [
     "src/_version.py:__version__",
 ]

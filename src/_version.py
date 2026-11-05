@@ -3,4 +3,3 @@
 __version__ = "1.3.2"
 __author__ = "Sid"
 __github__ = "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
-
