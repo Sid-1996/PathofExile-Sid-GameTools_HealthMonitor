@@ -9,6 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/English-Current-2ea44f?style=flat-square" alt="English" /></a>
+  <a href="README.zh-TW.md"><img src="https://img.shields.io/badge/%E7%B9%A1%E9%AB%94%E4%B8%AD%E6%96%87-0969da?style=flat-square" alt="繁體中文" /></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-0969da?style=flat-square" alt="简体中文" /></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/github/v/release/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor?style=flat-square&label=Version" />
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" />
   <img src="https://img.shields.io/github/downloads/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/total?style=flat-square" />
@@ -16,7 +22,7 @@
 </p>
 
 <p align="center">
-  以影像辨識與輸入模擬為核心的 Windows 自動化研究工具<br>
+  A Windows automation research toolkit built on image recognition and input simulation<br>
   <sub>External automation research toolkit for Path of Exile</sub>
 </p>
 
@@ -26,72 +32,72 @@
 
 ---
 
-## 📹 Demo / 示範影片
+## 📹 Demo
 
 <p align="center">
   <a href="https://www.dailymotion.com/video/xa9cau2">
-    <img src="https://img.shields.io/badge/▶️_觀看完整示範-0066DC?style=for-the-badge&logo=dailymotion&logoColor=white" alt="Watch on Dailymotion" />
+    <img src="https://img.shields.io/badge/▶️_Watch_Full_Demo-0066DC?style=for-the-badge&logo=dailymotion&logoColor=white" alt="Watch on Dailymotion" />
   </a>
 </p>
 
 ---
 
-## ✨ Features / 功能總覽
+## ✨ Features
 
 <table>
   <tr>
-    <td><b>🩸 血量/魔力監控</b><br>即時百分比判定 · 多閾值觸發 · 冷卻保護</td>
-    <td><b>⚡ 技能連段</b><br>自訂序列 · 可調延遲 · 多組配置</td>
+    <td><b>🩸 Health / Mana Monitor</b><br>Real-time percent detection · Multi-threshold triggers · Cooldown protection</td>
+    <td><b>⚡ Skill Combos</b><br>Custom sequences · Adjustable delays · Multiple profiles</td>
   </tr>
   <tr>
-    <td><b>🎒 背包自動化</b><br>一鍵清包 · 固定點取物 · UI 顏色辨識</td>
-    <td><b>🖱️ 自動連點</b><br>Ctrl + 左鍵切換</td>
+    <td><b>🎒 Inventory Automation</b><br>One-click clear · Fixed-point pickup · UI color recognition</td>
+    <td><b>🖱️ Auto Click</b><br>Toggle with Ctrl + Left Click</td>
   </tr>
   <tr>
-    <td><b>⏱️ 技能計時器</b><br>毫秒級精度 · 支援組合鍵</td>
-    <td><b>⏸️ 全域控制</b><br>F9 暫停 · F12 離開</td>
+    <td><b>⏱️ Skill Timers</b><br>Millisecond precision · Supports key combinations</td>
+    <td><b>⏸️ Global Control</b><br>F9 Pause · F12 Exit</td>
   </tr>
 </table>
 
 ---
 
-## ⌨️ Hotkeys / 熱鍵
+## ⌨️ Hotkeys
 
-| Key | Action / 操作 |
+| Key | Action |
 |:---:|:---|
-| `F3` | 一鍵清包 / Clear Inventory |
-| `F5` | 回藏身處 / Return Hideout |
-| `F6` | 一鍵取物 / Pickup Sequence |
-| `F9` | 暫停 / Resume |
-| `F10` | 血量監控開關 / Health Monitor Toggle |
-| `F12` | 離開 / Exit |
-| `Ctrl + Click` | 自動連點 / Auto Click |
+| `F3` | Clear Inventory |
+| `F5` | Return to Hideout |
+| `F6` | Pickup Sequence |
+| `F9` | Pause / Resume |
+| `F10` | Health Monitor Toggle |
+| `F12` | Exit |
+| `Ctrl + Click` | Auto Click |
 
 ---
 
-## 📦 Download / 下載
+## 📦 Download
 
 <p align="center">
   <a class="btn" href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases">
-    <img src="https://img.shields.io/badge/⬇️_下載_Setup.exe-3fb950?style=for-the-badge" alt="Download Setup.exe" />
+    <img src="https://img.shields.io/badge/⬇️_Download_Setup.exe-3fb950?style=for-the-badge" alt="Download Setup.exe" />
   </a>
 </p>
 
 <p align="center">
-  <sub>⚠️ <b>v1.2.1（含更早）請務必手動重裝</b>：自動更新會在下載階段失敗，請下載 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 覆蓋安裝（設定保留）· Windows 10 / 11<br>新用戶亦請下載 <code>Setup.exe</code>（推薦） — Users on v1.2.1 or earlier must reinstall manually with <code>Setup.exe</code></sub>
+  <sub>⚠️ <b>Users on v1.2.1 or earlier must reinstall manually</b>: auto-update will fail during download. Please download <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> and install over the old version (settings are preserved) · Windows 10 / 11<br>New users: download <code>Setup.exe</code> (recommended)</sub>
 </p>
 
 ---
 
-## 🚀 Quick Start / 快速開始
+## 🚀 Quick Start
 
-> ⚠️ **遊戲視窗設定**：請將 Path of Exile 設為「視窗全螢幕」或「視窗模式」，工具才能正確背景截圖與顯示提示浮層。
+> ⚠️ **Game window setup**: Set Path of Exile to **Windowed Fullscreen** or **Windowed** mode so background capture and overlay notices work correctly.
 
-### 安全自建（推薦先看）
+### Secure self-build (read first)
 
-> 近期 AI 攻擊與仿冒下載站頻傳，先認唯一可信入口：**僅 https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases**。完整三條路（源碼直跑 / 自建 EXE / 官方套件）見 [`docs/安全自建.md`](docs/安全自建.md) —— 選一條做就可以，本節只給指令。
+> With AI-driven attacks and lookalike download sites on the rise, only trust this official entry point: **https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases**. Full guide for the three paths (source / self-built EXE / official package) is in [`docs/安全自建.md`](docs/安全自建.md) —— pick any one of them; this section only shows commands.
 
-### 路徑 A — 源碼直跑
+### Path A — Run from source
 
 ```powershell
 git clone https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor.git
@@ -100,9 +106,9 @@ uv sync --locked
 Run.bat
 ```
 
-（舊命令 `scripts\install_dependencies.bat` 仍可用，會 fallback 至全域安裝。）
+(The legacy `scripts\install_dependencies.bat` still works, falling back to a global install.)
 
-### 路徑 B — 自建 EXE
+### Path B — Build your own EXE
 
 ```powershell
 uv sync --locked
@@ -110,26 +116,26 @@ scripts\build_exe.bat
 Run.bat
 ```
 
-### 路徑 C — 官方套件
+### Path C — Official package
 
-直接到上方 [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) 下載 `Setup.exe`（見 Download 區段）。
+Go to [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases) above and download `Setup.exe` (see Download section).
 
-### 資料與重設 / Data
+### Data & Reset
 
-- 設定檔：`%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json`（`*.backup` 自動備份、`screenshots\` 截圖）
-- 工具內 `工具設置 > 資料與重設` 可 `開啟資料夾 / 複製路徑 / 重設為預設`（截圖預設保留，勾選才一併刪除）
+- Config file: `%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json` (`*.backup` auto-backup, `screenshots\` captures)
+- In-app `Settings > Data & Reset` can `Open Folder / Copy Path / Reset to Default` (screenshots are kept unless you also check the delete option)
 
-### 移除 / Uninstall
+### Uninstall
 
-- **Setup.exe 安裝**：`Windows 設定 > 應用程式 > 已安裝應用程式 > Sid.GameToolsHealthMonitor > 解除安裝`，再手動刪 `%LOCALAPPDATA%\GameTools_HealthMonitor`（如需清截圖/設定）
-- **ZIP 可攜**：刪解壓目錄 + 上述資料夾
+- **Setup.exe install**: `Windows Settings > Apps > Installed Apps > Sid.GameToolsHealthMonitor > Uninstall`, then manually delete `%LOCALAPPDATA%\GameTools_HealthMonitor` if you want to clear screenshots/settings
+- **ZIP portable**: delete the extracted folder + the data folder above
 
 ---
 
-## 📂 Project Structure / 專案結構
+## 📂 Project Structure
 
 <details>
-<summary>展開查看完整結構</summary>
+<summary>View full structure</summary>
 
 ```
 src/
@@ -140,18 +146,18 @@ src/
   image_utils.py             # Image drawing/resize/preview
   inventory_utils.py         # Inventory slot analysis
   config_manager.py          # Config load/save + backup
-  language_system.py         # Translation system
+  language_system.py         # Translation system (zh-tw / zh-cn / en)
   utils.py                   # Runtime utilities + get_user_data_dir + F12 emergency close
   auto_click_manager.py      # Auto-click (AHK) manager
   usage_tracker.py           # Usage time tracking
   window_key_sender.py       # Window-focus key sending
-  auto_update.py             # Velopack GithubSource 更新引擎（主鏈，≥ v1.2.4-test）
-  updater_core.py            # Legacy update engine（過渡期保留，v1.4+ 刪除）
+  auto_update.py             # Velopack GithubSource update engine (main, >= v1.2.4-test)
+  updater_core.py            # Legacy update engine (transitional, removed in v1.4+)
   language_packs.json        # UI strings
 scripts/                     # One-click workflows
-tools/build.py               # Build pipeline (PyInstaller onedir + 旁置資源)
+tools/build.py               # Build pipeline (PyInstaller onedir + sidecar resources)
 docs/                        # User/developer docs
-updater_main.py              # Standalone updater (Legacy, 過渡期保留)
+updater_main.py              # Standalone updater (Legacy, transitional)
 release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 ```
 
@@ -159,7 +165,7 @@ release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 
 ---
 
-## 🧠 Tech Stack / 技術使用
+## 🧠 Tech Stack
 
 <p>
   <img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white" />
@@ -174,23 +180,21 @@ release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 
 ---
 
-## 🙏 Acknowledgements / 致謝
-
-感謝以下開源專案，讓這個小工具得以專注在 PoE 自動化本質，而無需重造輪子。
+## 🙏 Acknowledgements
 
 Thanks to the open source projects that let this small toolkit focus on the task itself.
 
-- Velopack — 安裝與更新
-- PySide6 / qfluentwidgets — 介面
-- OpenCV — 影像辨識
-- Windows.Graphics.Capture — 視窗擷取
-- AutoHotkey / PyInstaller — 連點與打包
+- Velopack — install & update
+- PySide6 / qfluentwidgets — UI
+- OpenCV — image recognition
+- Windows.Graphics.Capture — window capture
+- AutoHotkey / PyInstaller — auto-click & packaging
 
-如有遺漏，歡迎提醒。
+Please let me know if anyone is missing.
 
 ---
 
-## 🤝 Community / 社群
+## 🤝 Community
 
 <p>
   <a href="https://www.facebook.com/talksometingshit/"><img src="https://img.shields.io/badge/Facebook-1877F2?style=flat&logo=facebook&logoColor=white" /></a>
@@ -200,9 +204,7 @@ Thanks to the open source projects that let this small toolkit focus on the task
 
 ---
 
-## ☕ Support / 贊助
-
-如果我的工具對你有幫助，歡迎用你喜歡的方式支持我。
+## ☕ Support
 
 If my tools help you, feel free to support me in your own way.
 
@@ -213,20 +215,14 @@ If my tools help you, feel free to support me in your own way.
 
 ---
 
-## ⚠️ Disclaimer / 免責聲明
+## ⚠️ Disclaimer
 
 <details>
-<summary>點擊查看完整免責聲明</summary>
-
-本軟體僅供教育研究、自動化學習與圖像辨識實驗使用。
+<summary>Click to view full disclaimer</summary>
 
 This software is provided for educational research, automation study, and image recognition experimentation.
 
-本工具不會修改遊戲檔案、不會注入程式碼、不會讀取遊戲記憶體。
-
 This software does NOT modify game files, inject code, or access game memory.
-
-使用本工具可能違反 Grinding Gear Games 的服務條款，請自行承擔使用風險。
 
 Usage may violate the Terms of Service of Grinding Gear Games. Use at your own risk.
 
