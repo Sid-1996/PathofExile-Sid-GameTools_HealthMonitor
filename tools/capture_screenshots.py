@@ -1,8 +1,8 @@
-"""GUI 截圖工具：渲染全部 8 頁，存 PNG（頁面本體，直擷 tab.grab()）。
+"""GUI 截圖工具：渲染全部 8 頁，存 PNG（頁面本體）。
 
-用法: python tools/capture_screenshots.py [--out assets/screenshots]
-注意: 需用 QT_QPA_PLATFORM=windows 真實渲染（offscreen 會把 FluentWindow
-的半透明底層抓成白色，Dark 主題失效）；會閃出視窗。
+用法: python tools/capture_screenshots.py [--lang en] [--out assets/screenshots]
+注意: 需用 QT_QPA_PLATFORM=windows 真實渲染；會閃出視窗。
+截圖預設英文（README 首頁為英文），--lang 可改 zh-tw / zh-cn / en。
 """
 
 import argparse
@@ -56,6 +56,7 @@ def switch_to(window, widget):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "assets", "screenshots"))
+    ap.add_argument("--lang", default="en")
     args = ap.parse_args()
     if "--smoke" not in sys.argv:
         sys.argv.append("--smoke")
@@ -67,7 +68,24 @@ def main() -> int:
 
     from qt.main_window import MainWindow
 
+    # ponytail: 截圖前把 config 語系覆寫成 args.lang，讓各 Tab 以該語系
+    # 建置 UI；並阻擋 MainWindow 內部 load_config 覆回使用者檔，
+    # 截完不回寫，絕不動使用者設定檔。
+    try:
+        from config_manager import get_config_manager
+
+        _cm = get_config_manager()
+        _cm.load_config()
+        _orig_lang = _cm.config.get("language", "zh-tw")
+        _cm.config["language"] = args.lang
+        _orig_load = _cm.load_config
+        _cm.load_config = lambda: None
+        print(f"lang: {_orig_lang} -> {args.lang} (config in-memory only)")
+    except Exception as e:
+        print(f"lang override failed: {e}")
+
     window = MainWindow()
+    window._reset_no_save = True  # 截圖期間禁止 autosave 落盤
     window.show()
     app.processEvents()
     time.sleep(1.5)
