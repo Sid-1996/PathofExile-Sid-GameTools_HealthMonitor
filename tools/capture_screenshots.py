@@ -1,7 +1,8 @@
-"""GUI 截圖工具：offscreen 渲染全部 8 頁，存 PNG。
+"""GUI 截圖工具：渲染全部 8 頁，存 PNG（頁面本體，直擷 tab.grab()）。
 
-用法: python tools/capture_screenshots.py [--size 1600x900] [--out assets/screenshots]
-不開 visible 視窗，跑完即自動退出。
+用法: python tools/capture_screenshots.py [--out assets/screenshots]
+注意: 需用 QT_QPA_PLATFORM=windows 真實渲染（offscreen 會把 FluentWindow
+的半透明底層抓成白色，Dark 主題失效）；會閃出視窗。
 """
 
 import argparse
@@ -9,21 +10,20 @@ import os
 import sys
 import time
 
-# ponytail: offscreen 必須在 import Qt 前設
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
+# ponytail: FluentWindow 半透明底層 + grab() 會抓出白色，必須用 windows 平台真渲染
+os.environ.setdefault("QT_QPA_PLATFORM", "windows")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "src")
 sys.path.insert(0, SRC)
+
 # 讓 MainWindow 跳過 auto-click listener（與 app.py --smoke 同路徑）
 if "--smoke" not in sys.argv:
     sys.argv.append("--smoke")
-
-# ponytail: argparse 前先移走 --smoke，避免 unrecognized argument
 sys.argv = [a for a in sys.argv if a != "--smoke"]
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import Theme, setTheme
 
@@ -55,13 +55,10 @@ def switch_to(window, widget):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--size", default="1600x900")
     ap.add_argument("--out", default=os.path.join(ROOT, "assets", "screenshots"))
     args = ap.parse_args()
-    # parse 完再把 --smoke 還回 argv，讓 MainWindow 跳過 auto-click
     if "--smoke" not in sys.argv:
         sys.argv.append("--smoke")
-    w, h = (int(x) for x in args.size.lower().split("x"))
     os.makedirs(args.out, exist_ok=True)
 
     app = QApplication.instance() or QApplication([])
@@ -71,11 +68,11 @@ def main() -> int:
     from qt.main_window import MainWindow
 
     window = MainWindow()
-    window.resize(w, h)
     window.show()
     app.processEvents()
+    time.sleep(1.5)
+    app.processEvents()
 
-    # 讓 Status 頁有內容可截（沿用 smoke 的正常 log 格式）
     try:
         window.add_status_message("Screenshot demo: app started (auto capture)", "info")
         window.add_status_message("Health monitor ready", "success")
@@ -86,13 +83,15 @@ def main() -> int:
     for attr, name in TABS:
         tab = getattr(window, attr)
         switch_to(window, tab)
-        tab.show()
         app.processEvents()
-        time.sleep(0.4)
+        time.sleep(0.8)
         app.processEvents()
         path = os.path.join(args.out, f"{name}.png")
-        pixmap = window.grab()
-        ok = pixmap.save(path, "PNG")
+        # ponytail: 用 render() 而非 grab()：grab() 會把 CardWidget 等
+        # Fluent 卡片的半透明底層合成成白色（設定頁白底 bug）
+        pm = QPixmap(tab.size())
+        tab.render(pm, QPoint(0, 0))
+        ok = pm.save(path, "PNG")
         print(f"{'OK ' if ok else 'FAIL'} {path}")
         if not ok:
             return 1
