@@ -61,6 +61,34 @@
 
 ---
 
+## 🖼️ Screenshots
+
+<p align="center">
+  <b>Health Monitor</b><br>
+  <img src="assets/screenshots/01-health-monitor.png" width="800" alt="Health Monitor">
+</p>
+
+<p align="center">
+  <b>Inventory Automation</b> · <b>Skill Combos</b><br>
+  <img src="assets/screenshots/02-inventory.png" width="800" alt="Inventory Automation"><br>
+  <img src="assets/screenshots/03-combo.png" width="800" alt="Skill Combos">
+</p>
+
+<p align="center">
+  <b>Status · Help · Version</b><br>
+  <img src="assets/screenshots/04-status.png" width="800" alt="Status">
+  <img src="assets/screenshots/05-help.png" width="800" alt="Help">
+  <img src="assets/screenshots/06-version.png" width="800" alt="Version">
+</p>
+
+<p align="center">
+  <b>About · Settings</b><br>
+  <img src="assets/screenshots/07-about.png" width="800" alt="About"><br>
+  <img src="assets/screenshots/08-settings.png" width="800" alt="Settings">
+</p>
+
+---
+
 ## ⌨️ Hotkeys
 
 | Key | Action |
