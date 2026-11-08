@@ -67,26 +67,26 @@
 
 <p align="center">
   <b>健康监控</b><br>
-  <img src="assets/screenshots/01-health-monitor.png" width="800" alt="健康监控">
+  <img src="assets/screenshots/zh-cn/01-health-monitor.png" width="800" alt="健康监控">
 </p>
 
 <p align="center">
   <b>背包自动化</b> · <b>技能连段</b><br>
-  <img src="assets/screenshots/02-inventory.png" width="800" alt="背包自动化"><br>
-  <img src="assets/screenshots/03-combo.png" width="800" alt="技能连段">
+  <img src="assets/screenshots/zh-cn/02-inventory.png" width="800" alt="背包自动化"><br>
+  <img src="assets/screenshots/zh-cn/03-combo.png" width="800" alt="技能连段">
 </p>
 
 <p align="center">
   <b>状态 · 帮助 · 版本</b><br>
-  <img src="assets/screenshots/04-status.png" width="800" alt="状态">
-  <img src="assets/screenshots/05-help.png" width="800" alt="帮助">
-  <img src="assets/screenshots/06-version.png" width="800" alt="版本">
+  <img src="assets/screenshots/zh-cn/04-status.png" width="800" alt="状态">
+  <img src="assets/screenshots/zh-cn/05-help.png" width="800" alt="帮助">
+  <img src="assets/screenshots/zh-cn/06-version.png" width="800" alt="版本">
 </p>
 
 <p align="center">
   <b>关于 · 设置</b><br>
-  <img src="assets/screenshots/07-about.png" width="800" alt="关于"><br>
-  <img src="assets/screenshots/08-settings.png" width="800" alt="设置">
+  <img src="assets/screenshots/zh-cn/07-about.png" width="800" alt="关于"><br>
+  <img src="assets/screenshots/zh-cn/08-settings.png" width="800" alt="设置">
 </p>
 
 ---
