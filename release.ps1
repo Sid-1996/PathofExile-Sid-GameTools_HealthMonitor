@@ -12,10 +12,198 @@
 param(
     [string]$Version = "",
     [switch]$Preview,
-    [switch]$TestRepo
+    [switch]$TestRepo,
+    # 只執行發布 staging 自我檢查（不建置 / 不 commit / 不 push / 不 tag）。
+    # 供發布前驗證與隔離 index 測試使用。
+    [switch]$StageOnly
 )
 
 $ErrorActionPreference = "Stop"
+
+# ── 發布 staging 路徑分類 ────────────────────────────────────────
+# 必要（Required）：發布流程專屬 / 版本核心。缺任一個 → 立即中止，不 commit / tag / push。
+#   src/app.py、src/qt/version.py 等「應用程式原始碼」刻意不在此清單：
+#   它們由 AGENTS.md 的分階段開發 commit 負責，release commit 只含發布流程專屬檔案。
+$script:RequiredStagePaths = @(
+    "src/_version.py",
+    "latest_version.txt",
+    "src/updater_core.py",
+    "src/auto_update.py",
+    "updater_main.py",
+    "tools/build.py",
+    "tools/make_delta.py",
+    "scripts/requirements.txt",
+    "release.ps1"
+)
+
+# 選擇性（Optional）：存在且未被 .gitignore 忽略才納入 staging。
+#   不存在 → 只略過並提示（不得讓整個 staging 清單失敗）。
+#   manifest.json / delta_info.json 為 .gitignore 排除的建置產物 → 一律略過（不使用 git add -f）。
+$script:OptionalStagePaths = @(
+    "latest_version_prerelease.txt",
+    "pyproject.toml",
+    "index.html",
+    "sitemap.xml",
+    "manifest.json",
+    "delta_info.json"
+)
+
+function Invoke-Git {
+    <#
+      .SYNOPSIS
+      執行 git 原生指令並嚴格檢查 exit code；失敗即中止發布流程。
+      .DESCRIPTION
+      $? 只反映 PowerShell cmdlet 成功與否，對原生指令無效 → 一律以 $LASTEXITCODE 判斷。
+      原生指令的 stderr 在 ErrorActionPreference=Stop 下可能被視為錯誤，故函式內改用 Continue。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string[]]$GitArgs,
+        [Parameter(Mandatory = $true)][string]$Stage
+    )
+    Write-Host "  > git $($GitArgs -join ' ')"
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    $code = 1
+    try {
+        & git @GitArgs 2>&1 | Out-Host
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    if ($code -ne 0) {
+        Write-Host "[ERROR] [$Stage] git $($GitArgs -join ' ') 失敗（exit $code）→ 已中止發布流程。" -ForegroundColor Red
+        exit 1
+    }
+}
+
+function Get-RepoDirtyPaths {
+    <#
+      .SYNOPSIS
+      取得 repo 根目錄下所有未提交（含未追蹤）路徑，格式為 repo 根相對路徑。
+    #>
+    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $lines = & git status --porcelain
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
+    if ($code -ne 0) {
+        Write-Host "[ERROR] git status 失敗（exit $code）→ 已中止發布流程。" -ForegroundColor Red
+        exit 1
+    }
+    $paths = @()
+    foreach ($line in @($lines)) {
+        if (-not $line) { continue }
+        $p = $line.Substring(3).Trim()
+        if ($p -match '^(.+) -> (.+)$') { $p = $Matches[2] }
+        $paths += $p.Trim('"')
+    }
+    return $paths
+}
+
+function Invoke-ReleaseStage {
+    <#
+      .SYNOPSIS
+      依「必要 / 選擇性」分類 staging 發布檔案，並在每一步檢查 exit code。
+    #>
+    param([string]$RepoRoot = $PSScriptRoot)
+    Push-Location $RepoRoot
+    try {
+        # ── 前置檢查：不得有未提交的開發修改 ──
+        # release commit 只允許含發布流程專屬檔案；其餘未提交修改必須先依 AGENTS.md 提交，
+        # 否則會被靜默遺漏（發布出去的 tag 原始碼與實際發布的 EXE 不一致）。
+        $allowed = @($script:RequiredStagePaths) + @($script:OptionalStagePaths)
+        $dirty = Get-RepoDirtyPaths -RepoRoot $RepoRoot
+        $unexpected = @($dirty | Where-Object { $allowed -notcontains $_ })
+        if ($unexpected.Count -gt 0) {
+            Write-Host "[ERROR] 工作區仍有未提交的開發修改，發布 commit 只允許納入發布流程專屬檔案：" -ForegroundColor Red
+            foreach ($p in $unexpected) { Write-Host "        - $p" -ForegroundColor Red }
+            Write-Host "  請先依 AGENTS.md 規範分階段 commit 後再發布（release.ps1 不會代為提交開發修改）。" -ForegroundColor Yellow
+            exit 1
+        }
+
+        # ── 必要路徑存在性：缺任一個即中止 ──
+        $missing = @()
+        foreach ($p in $script:RequiredStagePaths) {
+            if (-not (Test-Path (Join-Path $RepoRoot $p))) { $missing += $p }
+        }
+        if ($missing.Count -gt 0) {
+            Write-Host "[ERROR] 缺少必要的發布檔案，已中止（未 commit / tag / push）：" -ForegroundColor Red
+            foreach ($p in $missing) { Write-Host "        - $p" -ForegroundColor Red }
+            exit 1
+        }
+
+        # ── 選擇性路徑：存在且未被 .gitignore 忽略才納入 ──
+        $stagePaths = @($script:RequiredStagePaths)
+        foreach ($p in $script:OptionalStagePaths) {
+            if (-not (Test-Path (Join-Path $RepoRoot $p))) {
+                Write-Host "  略過（不存在）：$p" -ForegroundColor DarkGray
+                continue
+            }
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            & git check-ignore -q -- $p
+            $ignoreCode = $LASTEXITCODE
+            $ErrorActionPreference = $prevEap
+            if ($ignoreCode -eq 0) {
+                Write-Host "  略過（被 .gitignore 忽略，本腳本不使用 git add -f）：$p" -ForegroundColor DarkGray
+                continue
+            }
+            if ($ignoreCode -ne 1) {
+                Write-Host "[ERROR] git check-ignore 失敗（exit $ignoreCode）：$p" -ForegroundColor Red
+                exit 1
+            }
+            $stagePaths += $p
+        }
+
+        Invoke-Git -GitArgs (@("add", "--") + $stagePaths) -Stage "staging"
+
+        $staged = @(& git diff --cached --name-only)
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] git diff --cached 失敗（exit $LASTEXITCODE）" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  已暫存 $($staged.Count) 個檔案："
+        foreach ($f in $staged) { Write-Host "        - $f" }
+    } finally {
+        Pop-Location
+    }
+}
+
+function Invoke-ReleaseCommitAndPush {
+    param(
+        [Parameter(Mandatory = $true)][string]$ReleaseVersion,
+        [bool]$IsPreview = $false,
+        [string]$RepoRoot = $PSScriptRoot
+    )
+    Write-Host "`n[6/7] Committing and pushing..."
+    Push-Location $RepoRoot
+    try {
+        Invoke-ReleaseStage -RepoRoot $RepoRoot
+        $message = if ($IsPreview) { "chore: release v$ReleaseVersion (preview)" } else { "chore: release v$ReleaseVersion" }
+        Invoke-Git -GitArgs @("commit", "-m", $message) -Stage "commit"
+        Invoke-Git -GitArgs @("push", "origin", "master") -Stage "push master"
+    } finally {
+        Pop-Location
+    }
+}
+
+function Invoke-ReleaseTagAndPush {
+    param(
+        [Parameter(Mandatory = $true)][string]$TagName,
+        [string]$RepoRoot = $PSScriptRoot
+    )
+    Write-Host "`n[7/7] Creating GitHub release: $TagName"
+    Push-Location $RepoRoot
+    try {
+        Invoke-Git -GitArgs @("tag", $TagName) -Stage "tag"
+        Invoke-Git -GitArgs @("push", "origin", $TagName) -Stage "push tag"
+    } finally {
+        Pop-Location
+    }
+}
+
 
 # 測試倉（-TestRepo 模式的 Velopack 資產與 Release 目的地）
 $testRepoSlug = "Sid-1996/PathofExile-Sid-GameTools_HealthMonitor_release-test"
@@ -28,6 +216,14 @@ if ($content -match '__version__\s*=\s*"(.+?)"') {
 } else {
     Write-Host "[ERROR] Cannot read version from _version.py" -ForegroundColor Red
     exit 1
+}
+
+# StageOnly：只做 staging 自我檢查（不動版本、不建置、不 commit / push / tag）
+if ($StageOnly) {
+    Write-Host "`n[StageOnly] 僅執行發布 staging 自我檢查（不建置 / 不 commit / 不 push / 不 tag）"
+    Invoke-ReleaseStage
+    Write-Host "`n[StageOnly] staging 檢查完成" -ForegroundColor Cyan
+    exit 0
 }
 
 # 若有指定版本，更新 _version.py
@@ -199,20 +395,12 @@ if ($TestRepo) {
 }
 
 # ── Git commit + push ────────────────────────────────────
-Write-Host "`n[6/7] Committing and pushing..."
-git add src/_version.py latest_version.txt latest_version_prerelease.txt src/updater_core.py src/auto_update.py src/qt/version.py src/app.py updater_main.py tools/build.py tools/make_delta.py scripts/requirements.txt release.ps1 index.html sitemap.xml manifest.json delta_info.json
-if ($Preview) {
-    git commit -m "chore: release v$currentVersion (preview)"
-} else {
-    git commit -m "chore: release v$currentVersion"
-}
-git push origin master
+Invoke-ReleaseCommitAndPush -ReleaseVersion $currentVersion -IsPreview ([bool]$Preview) -RepoRoot $PSScriptRoot
 
 # ── Git tag + GitHub Release ─────────────────────────────
 $tagName = "v$currentVersion"
 Write-Host "`n[7/7] Creating GitHub release: $tagName"
-git tag $tagName
-git push origin $tagName
+Invoke-ReleaseTagAndPush -TagName $tagName -RepoRoot $PSScriptRoot
 
 if ($Preview) {
     gh release create $tagName `
@@ -220,6 +408,10 @@ if ($Preview) {
         --prerelease `
         --generate-notes `
         @("$fixedZip") @($vpkAssets)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] gh release create 失敗（exit $LASTEXITCODE）" -ForegroundColor Red
+        exit 1
+    }
     Write-Host "`n========================================" -ForegroundColor Yellow
     Write-Host " Preview v$currentVersion published!" -ForegroundColor Yellow
     Write-Host " latest_version.txt UNCHANGED — users not notified" -ForegroundColor Yellow
@@ -233,6 +425,10 @@ if ($Preview) {
             --generate-notes `
             --draft `
             @("$fixedZip", "$deltaZip") @($vpkAssets)
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] gh release create 失敗（exit $LASTEXITCODE）" -ForegroundColor Red
+            exit 1
+        }
         Write-Host "  delta asset attached: GameTools_HealthMonitor-delta.zip"
     } else {
         gh release create $tagName `
@@ -240,6 +436,10 @@ if ($Preview) {
             --generate-notes `
             --draft `
             @("$fixedZip") @($vpkAssets)
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] gh release create 失敗（exit $LASTEXITCODE）" -ForegroundColor Red
+            exit 1
+        }
     }
     Write-Host "`n========================================" -ForegroundColor Green
     Write-Host " Release v$currentVersion published!" -ForegroundColor Green
