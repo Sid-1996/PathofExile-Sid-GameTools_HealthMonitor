@@ -5,6 +5,112 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [1.4.0] - 2026-11-06
+
+### Feat
+- 新增簡體中文語言包 zh-cn（661 keys），並以系統語系自動區分繁簡
+- GUI 語言選單補上簡體中文選項
+
+### Fix
+- 修正 Velopack 下載進度回呼參數（單一 int 0-100）
+
+### Chore
+- 升級依賴到最新安全版本並對齊版本號至 1.3.2
+
+### Docs
+- README 英文化主體並新增中簡繁多語快速入口
+- 新增安全自建頁並重整三條路徑說明
+- 使用說明與安全自建同步三語說明
+- 領域模型詞彙落盤（GameWindow / Monitor / Combo / Inventory）
+- 詞彙凍結 CaptureResult 三態 contract（wgc / mss / None）
+- 同步斷鏈手動重裝指引至 README 與 GitHub Pages
+- 補低調技術感謝（致謝開源專案）
+
+## [1.3.2] - 2026-08-30
+
+### Feat
+- 工具設置新增「資料與重設」精簡版：開啟資料夾、重設為預設
+
+### Fix
+- 守衛型提醒改為右下浮層黃字，統一通知與攔截，減少彈窗層級
+- 「重設為預設」改為一律重啟，雙路徑刪除截圖並清除記憶體預覽
+- 「重設」改單一路徑僅清 LOCALAPPDATA，攔截保存避免刪後復活
+- 修復 F9 全域暫停浮層不現與卡死（回歸跨執行緒問題）
+- 移除 release.ps1 中不存在的 src/tab_version.py，導致發布提交失敗
+
+## [1.3.1] - 2026-08-30（未正式發布）
+
+### Feat
+- 技能計時器全部切換綁定 Ins 熱鍵，並支援在設置頁改鍵
+- 合併技能計時器全部按鈕並動態顯示熱鍵（含長鍵縮寫與截斷後備）
+
+### Fix
+- 去父化取物對話框並延後置頂旗標，修復關閉閃退並隱藏設定期間視窗
+- 連續設定期間同時隱藏取物座標視窗，避免遮擋遊戲
+- 修復設定取物座標 5 個座標後完成彈窗關閉即閃退
+- 修復技能計時器英文語系仍顯示中文（\_t 誤判 [] 前綴）
+
+### Perf
+- \_internal 瘦身：排除 tkinter、PySide6 降級為 Essentials、cv2 改用 headless
+
+### Refactor
+- 中文導覽四字對齊、移除飛機圖示，「設置」改名為「工具設置」
+- 移除英文「關於作者」飛機圖示
+
+### Chore
+- 正式發版改為先建 draft 再手動 publish
+- latest_version.txt 以 ASCII 編碼重寫，避免 BOM 破壞舊鏈解析
+- 緊急下架 v1.3.0，latest_version.txt 還原為 1.2.1
+- 忽略根目錄建置產生的 delta_info.json 與 manifest.json
+
+## [1.3.0] - 2026-08-30（已下架）
+
+### Feat
+- 介面全面移植到 PySide6 + qfluentwidgets（監控 / 連段 / 背包 / 設置 / 狀態 / 說明 / 版本 共 7 分頁）
+- 背景截圖改用 Windows.Graphics.Capture（WGC），視窗被遮擋或失焦仍可截圖
+- 血魔監控 ROI 全面等比化（全新 v2 JSON，同比例解析度自適應）
+- 背包 UI 匹配改用 TM_CCOEFF_NORMED 多尺度，比對結果以 b64 內聯持久化
+- F6 一鍵取物加入防呆與置頂浮層提示
+- F10 未截到介面 UI 時一次警示（可選過濾，不阻擋監控）
+- 主視窗底部新增狀態列（監控 / 連點 / 全域暫停 / 版本燈號，zh/en）
+- 背景執行期沉默失敗補浮層（combo / 監控迴圈 / 自動點擊）
+- 背景熱鍵浮層擴大與執行緒安全（F3 / F5 / F6 失敗取消補 toast）
+- Velopack 更新鏈打通（Setup.exe + nupkg + feed + delta 差異更新）
+- 使用者資料（config / screenshots）改存 LOCALAPPDATA 並一次性遷移
+- 語言切換改為重啟生效，補齊詞彙與 ADR
+- 設置分頁與熱鍵自定義（Issue #1：底區設置，F3 / F5 等可改）
+- 補齊各頁控件 tooltip 並同步雙語語言包與語言切換重刷
+- 記住上次選取的遊戲視窗並於啟動自動回填
+- F9 / F10 開關補置頂浮層反饋（各顯示一次，不用切回 GUI 即知狀態）
+
+### Fix
+- 框選血量閃退，補正 region 正規化與等比 base 容錯
+- 血魔監控頁等比化後內容消失，統一走 prop 現算入口恢復預覽與監控鏈路
+- 背包預覽 label 加尺寸上限，預防同型 pixmap 迴圈
+- 監控語言刷新對 QGroupBox 改 setTitle，修設置切語言閃退
+- 血魔檢查「未設定介面 UI 區域」洗版，恢復戰鬥狀態檢查
+- 熱鍵白名單移除 F12（F1-F11 為限），改 per-key 註冊 / combo 重綁 / 置底排序
+- 浮層跨執行緒改 Signal queued，修 F9 / F5 / worker 浮層不顯示
+- 英文語系下血條校準對話框疊影
+- 版本頁在非 Velopack 安裝環境顯示可攜模式提示，不再誤導為「已是最新版」
+- 修復 Velopack 更新鏈 feed 缺漏，補齊 releases.win.json 等必要資產上傳
+
+### Refactor
+- 全量 logging 重製（DEBUG 分級 + 時間戳 + `--debug` 開 log 檔）
+- 移除啟動圖 splash（純外觀無實質用途，且造成啟動殘留麻煩）
+- 移除搶先版開關（正式倉穩定版唯一，測試倉隔離預覽）
+- 左側選單圖示優化（背包 SHOPPING_CART→BROOM、連段 GAME→ROBOT）
+
+### Chore
+- cleanup 重寫為 PowerShell 腳本，支援 dist/vpk 瘦身與 delta 鏈保留
+- 修正 pyright 型別檢查 110 個錯誤（region / on_refresh 屬性型別註解）
+
+### Docs
+- README 改主推 Setup.exe，校正專案結構與 Tech Stack（Velopack / WGC / PySide6）
+- 補自動更新章節（Velopack delta、測試倉、UserDataDir 存活）
+- 同步 Velopack 更新架構與使用者資料新位置至工作規範與使用說明
+- 補充視窗全螢幕提示（README / 使用說明 / 運作原理 / 官網）
+
 ## [1.2.1] - 2026-07-12
 
 ### Feat
