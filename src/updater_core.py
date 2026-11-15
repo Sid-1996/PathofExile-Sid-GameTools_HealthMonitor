@@ -70,8 +70,11 @@ def _parse_version(v: str) -> tuple[int, ...]:
     Stable 版本比同版本號的 pre-release 高：
       "1.2.2"      → (1, 2, 2, 1)
       "1.2.2-beta" → (1, 2, 2, 0)
+
+    容忍開頭的 UTF-8 BOM（\ufeff）：舊版 latest_version.txt 曾帶 BOM 寫入，
+    舊版 client 讀到會解析失敗而偵測不到更新。BOM 只在開頭被移除，其餘驗證規則不變。
     """
-    v = v.strip().lstrip("v")
+    v = v.strip().lstrip("\ufeff").strip().lstrip("v")
     if not v:
         return (0,)
     match = re.match(r"^(\d+\.\d+\.\d+)(.*)", v)
