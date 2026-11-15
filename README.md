@@ -134,7 +134,7 @@ uv sync --locked
 Run.bat
 ```
 
-(The legacy `scripts\install_dependencies.bat` still works, falling back to a global install.)
+(The legacy `scripts\install_dependencies.bat` also works; it installs the same locked versions via `uv sync --locked`.)
 
 ### Path B — Build your own EXE
 
@@ -186,6 +186,8 @@ scripts/                     # One-click workflows
 tools/build.py               # Build pipeline (PyInstaller onedir + sidecar resources)
 docs/                        # User/developer docs
 updater_main.py              # Standalone updater (Legacy, transitional)
+pyproject.toml               # Project metadata + dependency declarations
+uv.lock                      # Tracked dependency lockfile (uv sync --locked)
 release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 ```
 

@@ -136,7 +136,7 @@ uv sync --locked
 Run.bat
 ```
 
-（旧命令 `scripts\install_dependencies.bat` 仍可用，会 fallback 至全域安装。）
+（旧命令 `scripts\install_dependencies.bat` 仍可用，同样以 `uv sync --locked` 安装锁定版本。）
 
 ### 路径 B — 自建 EXE
 
@@ -188,6 +188,8 @@ scripts/                     # One-click workflows
 tools/build.py               # Build pipeline (PyInstaller onedir + 旁置资源)
 docs/                        # User/developer docs
 updater_main.py              # Standalone updater (Legacy, 过渡期保留)
+pyproject.toml               # 项目 metadata 与依赖声明
+uv.lock                      # 受版本控制的依赖锁定文件（uv sync --locked）
 release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
 ```
 

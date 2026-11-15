@@ -15,22 +15,26 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
     - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
-        cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        pip install ruff pyright pytest pytest-cov
-
-    - name: Install runtime dependencies
-      run: |
-        pip install -r scripts/requirements.txt
+    # uv.lock 受版本控制；--locked 保證 lockfile 過期時直接失敗，
+    # 不會自動改寫 lockfile 後假裝通過。
+    - name: Install dependencies (locked)
+      run: uv sync --locked
 
     - name: ruff check
-      run: ruff check src/ --output-format github
+      run: ruff check src/ tests/ --output-format github
+
+    - name: ruff format check
+      run: ruff format --check src/ tests/
 
     - name: pytest
       run: python -m pytest --no-cov -q

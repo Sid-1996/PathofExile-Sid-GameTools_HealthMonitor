@@ -51,8 +51,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# uv (global uv workflow: auto-generated skeleton, no per-project value)
-/uv.lock
+# uv：uv.lock 受版本控制（依賴鎖定檔，確保安裝與建置可重現）
 .python-version
 
 # IDEs
