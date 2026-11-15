@@ -13,15 +13,10 @@ from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QMessage
 from qfluentwidgets import PushButton
 
 from _version import __version__
+from qt.theme import current_tokens
 from utils import format_usage_time
 
 CURRENT_VERSION = f"v{__version__}"
-
-FG = "#f8f8f2"
-MUTED = "#b8b8c8"
-ERROR = "#ff5555"
-INFO = "#8be9fd"
-SUCCESS = "#50fa7b"
 
 _GITHUB_URL = "https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor"
 _SID_TOOLBOX_URL = "https://sid-1996.github.io/sid-automation-lab/"
@@ -34,7 +29,44 @@ class AboutTab(QWidget):
     def __init__(self, app, parent=None):
         super().__init__(parent)
         self._app = app
+        # (widget, 樣式規格)：只記 token 名稱，不記顏色；refresh_theme() 時才解析成目前主題
+        self._styled: list[tuple[QWidget, tuple]] = []
         self._build_ui()
+
+    # ────────────────────────────────────────────────────
+    #  主題樣式（顏色唯一來源：qt.theme）
+    # ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _style_qss(spec: tuple) -> str:
+        """把「(種類, token, 字級, 字重, 透明底色)」規格轉成 QSS。"""
+        kind, token, px, weight, transparent = spec
+        tok = current_tokens()
+        if kind == "card":
+            return f"QWidget {{ background-color: {tok['surface']}; border: 1px solid {tok['border']}; border-radius: 8px; }}QLabel {{ background: transparent; }}"
+        css = f"font-size: {px}px;"
+        if weight:
+            css += f" font-weight: {weight};"
+        css += f" color: {tok[token]};"
+        if transparent:
+            css += " background: transparent;"
+        return css
+
+    def _apply_style(self, widget: QWidget, spec: tuple) -> None:
+        """套用樣式並登記，供 refresh_theme() 重上。"""
+        self._styled.append((widget, spec))
+        widget.setStyleSheet(self._style_qss(spec))
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新：只重上既有元件的 QSS，不重建任何元件、不改版面與高度。"""
+        alive: list[tuple[QWidget, tuple]] = []
+        for widget, spec in self._styled:
+            try:
+                widget.setStyleSheet(self._style_qss(spec))
+            except RuntimeError:
+                continue  # 已被語言切換重建刪除的舊元件
+            alive.append((widget, spec))
+        self._styled = alive
 
     # ────────────────────────────────────────────────────
     #  UI 建構
@@ -46,6 +78,10 @@ class AboutTab(QWidget):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # 原生 QScrollArea/viewport 是用 OS palette 畫底色（深色 Windows = 深灰、淺色 Windows = 白），
+        # 與 app 主題無關；改為透明，讓 About 頁跟著 FluentWindow 的主題內容底色（與 status 等分頁一致）。
+        self._scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        self._scroll.viewport().setAutoFillBackground(False)
         layout.addWidget(self._scroll)
         self._rebuild_content()
 
@@ -54,9 +90,9 @@ class AboutTab(QWidget):
         box_layout = QVBoxLayout(box)
         box_layout.setContentsMargins(16, 16, 16, 16)
         box_layout.setSpacing(8)
-        box.setStyleSheet("QWidget { background-color: #1e1e2e; border: 1px solid #3b3b3b; border-radius: 8px; }QLabel { background: transparent; }")
+        self._apply_style(box, ("card", None, None, None, None))
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2; background: transparent;")
+        self._apply_style(title_label, ("label", "fg", 14, 600, True))
         box_layout.addWidget(title_label)
         return box, box_layout
 
@@ -70,9 +106,13 @@ class AboutTab(QWidget):
         old = self._scroll.takeWidget()
         if old is not None:
             old.deleteLater()
+        self._styled.clear()  # 舊元件已排入刪除，樣式登記一併清空
 
         content = QWidget()
         self._scroll.setWidget(content)
+        # QScrollArea.setWidget() 會把內容 widget 的 autoFillBackground 設為 True，
+        # 那個底色來自 OS palette（不受主題控制）→ 必須關掉，頁面才會跟著主題底色。
+        content.setAutoFillBackground(False)
         root = QVBoxLayout(content)
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(12)
@@ -85,11 +125,11 @@ class AboutTab(QWidget):
         header_layout.setSpacing(6)
         title_label = QLabel(g("about_title"))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet(f"font-size: 26px; font-weight: 700; color: {FG};")
+        self._apply_style(title_label, ("label", "fg", 26, 700, False))
         header_layout.addWidget(title_label)
         subtitle_label = QLabel(g("about_subtitle"))
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label.setStyleSheet(f"font-size: 13px; color: {MUTED};")
+        self._apply_style(subtitle_label, ("label", "fg_muted", 13, None, False))
         header_layout.addWidget(subtitle_label)
         root.addWidget(header)
 
@@ -102,16 +142,16 @@ class AboutTab(QWidget):
 
         info_card, info_layout = self._card(g("software_info"))
         version_label = QLabel(g("version_display").format(version=CURRENT_VERSION))
-        version_label.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {FG};")
+        self._apply_style(version_label, ("label", "fg", 15, 600, False))
         info_layout.addWidget(version_label)
         status_label = QLabel(g("status_display"))
-        status_label.setStyleSheet(f"font-size: 13px; color: {SUCCESS};")
+        self._apply_style(status_label, ("label", "success", 13, None, False))
         info_layout.addWidget(status_label)
         self.usage_time_label = QLabel()
-        self.usage_time_label.setStyleSheet(f"font-size: 13px; color: {INFO};")
+        self._apply_style(self.usage_time_label, ("label", "info", 13, None, False))
         info_layout.addWidget(self.usage_time_label)
         license_label = QLabel(g("license_display"))
-        license_label.setStyleSheet(f"font-size: 13px; color: {FG};")
+        self._apply_style(license_label, ("label", "fg", 13, None, False))
         info_layout.addWidget(license_label)
         left.addWidget(info_card)
 
@@ -142,7 +182,7 @@ class AboutTab(QWidget):
         support_card, support_layout = self._card(g("support_developer"))
         support_text = QLabel(g("support_text"))
         support_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        support_text.setStyleSheet(f"font-size: 13px; color: {SUCCESS};")
+        self._apply_style(support_text, ("label", "success", 13, None, False))
         support_layout.addWidget(support_text)
 
         sponsor_row1 = QHBoxLayout()
@@ -170,7 +210,7 @@ class AboutTab(QWidget):
         disclaimer_card, disclaimer_layout = self._card(g("important_disclaimer"))
         disclaimer_label = QLabel(g("disclaimer_text"))
         disclaimer_label.setWordWrap(True)
-        disclaimer_label.setStyleSheet(f"font-size: 12px; color: {ERROR};")
+        self._apply_style(disclaimer_label, ("label", "error", 12, None, False))
         disclaimer_layout.addWidget(disclaimer_label)
         root.addWidget(disclaimer_card)
 

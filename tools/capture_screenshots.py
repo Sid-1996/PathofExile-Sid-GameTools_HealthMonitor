@@ -25,7 +25,8 @@ sys.argv = [a for a in sys.argv if a != "--smoke"]
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication
-from qfluentwidgets import Theme, setTheme
+
+from qt import theme
 
 TABS = [
     ("monitor_tab", "01-health-monitor"),
@@ -64,7 +65,7 @@ def main() -> int:
 
     app = QApplication.instance() or QApplication([])
     app.setApplicationName("GameTools Health Monitor")
-    setTheme(Theme.DARK)
+    theme.apply_theme("dark")  # 截圖固定深色（accent 也由此集中套用）
 
     from qt.main_window import MainWindow
 

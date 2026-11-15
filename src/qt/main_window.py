@@ -19,7 +19,7 @@ import pygetwindow as gw
 
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtWidgets import QApplication, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
-from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, setThemeColor
+from qfluentwidgets import FluentIcon, FluentWindow, NavigationItemPosition, qconfig
 
 from auto_click_manager import AutoClickManager
 from inventory_utils import normalize_region
@@ -44,6 +44,7 @@ from qt.inventory import InventoryTab
 from qt.monitor import MonitorTab
 from qt.settings import SettingsTab
 from qt.status import StatusTab
+from qt.theme import current_tokens, qss_color
 from qt.version import VersionTab
 from usage_tracker import UsageTracker
 from utils import set_app_instance
@@ -51,18 +52,14 @@ from window_key_sender import WindowKeySender
 
 logger = logging.getLogger(__name__)
 
-# ── 主題常數（與舊 dracula 色系對齊）──
-ACCENT = "#bd93f9"
-MUTED = "#b8b8c8"
-
 # ── 最大化/還原檔位：還原時固定縮到這個尺寸（小螢幕自動 clamp）──
 RESTORE_SIZE = (1600, 900)
-# ── 置頂浮層提示（toast）色系（dracula 對齊）──
-_NOTICE_COLORS = {
-    "success": "#50fa7b",
-    "warning": "#f1fa8c",
-    "error": "#ff5555",
-    "info": "#8be9fd",
+# ── 置頂浮層提示（toast）訊息類型 → 語意 token（顏色一律取自 qt.theme）──
+_NOTICE_TOKENS = {
+    "success": "success",
+    "warning": "warning",
+    "error": "error",
+    "info": "info",
 }
 
 
@@ -103,10 +100,12 @@ class _FloatingNotice(QFrame):
         self._phase = 0  # 0=淡入 1=停留 2=淡出
         self._elapsed = 0
         self._positioned = False
+        self._msg_type = "info"
 
-    def show_notice(self, text: str, color: str) -> None:
+    def show_notice(self, text: str, msg_type: str) -> None:
+        self._msg_type = msg_type if msg_type in _NOTICE_TOKENS else "info"
         self._label.setText(text)
-        self._label.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 600; background: rgba(40,42,54,0.96); border: 1px solid #3d3d5c; border-radius: 6px; padding: 6px 12px;")
+        self.apply_theme()
         # ponytail: 先依最大寬度計算多行高度，再定位，避免單行溢出被螢幕裁切
         self.adjustSize()
         self._reposition()
@@ -116,6 +115,14 @@ class _FloatingNotice(QFrame):
         self._phase = 0
         self._elapsed = 0
         self._anim_timer.start()
+
+    def apply_theme(self) -> None:
+        """依目前主題 token 重新上色（不動動畫、定位、可見狀態，可安全在顯示中呼叫）。"""
+        tok = current_tokens()
+        color = tok[_NOTICE_TOKENS.get(self._msg_type, "info")]
+        self._label.setStyleSheet(
+            f"color: {color}; font-size: 13px; font-weight: 600; background: {qss_color(tok['toast_bg'])}; border: 1px solid {tok['border_strong']}; border-radius: 6px; padding: 6px 12px;"
+        )
 
     def _reposition(self) -> None:
         screen = QApplication.primaryScreen()
@@ -163,6 +170,7 @@ class MainWindow(FluentWindow):
         self._was_maximized = False
         super().__init__()
         self._is_closing = False
+        self._theme_signal_connected = False  # 主題訊號只連一次（_connect_theme_signals 守衛）
         self._pending_timers = []
         self.start_time = datetime.now()
         set_app_instance(self)  # F12 緊急關閉（utils）
@@ -215,10 +223,11 @@ class MainWindow(FluentWindow):
         self.always_on_top = False
         self._load_monitor_config()
 
-        setThemeColor(ACCENT)
+        # accent 由 qt.theme.apply_theme() 在 MainWindow 建構前集中套用（勿在此再寫死色值）
         self.setWindowTitle(self.get_text("window_title"))
 
         self._build_tabs()
+        self._connect_theme_signals()
         self.window_key_sender = WindowKeySender(self)
         self.f9_request.connect(self.toggle_global_pause)
         self.f10_request.connect(self.toggle_monitoring)
@@ -237,6 +246,7 @@ class MainWindow(FluentWindow):
         self._snap_to_restore_size()  # 預設 1600×900（小螢幕自動 clamp）
         self._center_on_screen()
 
+        self._refresh_theme_all()  # 初始上色（改用 token 後與啟動主題一致）
         self._initialized = True
 
     def _load_monitor_config(self) -> None:
@@ -915,7 +925,8 @@ class MainWindow(FluentWindow):
         bar = QWidget(self)
         bar.setObjectName("status_bar")
         bar.setFixedHeight(28)
-        bar.setStyleSheet("#status_bar { background: rgba(30,30,46,0.85); border-top: 1px solid #3d3d5c; }QLabel { font-size: 12px; color: #b8b8c8; }")
+        bar.setStyleSheet(self._status_bar_qss())
+        self._status_bar = bar
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(16, 0, 16, 0)
         layout.setSpacing(20)
@@ -936,22 +947,75 @@ class MainWindow(FluentWindow):
         self._ahk_click_on = False
         self._refresh_status_bar()
 
+    def _status_bar_qss(self) -> str:
+        """狀態列 QSS：顏色一律取自目前主題 token。"""
+        tok = current_tokens()
+        return f"#status_bar {{ background: {qss_color(tok['statusbar_bg'])}; border-top: 1px solid {tok['border_strong']}; }}QLabel {{ font-size: 12px; color: {tok['fg_muted']}; }}"
+
+    def _refresh_status_bar_theme(self) -> None:
+        """只重上狀態列顏色（QSS + 狀態燈），不動任何業務狀態。"""
+        bar = getattr(self, "_status_bar", None)
+        if bar is None:
+            return
+        bar.setStyleSheet(self._status_bar_qss())
+        self._refresh_status_bar()  # 依現有監控/連點/暫停狀態重上燈色
+
     def _refresh_status_bar(self) -> None:
         if not hasattr(self, "_status_monitor_label"):
             return
+        tok = current_tokens()
         mon = self.is_monitoring()
         self._status_monitor_label.setText(f"● {self.get_text('status_monitoring')}：{self.get_text('status_running') if mon else self.get_text('status_stopped')}")
-        self._status_monitor_label.setStyleSheet(f"color: {'#50fa7b' if mon else '#b8b8c8'};")
+        self._status_monitor_label.setStyleSheet(f"color: {tok['success'] if mon else tok['fg_muted']};")
 
         click_on = self._ahk_click_on
         self._status_click_label.setText(f"● {self.get_text('status_clicking')}：{self.get_text('status_click_on') if click_on else self.get_text('status_click_off')}")
-        self._status_click_label.setStyleSheet(f"color: {'#50fa7b' if click_on else '#b8b8c8'};")
+        self._status_click_label.setStyleSheet(f"color: {tok['success'] if click_on else tok['fg_muted']};")
 
         paused = self.is_global_pause()
         self._status_pause_label.setText(f"● {self.get_text('status_pause')}：{self.get_text('status_pause_on') if paused else self.get_text('status_pause_off')}")
-        self._status_pause_label.setStyleSheet(f"color: {'#f1fa8c' if paused else '#b8b8c8'};")
+        self._status_pause_label.setStyleSheet(f"color: {tok['warning'] if paused else tok['fg_muted']};")
 
         self._status_version_label.setText(f"{self.get_text('status_version')} v{__version__}")
+
+    # ── 主題刷新管線（Phase 1：MainWindow / 狀態列 / Toast / SettingsTab）──
+    def _connect_theme_signals(self) -> None:
+        """連接 qfluentwidgets 主題訊號（冪等：重複呼叫不會重複連線）。"""
+        if self._theme_signal_connected:
+            return
+        qconfig.themeChangedFinished.connect(self._refresh_theme_all)
+        self._theme_signal_connected = True
+
+    def _refresh_theme_all(self) -> None:
+        """主題刷新統一入口。
+
+        qfluentwidgets 的 `setTheme()` 會先 `updateStyleSheet()` 再 emit
+        `qconfig.themeChangedFinished`，所以原生元件已自動翻新；這裡只補「本專案自行
+        建立的 QSS / Python 常數顏色」。單一步驟失敗不會中斷其他步驟。
+        """
+        for step in (self._refresh_status_bar_theme, self._refresh_notice_theme, self._fan_out_tab_themes):
+            try:
+                step()
+            except Exception:
+                logger.exception("主題刷新失敗: %s", getattr(step, "__name__", step))
+
+    def _fan_out_tab_themes(self) -> None:
+        """各分頁 fan-out：只有已實作 refresh_theme() 的分頁會被刷新，其餘靜默略過。"""
+        for attr in ("monitor_tab", "inventory_tab", "combo_tab", "status_tab", "help_tab", "version_tab", "about_tab", "settings_tab"):
+            tab = getattr(self, attr, None)
+            refresh = getattr(tab, "refresh_theme", None)
+            if not callable(refresh):
+                continue
+            try:
+                refresh()
+            except Exception:
+                logger.exception("分頁主題刷新失敗: %s", attr)
+
+    def _refresh_notice_theme(self) -> None:
+        """已顯示中的 toast 也跟著換色（不動動畫/定位/可見狀態）。"""
+        notice = getattr(self, "_floating_notice", None)
+        if notice is not None:
+            notice.apply_theme()
 
     def set_ahk_click_status(self, on: bool) -> None:
         """連點(AHK)開關燈。由 AutoClickManager 呼叫（純 GUI 回呼，不改 AHK 行為）。"""
@@ -971,8 +1035,7 @@ class MainWindow(FluentWindow):
         if self._floating_notice is None:
             # ponytail: 用 None 為父（桌面級 Tool），避免 keyboard 線程 setParent 跨線程
             self._floating_notice = _FloatingNotice(None)
-        color = _NOTICE_COLORS.get(msg_type, _NOTICE_COLORS["info"])
-        self._floating_notice.show_notice(text, color)
+        self._floating_notice.show_notice(text, msg_type)
 
     def _center_on_screen(self) -> None:
         screen = QApplication.primaryScreen()

@@ -5,10 +5,31 @@
 """
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
+
+from qt.theme import VALID_THEMES, apply_theme, current_theme, current_tokens, normalize_theme, token_pair
+
+
+def _style_body_label(label: BodyLabel, *, px: int | None = None, weight: QFont.Weight | None = None, token: str = "fg") -> BodyLabel:
+    """套用主題顏色與字級。
+
+    顏色走 qfluentwidgets 的 `setTextColor(light, dark)`（切主題時由套件自行重上色）；
+    字級走 `setFont()`。**不可**再用 setStyleSheet()，那會在 setTheme() 時被
+    `updateStyleSheet()` 整段覆蓋（顏色與字級都消失）。
+    """
+    light, dark = token_pair(token)
+    label.setTextColor(light, dark)
+    if px is not None or weight is not None:
+        font = label.font()
+        if px is not None:
+            font.setPixelSize(px)
+        if weight is not None:
+            font.setWeight(weight)
+        label.setFont(font)
+    return label
 
 
 _NAV_KEYS = ["ins", "home", "pgup", "pgdn", "end"]
@@ -55,7 +76,7 @@ class SettingsTab(ScrollArea):
         lay.setSpacing(12)
 
         title = BodyLabel(g("settings_title"), self.view)
-        title.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
+        _style_body_label(title, px=20, weight=QFont.Weight.DemiBold)
         lay.addWidget(title)
         self._title_label = title
 
@@ -65,7 +86,7 @@ class SettingsTab(ScrollArea):
         lang_lay.setContentsMargins(16, 14, 16, 14)
         lang_lay.setSpacing(12)
         self._lang_label = BodyLabel(g("language"), self._lang_card)
-        self._lang_label.setStyleSheet("color: #f8f8f2;")
+        _style_body_label(self._lang_label)
         self._lang_label.setMinimumWidth(140)
         self.lang_combo = ComboBox(self._lang_card)
         self.lang_combo.addItems(["繁體中文", "简体中文", "English"])
@@ -82,6 +103,33 @@ class SettingsTab(ScrollArea):
         lang_lay.addWidget(self.lang_combo)
         lang_lay.addStretch(1)
         lay.addWidget(self._lang_card)
+
+        # ── 外觀主題（Phase 4A：正式開放 Dark / Light 選擇器）──
+        # 只放「主題」一項，不另建設定來源；套用邏輯一律走 qt.theme.apply_theme()。
+        self.appearance_card = CardWidget(self.view)
+        appearance_lay = QVBoxLayout(self.appearance_card)
+        appearance_lay.setContentsMargins(16, 14, 16, 14)
+        appearance_lay.setSpacing(8)
+        theme_row = QHBoxLayout()
+        theme_row.setSpacing(12)
+        self._theme_label = BodyLabel(g("theme"), self.appearance_card)
+        _style_body_label(self._theme_label)
+        self._theme_label.setMinimumWidth(140)
+        self.theme_combo = ComboBox(self.appearance_card)
+        # userData 帶內部主題名（dark / light）；顯示文字走 i18n，不直接顯示內部值
+        self.theme_combo.addItem(g("theme_dark"), None, "dark")
+        self.theme_combo.addItem(g("theme_light"), None, "light")
+        self.theme_combo.setMinimumWidth(160)
+        self.theme_combo.currentTextChanged.connect(self._on_theme_changed)
+        theme_row.addWidget(self._theme_label)
+        theme_row.addWidget(self.theme_combo)
+        theme_row.addStretch(1)
+        appearance_lay.addLayout(theme_row)
+        self._theme_hint = BodyLabel(g("theme_hint"), self.appearance_card)
+        _style_body_label(self._theme_hint, px=12, token="fg_muted")
+        self._theme_hint.setWordWrap(True)
+        appearance_lay.addWidget(self._theme_hint)
+        lay.addWidget(self.appearance_card)
 
         group = SettingCardGroup(g("settings_group_general"), self.view)
         self._general_group = group
@@ -100,7 +148,7 @@ class SettingsTab(ScrollArea):
 
         # 熱鍵（CardWidget 垂直流，避免 HeaderCardWidget view 被壓扁）
         hot_header = BodyLabel(g("settings_group_hotkeys"), self.view)
-        hot_header.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2;")
+        _style_body_label(hot_header, px=14, weight=QFont.Weight.DemiBold)
         lay.addWidget(hot_header)
         self._hot_header = hot_header
         hot_card = CardWidget(self.view)
@@ -108,7 +156,7 @@ class SettingsTab(ScrollArea):
         hot_lay.setContentsMargins(16, 16, 16, 16)
         hot_lay.setSpacing(12)
         hot_title = BodyLabel(f"{g('hotkey_settings_title')} — {g('hotkey_settings_desc')}", hot_card)
-        hot_title.setStyleSheet("font-size: 13px; font-weight: 600; color: #f8f8f2;")
+        _style_body_label(hot_title, px=13, weight=QFont.Weight.DemiBold)
         hot_title.setWordWrap(True)
         hot_lay.addWidget(hot_title)
         self._hot_title = hot_title
@@ -120,7 +168,7 @@ class SettingsTab(ScrollArea):
             row_lay.setContentsMargins(0, 0, 0, 0)
             row_lay.setSpacing(12)
             label = BodyLabel(labels.get(key, key), row)
-            label.setStyleSheet("color: #f8f8f2;")
+            _style_body_label(label)
             label.setMinimumWidth(140)
             combo = ComboBox(row)
             combo.addItems([o.upper() for o in _HOTKEY_OPTIONS])
@@ -142,7 +190,7 @@ class SettingsTab(ScrollArea):
 
         hint = BodyLabel(g("hotkey_settings_hint"), hot_card)
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #b8b8c8; font-size: 12px;")
+        _style_body_label(hint, px=12, token="fg_muted")
         hint.setTextFormat(Qt.TextFormat.PlainText)
         hot_lay.addWidget(hint)
         self._hot_hint = hint
@@ -151,7 +199,7 @@ class SettingsTab(ScrollArea):
 
         # ── 資料與重設（精簡版）──
         data_header = BodyLabel(g("settings_group_data"), self.view)
-        data_header.setStyleSheet("font-size: 14px; font-weight: 600; color: #f8f8f2;")
+        _style_body_label(data_header, px=14, weight=QFont.Weight.DemiBold)
         lay.addWidget(data_header)
         self._data_header = data_header
         data_card = CardWidget(self.view)
@@ -162,12 +210,12 @@ class SettingsTab(ScrollArea):
         path_row = QHBoxLayout()
         path_row.setSpacing(8)
         self._data_label = BodyLabel(g("data_dir_label"), data_card)
-        self._data_label.setStyleSheet("color: #f8f8f2;")
+        _style_body_label(self._data_label)
         from utils import get_user_data_dir
 
         data_dir = get_user_data_dir()
         self._data_path_label = QLabel(data_dir, data_card)
-        self._data_path_label.setStyleSheet("color: #b8b8c8; font-size: 12px;")
+        self._data_path_label.setStyleSheet(self._data_path_qss())
         self._data_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._data_path_label.setWordWrap(True)
         path_row.addWidget(self._data_label)
@@ -213,6 +261,72 @@ class SettingsTab(ScrollArea):
         card.hBoxLayout.addSpacing(16)
         return card
 
+    def _data_path_qss(self) -> str:
+        return f"color: {current_tokens()['fg_muted']}; font-size: 12px;"
+
+    def _theme_option_texts(self) -> dict[str, str]:
+        """主題選項的 i18n 顯示文字（內部值 dark / light 不直接顯示給使用者）。"""
+        g = self._app.get_text
+        return {"dark": g("theme_dark"), "light": g("theme_light")}
+
+    def _sync_theme_combo(self) -> None:
+        """把主題選項同步為「目前實際套用的主題」。
+
+        程式主動更新控件時暫時阻擋訊號，避免回呼 _on_theme_changed 造成重入；
+        阻擋狀態用 blockSignals() 的回傳值保存並原樣還原（不永久關閉訊號）。
+        """
+        index = self.theme_combo.findData(current_theme())
+        if index < 0 or self.theme_combo.currentIndex() == index:
+            return
+        blocked = self.theme_combo.blockSignals(True)
+        try:
+            self.theme_combo.setCurrentIndex(index)
+        finally:
+            self.theme_combo.blockSignals(blocked)
+
+    def _reload_theme_combo_texts(self) -> None:
+        """語系切換後更新主題選項文字（顯示文字改變不得觸發主題切換）。"""
+        blocked = self.theme_combo.blockSignals(True)
+        try:
+            for name, text in self._theme_option_texts().items():
+                index = self.theme_combo.findData(name)
+                if index >= 0:
+                    self.theme_combo.setItemText(index, text)
+        finally:
+            self.theme_combo.blockSignals(blocked)
+        self._sync_theme_combo()
+
+    def _on_theme_changed(self, text: str) -> None:
+        """使用者切換主題：套用 → 寫設定 → 排程儲存。
+
+        重入防護：apply_theme() 會同步 emit themeChangedFinished → 全頁 fan-out →
+        SettingsTab.refresh_theme() → _sync_theme_combo()。後者以 blockSignals 保護，
+        故單次使用者切換 = 單次 apply_theme = 單次 fan-out，且不會重複寫入設定。
+        """
+        raw = self.theme_combo.currentData()
+        if not isinstance(raw, str) or raw.strip().lower() not in VALID_THEMES:
+            # 非法選項：不套用、不寫設定；UI 還原為目前實際主題
+            self._sync_theme_combo()
+            return
+        name = normalize_theme(raw)
+        if name == current_theme():
+            # 同一主題：不重複套用（apply_theme 本身即為 no-op）
+            if self._app.config.get("theme") != name:
+                self._app.config["theme"] = name
+                self._app.schedule_config_save()
+            self._sync_theme_combo()
+            return
+        apply_theme(name)
+        self._app.config["theme"] = name
+        self._app.schedule_config_save()
+        self._sync_theme_combo()
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新：原生 QSS 需重上；BodyLabel 由 setTextColor(light, dark) 自動跟隨。"""
+        if hasattr(self, "_data_path_label"):
+            self._data_path_label.setStyleSheet(self._data_path_qss())
+        self._sync_theme_combo()
+
     def _load_from_config(self) -> None:
         cfg = self._app.config
         self.preview_switch.setChecked(bool(cfg.get("preview_enabled", True)))
@@ -240,6 +354,8 @@ class SettingsTab(ScrollArea):
                     combo.blockSignals(False)
                 except Exception:
                     pass
+        # 主題選項以「實際套用的主題」為準（config 可能尚未套用或已被外部改動）
+        self._sync_theme_combo()
 
     def _on_preview_changed(self, checked: bool) -> None:
         self._app.preview_enabled = bool(checked)
@@ -394,6 +510,10 @@ class SettingsTab(ScrollArea):
             self._hot_hint.setText(g("hotkey_settings_hint"))
             self._lang_label.setText(g("language"))
             self.apply_btn.setText(g("apply"))
+            if hasattr(self, "_theme_label"):
+                self._theme_label.setText(g("theme"))
+                self._theme_hint.setText(g("theme_hint"))
+                self._reload_theme_combo_texts()
             if hasattr(self, "_data_header"):
                 self._data_header.setText(g("settings_group_data"))
                 self._data_label.setText(g("data_dir_label"))

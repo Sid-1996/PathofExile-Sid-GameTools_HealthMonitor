@@ -30,17 +30,12 @@ from qfluentwidgets import PrimaryPushButton, PushButton
 
 import auto_update
 from _version import __version__
+from qt.theme import current_tokens
 
 CURRENT_VERSION = f"v{__version__}"
 # 跟隨更新源解析（環境變數/override 檔可切測試倉），僅用於抓 release notes
 GITHUB_REPO = auto_update.GITHUB_REPO_URL.rstrip("/").removeprefix("https://github.com/")
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-
-SUCCESS = "#50fa7b"
-ERROR = "#ff5555"
-INFO = "#8be9fd"
-MUTED = "#b8b8c8"
-FG = "#f8f8f2"
 
 
 class _VersionSignals(QObject):
@@ -69,6 +64,13 @@ class VersionTab(QWidget):
         self._notification_dialog = None
         self._progress_dialog = None
 
+        # (widget, 樣式規格)：只記 token 名稱與非色彩樣式，refresh_theme() 時才解析成目前主題
+        self._styled: list[tuple[QWidget, tuple]] = []
+        # 動態對話框（下載進度/更新通知）的樣式登記；關閉後清空
+        self._dialog_styled: list[tuple[QWidget, tuple]] = []
+        # 最新版本文字的語意色（success=已是最新、error=有新版、info=可攜模式）；與更新狀態同步
+        self._latest_tone = "success"
+
         self._sig = _VersionSignals()
         self._sig.version_checked.connect(self._on_version_checked)
         self._sig.error_shown.connect(self._show_check_error)
@@ -85,6 +87,68 @@ class VersionTab(QWidget):
             QTimer.singleShot(2000, self.silent_version_check)
 
     # ────────────────────────────────────────────────────
+    #  主題樣式（顏色唯一來源：qt.theme token）
+    # ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _style_qss(spec: tuple) -> str:
+        """(種類, token, 字級, 字重, 透明底色) → QSS。沿用原版字級/字重，只換顏色來源。"""
+        kind, token, px, weight, transparent = spec
+        tok = current_tokens()
+        if kind == "card":
+            return f"QWidget {{ background-color: {tok['surface']}; border: 1px solid {tok['border']}; border-radius: 8px; }}QLabel {{ background: transparent; }}"
+        if kind == "notes":
+            return f"QPlainTextEdit {{ background-color: {tok['surface']}; border: 1px solid {tok['border']}; border-radius: 6px; color: {tok['fg_muted']}; font-size: 12px; }}"
+        if kind == "progress":
+            # 原生 QProgressBar 的底色/文字走 OS palette，light 下不可讀；改用 token 自繪。
+            return f"QProgressBar {{ background-color: {tok['surface']}; border: 1px solid {tok['border']}; border-radius: 4px; color: {tok['fg']}; }}QProgressBar::chunk {{ background-color: {tok['accent']}; }}"
+        if kind == "mono":
+            return f"font-family: Consolas; font-size: 11px; color: {tok[token]};"
+        parts = []
+        if px is not None:
+            parts.append(f"font-size: {px}px;")
+        if weight:
+            parts.append(f"font-weight: {weight};")
+        parts.append(f"color: {tok[token]};")
+        if transparent:
+            parts.append("background: transparent;")
+        return " ".join(parts)
+
+    def _apply_style(self, widget: QWidget, spec: tuple, dialog: bool = False) -> None:
+        """套用樣式並登記，供 refresh_theme() 重上。dialog=True → 登記到動態對話框表。"""
+        registry = self._dialog_styled if dialog else self._styled
+        registry.append((widget, spec))
+        widget.setStyleSheet(self._style_qss(spec))
+
+    def _latest_style(self, tone: str | None = None) -> str:
+        """最新版本文字樣式；tone 為 token 名稱（success/error/info）。"""
+        tok = current_tokens()
+        return f"font-size: 16px; font-weight: 700; color: {tok[tone or self._latest_tone]};"
+
+    def _set_latest_tone(self, tone: str) -> None:
+        """更新最新版本文字的語意色；只換色，不動文字與更新流程。"""
+        self._latest_tone = tone
+        self.latest_version_label.setStyleSheet(self._latest_style(tone))
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新：只重上既有元件 QSS。
+
+        不重建 widget、不觸發任何版本檢查/下載/網路請求；最新版本的語意色沿用既有更新狀態。
+        """
+        for registry in (self._styled, self._dialog_styled):
+            alive: list[tuple[QWidget, tuple]] = []
+            for widget, spec in registry:
+                try:
+                    widget.setStyleSheet(self._style_qss(spec))
+                except RuntimeError:
+                    continue  # 已被關閉/刪除的舊元件
+                alive.append((widget, spec))
+            registry[:] = alive
+        # 最新版本狀態色（success/error/info）依既有更新狀態重上，不可被主題刷新覆蓋
+        if getattr(self, "latest_version_label", None) is not None:
+            self.latest_version_label.setStyleSheet(self._latest_style())
+
+    # ────────────────────────────────────────────────────
     #  UI 建構
     # ────────────────────────────────────────────────────
 
@@ -95,39 +159,39 @@ class VersionTab(QWidget):
         g = self._app.get_text
 
         title_label = QLabel(g("version_check_title"))
-        title_label.setStyleSheet(f"font-size: 20px; font-weight: 600; color: {FG};")
+        self._apply_style(title_label, ("label", "fg", 20, 600, False))
         layout.addWidget(title_label)
 
         # ── 目前版本 ──
         current_card, current_layout = self._card(g("current_version_info"))
         current_title = QLabel(g("current_version_label"))
-        current_title.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {FG};")
+        self._apply_style(current_title, ("label", "fg", 13, 600, False))
         current_layout.addWidget(current_title)
         current_version_label = QLabel(CURRENT_VERSION)
-        current_version_label.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {INFO};")
+        self._apply_style(current_version_label, ("label", "info", 16, 700, False))
         current_layout.addWidget(current_version_label)
         layout.addWidget(current_card)
 
         # ── 最新版本 ──
         remote_card, remote_layout = self._card(g("latest_version_info"))
         latest_title = QLabel(g("latest_version_label"))
-        latest_title.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {FG};")
+        self._apply_style(latest_title, ("label", "fg", 13, 600, False))
         remote_layout.addWidget(latest_title)
         self.latest_version_label = QLabel(g("checking_version"))
-        self.latest_version_label.setStyleSheet(self._latest_style(SUCCESS))
+        self.latest_version_label.setStyleSheet(self._latest_style())
         remote_layout.addWidget(self.latest_version_label)
         self.version_status_label = QLabel(g("checking_version_status"))
-        self.version_status_label.setStyleSheet(f"font-size: 12px; color: {FG};")
+        self._apply_style(self.version_status_label, ("label", "fg", 12, None, False))
         self.version_status_label.setWordWrap(True)
         remote_layout.addWidget(self.version_status_label)
 
         notes_title = QLabel(g("update_notes_label"))
-        notes_title.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {FG};")
+        self._apply_style(notes_title, ("label", "fg", 13, 600, False))
         remote_layout.addWidget(notes_title)
         self.release_notes_text = QPlainTextEdit()
         self.release_notes_text.setReadOnly(True)
         self.release_notes_text.setMaximumHeight(140)
-        self.release_notes_text.setStyleSheet(f"QPlainTextEdit {{ background-color: #1e1e2e; border: 1px solid #3b3b3b; border-radius: 6px; color: {MUTED}; font-size: 12px; }}")
+        self._apply_style(self.release_notes_text, ("notes", None, None, None, None))
         self.release_notes_text.setPlainText(g("loading_text"))
         remote_layout.addWidget(self.release_notes_text)
         layout.addWidget(remote_card)
@@ -157,15 +221,11 @@ class VersionTab(QWidget):
         box_layout = QVBoxLayout(box)
         box_layout.setContentsMargins(16, 16, 16, 16)
         box_layout.setSpacing(6)
-        box.setStyleSheet("QWidget { background-color: #1e1e2e; border: 1px solid #3b3b3b; border-radius: 8px; }QLabel { background: transparent; }")
+        self._apply_style(box, ("card", None, None, None, None))
         title_label = QLabel(title)
-        title_label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {FG}; background: transparent;")
+        self._apply_style(title_label, ("label", "fg", 14, 600, True))
         box_layout.addWidget(title_label)
         return box, box_layout
-
-    @staticmethod
-    def _latest_style(color):
-        return f"font-size: 16px; font-weight: 700; color: {color};"
 
     # 搶先版已移除（正式倉與測試倉隔離，穩定版為唯一通道）
 
@@ -212,11 +272,11 @@ class VersionTab(QWidget):
                 # 非 Velopack 安裝環境（ZIP 解壓/原始碼）：check 回 None 不代表最新，
                 # 顯示可攜模式提示而非誤導性的「已是最新版本」
                 self.latest_version_label.setText(self._app.get_text("portable_mode_hint"))
-                self.latest_version_label.setStyleSheet(self._latest_style(INFO))
+                self._set_latest_tone("info")
                 self.version_status_label.setText(self._app.get_text("portable_mode_hint"))
             else:
                 self.latest_version_label.setText(self._app.get_text("using_latest_version"))
-                self.latest_version_label.setStyleSheet(self._latest_style(SUCCESS))
+                self._set_latest_tone("success")
                 self.version_status_label.setText(self._app.get_text("using_latest_version"))
             self.download_btn.setEnabled(False)
             return
@@ -224,7 +284,7 @@ class VersionTab(QWidget):
         if skipped == f"v{info.version}":
             return
         self.latest_version_label.setText(f"v{info.version}")
-        self.latest_version_label.setStyleSheet(self._latest_style(ERROR))
+        self._set_latest_tone("error")
         self.version_status_label.setText(self._app.get_text("new_version_found"))
         self.download_btn.setEnabled(True)
         self._pending_update_info = info
@@ -234,7 +294,7 @@ class VersionTab(QWidget):
 
     def _show_check_error(self, version_key, status_key, error):
         self.latest_version_label.setText(self._app.get_text(version_key))
-        self.latest_version_label.setStyleSheet(self._latest_style(ERROR))
+        self._set_latest_tone("error")
         msg = self._app.get_text(status_key)
         if error:
             msg = msg.format(error=error)
@@ -296,14 +356,15 @@ class VersionTab(QWidget):
         dialog_layout.setContentsMargins(16, 16, 16, 16)
         dialog_layout.setSpacing(8)
         dialog_title = QLabel(self._app.get_text("downloading_update").format(version=f"v{info.version}"))
-        dialog_title.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {FG};")
+        self._apply_style(dialog_title, ("label", "fg", 13, 600, False), dialog=True)
         dialog_layout.addWidget(dialog_title, 0, Qt.AlignmentFlag.AlignCenter)
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
+        self._apply_style(self._progress_bar, ("progress", None, None, None, None), dialog=True)
         dialog_layout.addWidget(self._progress_bar)
         self._progress_status_label = QLabel("0%")
-        self._progress_status_label.setStyleSheet("font-family: Consolas; font-size: 11px; color: #f8f8f2;")
+        self._apply_style(self._progress_status_label, ("mono", "fg", None, None, False), dialog=True)
         dialog_layout.addWidget(self._progress_status_label, 0, Qt.AlignmentFlag.AlignCenter)
         # Velopack 下載不支援中途取消（delta 傳輸量小、速度快），不提供取消按鈕
         self._progress_dialog = dialog
@@ -330,6 +391,7 @@ class VersionTab(QWidget):
         if self._progress_dialog is not None:
             self._progress_dialog.accept()
             self._progress_dialog = None
+        self._dialog_styled.clear()
 
     def _on_download_error(self, error_msg):
         if self._app._is_closing:
@@ -423,23 +485,25 @@ class VersionTab(QWidget):
 
         big_title = QLabel(g("new_version_found_title_2"))
         big_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        big_title.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {SUCCESS};")
+        self._apply_style(big_title, ("label", "success", 16, 700, False), dialog=True)
         dialog_layout.addWidget(big_title)
 
         info_card = QWidget()
         info_layout = QVBoxLayout(info_card)
         info_layout.setContentsMargins(16, 16, 16, 16)
         info_layout.setSpacing(6)
-        info_card.setStyleSheet("QWidget { background-color: #1e1e2e; border: 1px solid #3b3b3b; border-radius: 8px; }QLabel { background: transparent; }")
+        self._apply_style(info_card, ("card", None, None, None, None), dialog=True)
         current_label = QLabel(g("current_version_display").format(version=CURRENT_VERSION))
-        current_label.setStyleSheet("font-size: 12px; color: #f8f8f2; background: transparent;")
+        self._apply_style(current_label, ("label", "fg", 12, None, True), dialog=True)
         info_layout.addWidget(current_label)
         latest_label = QLabel(g("latest_version_display").format(version=f"v{info.version}"))
-        latest_label.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {ERROR}; background: transparent;")
+        self._apply_style(latest_label, ("label", "error", 12, 600, True), dialog=True)
         info_layout.addWidget(latest_label)
         dialog_layout.addWidget(info_card)
 
         skip_check = QCheckBox(g("skip_this_version"))
+        # 原本未上色 → 走 OS palette 字色，light 主題下白字白底；改套 fg token
+        self._apply_style(skip_check, ("label", "fg", None, None, False), dialog=True)
         dialog_layout.addWidget(skip_check)
 
         button_row = QHBoxLayout()
@@ -455,6 +519,7 @@ class VersionTab(QWidget):
 
         def on_close():
             self._notification_dialog = None
+            self._dialog_styled.clear()
             if skip_check.isChecked():
                 self._app.config["skipped_version"] = f"v{info.version}"
                 self._app.save_config()

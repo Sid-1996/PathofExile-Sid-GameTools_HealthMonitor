@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 from datetime import datetime
+from qt.theme import DEFAULT_THEME, normalize_theme
 from utils import get_user_data_dir
 
 logger = logging.getLogger(__name__)
@@ -32,15 +33,18 @@ class ConfigManager:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
                 self._ensure_hotkeys()
+                self._ensure_theme()
                 return True
             else:
                 self.config = {}
                 self._ensure_hotkeys()
+                self._ensure_theme()
                 return True
         except Exception as e:
             logger.error("載入設定檔案失敗: %s", e)
             self.config = {}
             self._ensure_hotkeys()
+            self._ensure_theme()
             return False
 
     # ponytail: 白名單與 settings.py 同步（F1-F11 / ins/home/pgup/pgdn/end 各含 Ctrl/Alt，F12 保留）
@@ -86,6 +90,18 @@ class ConfigManager:
                     self.config["language"] = "zh-tw"
                 elif low == "en":
                     self.config["language"] = "en"
+
+    def _ensure_theme(self) -> None:
+        """舊檔回補 theme；非法值/不支援型別一律回退 DEFAULT_THEME（大小寫與空白正規化）。"""
+        if "theme" not in self.config:
+            self.config["theme"] = DEFAULT_THEME
+            return
+        raw = self.config["theme"]
+        theme_name = normalize_theme(raw)
+        normalized_input = raw.strip().lower() if isinstance(raw, str) else None
+        if normalized_input != theme_name:
+            logger.warning("theme 非法值 %r 回退為 %s", raw, DEFAULT_THEME)
+        self.config["theme"] = theme_name
 
     def save_config(self, config_data=None):
         """儲存設定檔案（帶備份和異常恢復機制）"""
@@ -182,6 +198,7 @@ class ConfigManager:
         """獲取UI設定"""
         return {
             "language": self.config.get("language", "zh-tw"),
+            "theme": self.config.get("theme", DEFAULT_THEME),
             "always_on_top": self.config.get("always_on_top", False),
             "preview_enabled": self.config.get("preview_enabled", True),
             "multi_trigger": self.config.get("multi_trigger", False),

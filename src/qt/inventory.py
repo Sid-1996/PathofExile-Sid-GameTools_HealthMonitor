@@ -38,6 +38,8 @@ import base64
 from image_utils import get_interface_ui_region_text
 from inventory_utils import calculate_inventory_grid_positions, find_inventory_items, normalize_region, should_clear_inventory
 from qt.monitor import _pil_to_qpixmap, _SelectionOverlay
+from qt.theme import current_tokens
+from qt.theme_widgets import ThemedDialog
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +60,14 @@ def _b64_to_img(data: str) -> np.ndarray | None:
 
 
 # ── 色票（與 qt.monitor 對齊）──
-ERROR = "#f38ba8"
-SUCCESS = "#a6e3a1"
-INFO = "#89b4fa"
-MUTED = "#b8b8c8"
-INPUT_BG = "#1e1e2e"
-GROUP_BORDER = "#3d3d5c"
+# Phase 2E：顏色一律取自 qt.theme token，這裡只放「token 名稱」，不再寫死 HEX。
+SUCCESS = "success_soft"
+INFO = "info_soft"
+MUTED = "fg_muted"
+WARNING = "warning"
+
+# 右欄容器的 objectName（QSS 以 ID 選擇器指定底色，不會 cascade 到子元件）
+RIGHT_COLUMN_OBJECT = "inventory_right_column"
 
 # ── 清包時 GUI 縮小尺寸（對應 tk 版 tab_inventory.py）──
 CLEAR_MIN_MINSIZE = (400, 350)
@@ -99,38 +103,64 @@ class _InventorySignals(QObject):
     restore_f6_gui = Signal(bool, bool)
 
 
-class _PickupSetupDialog(QDialog):
-    """F6 取物座標設定視窗（對應 tk 版 setup_pickup_coordinates 的設定視窗）。"""
+class _PickupSetupDialog(ThemedDialog):
+    """F6 取物座標設定視窗（對應 tk 版 setup_pickup_coordinates 的設定視窗）。
+
+    Phase 2E：顏色全部取自 qt.theme token；Dialog 建立當下即套用「當前」主題，
+    `refresh_theme()` 只重上 QSS，不關閉、不重建、不動輸入值與版面。
+    """
 
     def __init__(self, tab, parent=None):
-        super().__init__(parent)
+        super().__init__(tab._app, parent)
         self._tab = tab
         self.setWindowTitle(tab._app.get_text("setup_f6_pickup_coordinates_title"))
         self.setMinimumSize(720, 420)
         self._build(tab._app.get_text)
+
+    @staticmethod
+    def _style_qss(spec):
+        """(種類[, token]) → QSS；顏色全部來自 qt.theme token。"""
+        kind = spec[0]
+        tok = current_tokens()
+        if kind == "dialog":
+            # 原生 QDialog 會用 OS palette 的 Window 色鋪底（light 主題下是深色殘留），改用 token。
+            return f"QDialog {{ background-color: {tok['window_bg']}; }}"
+        if kind == "group":
+            # 群組框原本只寫 border + color，內部走 OS palette → 透明跟對話框底
+            return (
+                f"QGroupBox {{ border: 1px solid {tok['border_strong']}; border-radius: 8px; "
+                f"margin-top: 10px; padding-top: 6px; color: {tok['fg']}; background: transparent; }}"
+                "QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; }"
+            )
+        if kind == "field":
+            return f"background-color: {tok['surface']}; border: 1px solid {tok['border_strong']}; border-radius: 4px; padding: 4px 8px; color: {tok[spec[1]]};"
+        if kind == "text":
+            return f"color: {tok[spec[1]]};"
+        if kind == "label":
+            return f"color: {tok['fg']};"
+        raise ValueError(f"未知的樣式種類: {kind}")
 
     def _build(self, get_text):
         layout = QVBoxLayout(self)
 
         info = QLabel(get_text("setup_f6_pickup_coordinates_description"))
         info.setWordWrap(True)
+        self._apply_style(info, ("label",))
         layout.addWidget(info)
 
         coords_group = QGroupBox(get_text("coordinate_status"))
-        coords_group.setStyleSheet(
-            f"QGroupBox {{ border: 1px solid {GROUP_BORDER}; border-radius: 8px; margin-top: 10px; padding-top: 6px; color: #f8f8f2; }}"
-            f"QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; }}"
-        )
+        self._apply_style(coords_group, ("group",))
         coords_layout = QGridLayout(coords_group)
         coords_layout.setContentsMargins(12, 12, 12, 12)
         self.coord_labels = []
         self.status_labels = []
         for i in range(5):
             idx_label = QLabel(get_text("coordinate_template").format(number=i + 1))
+            self._apply_style(idx_label, ("label",))
             coord_label = QLabel()
-            coord_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; padding: 4px 8px;")
+            self._apply_style(coord_label, ("field", "fg"))
             status_label = QLabel(get_text("coordinate_not_set"))
-            status_label.setStyleSheet(f"color: {MUTED};")
+            self._apply_style(status_label, ("text", MUTED))
             coords_layout.addWidget(idx_label, i, 0)
             coords_layout.addWidget(coord_label, i, 1)
             coords_layout.addWidget(status_label, i, 2)
@@ -165,26 +195,44 @@ class _PickupSetupDialog(QDialog):
             self.coord_labels[i].setText(f"({coords[i][0]}, {coords[i][1]})")
             if coords[i][0] != 0 or coords[i][1] != 0:
                 self.status_labels[i].setText(self._tab._app.get_text("coordinate_set"))
-                self.status_labels[i].setStyleSheet(f"color: {SUCCESS};")
+                self._apply_style(self.status_labels[i], ("text", SUCCESS))
             else:
                 self.status_labels[i].setText(self._tab._app.get_text("coordinate_not_set"))
-                self.status_labels[i].setStyleSheet(f"color: {MUTED};")
+                self._apply_style(self.status_labels[i], ("text", MUTED))
 
 
-class _CoordHintWindow(QDialog):
-    """連續設定座標時的小提示視窗（frameless + 置頂 + 半透明）。"""
+class _CoordHintWindow(ThemedDialog):
+    """連續設定座標時的小提示視窗（frameless + 置頂 + 半透明）。
+
+    Phase 2E：底色與文字改用 qt.theme token，避免 light 主題下出現深色殘留。
+    """
 
     def __init__(self, title, hint_text, parent=None):
-        super().__init__(parent)
+        super().__init__(None, parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setWindowOpacity(0.9)
         layout = QVBoxLayout(self)
         label = QLabel(hint_text)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setWordWrap(True)
+        # 提示視窗是小卡片 → 用 surface 底（取代原本走 OS palette 的深色底）
+        self._apply_style(self, ("dialog", "surface"))
+        self._apply_style(label, ("label",))
         layout.addWidget(label)
         self.setWindowTitle(title)
         self.move(100, 100)
+
+    @staticmethod
+    def _style_qss(spec):
+        """(種類[, token]) → QSS；顏色全部來自 qt.theme token。"""
+        kind = spec[0]
+        tok = current_tokens()
+        if kind == "dialog":
+            key = spec[1] if len(spec) > 1 else "window_bg"
+            return f"QDialog {{ background-color: {tok[key]}; }}"
+        if kind == "label":
+            return f"color: {tok['fg']};"
+        raise ValueError(f"未知的樣式種類: {kind}")
 
 
 class InventoryTab(QWidget):
@@ -221,6 +269,14 @@ class InventoryTab(QWidget):
         self._gui_was_foreground_before_minimize = True
         self._original_min_size = None
         self._setup_dialog = None
+
+        # ── 主題（Phase 2E：顏色一律取自 qt.theme token）──
+        # (widget, 樣式規格)：只記 token 名稱與非色彩樣式，refresh_theme() 時才解析成當前主題
+        self._styled: list[tuple[QWidget, tuple]] = []
+        # 語意色元件（顏色依業務狀態決定）→ (樣式種類, token 名稱)
+        self._tones: dict[QWidget, tuple[str, str]] = {}
+        # 目前開啟中的 Inventory Dialog（由 refresh_theme() 跟著換色，不關閉、不重建）
+        self._dialogs: list[QDialog] = []
 
         self._signals = _InventorySignals(self)
         self._signals.progress_update.connect(self.update_inventory_preview_with_progress)
@@ -274,17 +330,17 @@ class InventoryTab(QWidget):
         if self.empty_inventory_colors:
             recorded = len([c for c in self.empty_inventory_colors if c != (0, 0, 0)])
             self.empty_color_label.setText(self._app.get_text("recorded_colors_template").format(count=recorded))
-            self.empty_color_label.setStyleSheet(self._value_label_style(SUCCESS))
+            self._apply_tone(self.empty_color_label, "field", SUCCESS)
         else:
             self.empty_color_label.setText(self._app.get_text("not_recorded"))
-            self.empty_color_label.setStyleSheet(self._value_label_style(MUTED))
+            self._apply_tone(self.empty_color_label, "field", MUTED)
 
         if self.inventory_ui_region and self.inventory_ui_screenshot is not None:
             self.inventory_ui_label.setText(self._app.get_text("inventory_ui_recorded"))
-            self.inventory_ui_label.setStyleSheet(self._value_label_style(SUCCESS))
+            self._apply_tone(self.inventory_ui_label, "field", SUCCESS)
         else:
             self.inventory_ui_label.setText(self._app.get_text("not_recorded"))
-            self.inventory_ui_label.setStyleSheet(self._value_label_style(MUTED))
+            self._apply_tone(self.inventory_ui_label, "field", MUTED)
 
         valid_coords = sum(1 for x, y in (self.pickup_coordinates or []) if x != 0 or y != 0)
         self.pickup_coords_label.setText(self._app.get_text("coordinates_count").format(count=valid_coords))
@@ -293,17 +349,102 @@ class InventoryTab(QWidget):
 
     # ────────────────────────── UI ──────────────────────────
 
-    def _styled_group(self, title):
-        box = QGroupBox(title)
-        box.setStyleSheet(
-            f"QGroupBox {{ border: 1px solid {GROUP_BORDER}; border-radius: 8px; margin-top: 10px; padding-top: 6px; color: #f8f8f2; }}"
-            f"QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; }}"
-        )
-        return box
+    # ────────────────────────── 主題（顏色一律取自 qt.theme token）──────────────────────────
 
     @staticmethod
-    def _value_label_style(color):
-        return f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; padding: 4px 8px; color: {color};"
+    def _style_qss(spec):
+        """(種類[, token]) → QSS；顏色全部來自 qt.theme token。"""
+        kind = spec[0]
+        tok = current_tokens()
+        if kind == "group":
+            # 群組框原本只寫 border + color，內部走 OS palette（light 主題下是深色殘留）→ 透明跟頁面底
+            return (
+                f"QGroupBox {{ border: 1px solid {tok['border_strong']}; border-radius: 8px; margin-top: 10px; "
+                f"padding-top: 6px; color: {tok['fg']}; background: transparent; }}"
+                "QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; }"
+            )
+        if kind == "title":
+            return f"font-size: 20px; font-weight: 600; color: {tok['fg']};"
+        if kind == "scroll":
+            # 捲動區必須自繪底色：qfluentwidgets StackedWidget 在深色主題下露出白色底，
+            # 若留透明，深色文字會疊在白底上（不可讀）→ 用 window_bg token 跟頁面底一致
+            return f"QScrollArea {{ background-color: {tok['window_bg']}; border: none; }}"
+        if kind == "panel":
+            # 同理，右欄容器也要自繪底色（ID 選擇器不會 cascade 到子元件，避免蓋掉按鈕樣式）
+            return f"#{RIGHT_COLUMN_OBJECT} {{ background-color: {tok['window_bg']}; }}"
+        if kind == "canvas":
+            return f"background-color: {tok['surface']}; border: 1px solid {tok['border_strong']}; border-radius: 4px; color: {tok[spec[1]]};"
+        if kind == "field":
+            return f"background-color: {tok['surface']}; border: 1px solid {tok['border_strong']}; border-radius: 4px; padding: 4px 8px; color: {tok[spec[1]]};"
+        if kind == "value":
+            return f"color: {tok[spec[1]]}; font-size: 13px; font-weight: 600;"
+        if kind == "text":
+            return f"color: {tok[spec[1]]};"
+        if kind == "muted":
+            return f"color: {tok['fg_muted']};"
+        if kind == "hint":
+            return f"color: {tok['fg_muted']}; font-size: 11px;"
+        if kind == "label":
+            # 原本完全未上色、走 OS palette 的說明文字：light 主題下會變成亮字亮底 → 統一用 fg token
+            return f"color: {tok['fg']};"
+        raise ValueError(f"未知的樣式種類: {kind}")
+
+    def _apply_style(self, widget, spec):
+        """套用樣式並登記，供 refresh_theme() 重上（同一元件重複套用只更新 spec）。"""
+        for i, (w, _) in enumerate(self._styled):
+            if w is widget:
+                self._styled[i] = (widget, spec)
+                break
+        else:
+            self._styled.append((widget, spec))
+        widget.setStyleSheet(self._style_qss(spec))
+
+    def _apply_tone(self, widget, kind, tone):
+        """套用語意色（依業務狀態決定）並記錄，供 refresh_theme() 重上。"""
+        self._tones[widget] = (kind, tone)
+        widget.setStyleSheet(self._style_qss((kind, tone)))
+
+    def refresh_theme(self):
+        """主題切換刷新：只重上既有元件 QSS。
+
+        不重建 widget、不改內容/輸入值/業務狀態；語意色元件依目前業務狀態重上；
+        已開啟的 Inventory Dialog 跟著換色（不關閉、不重建）。
+        """
+        alive = []
+        for widget, spec in self._styled:
+            try:
+                widget.setStyleSheet(self._style_qss(spec))
+            except RuntimeError:
+                continue  # 已被刪除的舊元件
+            alive.append((widget, spec))
+        self._styled = alive
+
+        for widget, (kind, tone) in list(self._tones.items()):
+            try:
+                widget.setStyleSheet(self._style_qss((kind, tone)))
+            except RuntimeError:
+                self._tones.pop(widget, None)
+
+        for dialog in list(self._dialogs):
+            try:
+                dialog.refresh_theme()
+            except Exception:
+                logger.exception("Inventory Dialog 主題刷新失敗: %s", type(dialog).__name__)
+
+    def _register_dialog(self, dialog):
+        """登記開啟中的 Dialog（主題切換時跟著換色；關閉後移除登記）。"""
+        if dialog not in self._dialogs:
+            self._dialogs.append(dialog)
+
+    def _unregister_dialog(self, dialog):
+        """Dialog 關閉後解除登記（避免持有已刪除元件）。"""
+        if dialog in self._dialogs:
+            self._dialogs.remove(dialog)
+
+    def _styled_group(self, title):
+        box = QGroupBox(title)
+        self._apply_style(box, ("group",))
+        return box
 
     def _build_ui(self):
         root = QVBoxLayout(self)
@@ -311,7 +452,7 @@ class InventoryTab(QWidget):
         root.setSpacing(12)
 
         self.page_title_label = QLabel(self._app.get_text("inventory_title"))
-        self.page_title_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
+        self._apply_style(self.page_title_label, ("title",))
         root.addWidget(self.page_title_label)
 
         body = QHBoxLayout()
@@ -321,14 +462,21 @@ class InventoryTab(QWidget):
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # 原生捲動區（含 viewport）會用 OS palette 色鋪底（light 主題下是深色殘留）→ 改透明跟頁面底
+        self._apply_style(left_scroll, ("scroll",))
         left_content = QWidget()
         left_scroll.setWidget(left_content)
+        # setWidget() 會把 content 的 autoFillBackground 重設為 True，必須在 setWidget 之後才關閉
+        left_content.setAutoFillBackground(False)
+        left_scroll.viewport().setAutoFillBackground(False)
         left_layout = QVBoxLayout(left_content)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12)
         body.addWidget(left_scroll, 3)
 
         right = QWidget()
+        right.setObjectName(RIGHT_COLUMN_OBJECT)
+        self._apply_style(right, ("panel",))
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(12)
@@ -373,17 +521,19 @@ class InventoryTab(QWidget):
         grid.addLayout(row, 0, 0, 1, 2)
 
         self.record_status_label = QLabel(self._app.get_text("record_status"))
+        self._apply_style(self.record_status_label, ("label",))
         grid.addWidget(self.record_status_label, 1, 0)
 
         self.empty_color_label = QLabel(self._app.get_text("not_recorded"))
-        self.empty_color_label.setStyleSheet(self._value_label_style(MUTED))
+        self._apply_tone(self.empty_color_label, "field", MUTED)
         grid.addWidget(self.empty_color_label, 1, 1)
 
         self.inventory_ui_status_label = QLabel(self._app.get_text("inventory_ui_status"))
+        self._apply_style(self.inventory_ui_status_label, ("label",))
         grid.addWidget(self.inventory_ui_status_label, 2, 0)
 
         self.inventory_ui_label = QLabel(self._app.get_text("not_recorded"))
-        self.inventory_ui_label.setStyleSheet(self._value_label_style(MUTED))
+        self._apply_tone(self.inventory_ui_label, "field", MUTED)
         grid.addWidget(self.inventory_ui_label, 2, 1)
 
         grid.setColumnStretch(1, 1)
@@ -402,6 +552,7 @@ class InventoryTab(QWidget):
         grid.addWidget(self.test_clear_inventory_btn, 0, 0)
 
         self.clear_click_mode_label = QLabel(self._app.get_text("clear_click_mode"))
+        self._apply_style(self.clear_click_mode_label, ("label",))
         grid.addWidget(self.clear_click_mode_label, 1, 0)
 
         click_mode = QHBoxLayout()
@@ -419,6 +570,7 @@ class InventoryTab(QWidget):
         grid.addLayout(click_mode, 1, 1)
 
         self.gui_settings_label = QLabel(self._app.get_text("gui_settings"))
+        self._apply_style(self.gui_settings_label, ("label",))
         grid.addWidget(self.gui_settings_label, 2, 0)
 
         self.always_on_top_check = CheckBox(self._app.get_text("always_on_top"))
@@ -437,17 +589,19 @@ class InventoryTab(QWidget):
         layout.addWidget(self.status_frame)
 
         self.inventory_f3_label = QLabel(self._app.get_text("f3_hotkey"))
+        self._apply_style(self.inventory_f3_label, ("label",))
         grid.addWidget(self.inventory_f3_label, 0, 0)
 
         self.inventory_status_label = QLabel(self._app.get_text("ready"))
-        self.inventory_status_label.setStyleSheet(f"color: {SUCCESS};")
+        self._apply_tone(self.inventory_status_label, "text", SUCCESS)
         grid.addWidget(self.inventory_status_label, 0, 1)
 
         self.pause_status_label_title = QLabel(self._app.get_text("global_pause"))
+        self._apply_style(self.pause_status_label_title, ("label",))
         grid.addWidget(self.pause_status_label_title, 1, 0)
 
         self.pause_status_label = QLabel(self._app.get_text("normal_operation"))
-        self.pause_status_label.setStyleSheet(f"color: {SUCCESS};")
+        self._apply_tone(self.pause_status_label, "text", SUCCESS)
         grid.addWidget(self.pause_status_label, 1, 1)
 
         grid.setColumnStretch(1, 1)
@@ -466,17 +620,19 @@ class InventoryTab(QWidget):
         grid.addWidget(self.setup_pickup_coordinates_btn, 0, 0)
 
         self.coordinates_set_label = QLabel(self._app.get_text("coordinates_set"))
+        self._apply_style(self.coordinates_set_label, ("label",))
         grid.addWidget(self.coordinates_set_label, 1, 0)
 
         self.pickup_coords_label = QLabel(self._app.get_text("coordinates_count").format(count=0))
-        self.pickup_coords_label.setStyleSheet(f"color: {MUTED};")
+        self._apply_tone(self.pickup_coords_label, "text", MUTED)
         grid.addWidget(self.pickup_coords_label, 1, 1)
 
         self.pickup_f6_label = QLabel(self._app.get_text("f6_hotkey"))
+        self._apply_style(self.pickup_f6_label, ("label",))
         grid.addWidget(self.pickup_f6_label, 2, 0)
 
         self.pickup_status_label = QLabel(self._app.get_text("ready"))
-        self.pickup_status_label.setStyleSheet(f"color: {SUCCESS};")
+        self._apply_tone(self.pickup_status_label, "text", SUCCESS)
         grid.addWidget(self.pickup_status_label, 2, 1)
 
         grid.setColumnStretch(1, 1)
@@ -491,11 +647,11 @@ class InventoryTab(QWidget):
         self.ui_preview_label = QLabel(self._app.get_text("inventory_ui_screenshot_not_set"))
         self.ui_preview_label.setFixedHeight(150)
         self.ui_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.ui_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+        self._apply_tone(self.ui_preview_label, "canvas", MUTED)
         vbox.addWidget(self.ui_preview_label)
 
         self.ui_preview_hint_label = QLabel(self._app.get_text("inventory_ui_screenshot_hint"))
-        self.ui_preview_hint_label.setStyleSheet(f"color: {MUTED}; font-size: 11px;")
+        self._apply_style(self.ui_preview_hint_label, ("hint",))
         vbox.addWidget(self.ui_preview_hint_label)
 
     def _build_preview_group(self, layout):
@@ -507,15 +663,16 @@ class InventoryTab(QWidget):
 
         stats = QHBoxLayout()
         self.occupied_label_title = QLabel(self._app.get_text("occupied_slots"))
+        self._apply_style(self.occupied_label_title, ("label",))
         stats.addWidget(self.occupied_label_title)
         self.occupied_label = QLabel(self._app.get_text("slots_count").format(count=0))
-        self.occupied_label.setStyleSheet(f"color: {INFO}; font-size: 13px; font-weight: 600;")
+        self._apply_tone(self.occupied_label, "value", INFO)
         stats.addWidget(self.occupied_label)
         stats.addStretch(1)
         vbox.addLayout(stats)
 
         self.grid_adjustment_label = QLabel(self._app.get_text("grid_alignment_adjustment"))
-        self.grid_adjustment_label.setStyleSheet(f"color: {MUTED};")
+        self._apply_style(self.grid_adjustment_label, ("muted",))
         vbox.addWidget(self.grid_adjustment_label)
 
         offset_grid = QGridLayout()
@@ -523,6 +680,7 @@ class InventoryTab(QWidget):
         offset_grid.setVerticalSpacing(4)
 
         self.horizontal_label = QLabel(self._app.get_text("horizontal"))
+        self._apply_style(self.horizontal_label, ("label",))
         offset_grid.addWidget(self.horizontal_label, 0, 0)
 
         left_btn = PushButton("◀")
@@ -533,7 +691,7 @@ class InventoryTab(QWidget):
         self.offset_x_label = QLabel("0")
         self.offset_x_label.setFixedWidth(48)
         self.offset_x_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.offset_x_label.setStyleSheet(self._value_label_style("#f8f8f2"))
+        self._apply_tone(self.offset_x_label, "field", "fg")
         self.offset_x_label.setToolTip(self._app.get_text("offset_entry_tip"))
         offset_grid.addWidget(self.offset_x_label, 0, 2)
 
@@ -543,6 +701,7 @@ class InventoryTab(QWidget):
         offset_grid.addWidget(right_btn, 0, 3)
 
         self.vertical_label = QLabel(self._app.get_text("vertical"))
+        self._apply_style(self.vertical_label, ("label",))
         offset_grid.addWidget(self.vertical_label, 1, 0)
 
         up_btn = PushButton("▲")
@@ -553,7 +712,7 @@ class InventoryTab(QWidget):
         self.offset_y_label = QLabel("0")
         self.offset_y_label.setFixedWidth(48)
         self.offset_y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.offset_y_label.setStyleSheet(self._value_label_style("#f8f8f2"))
+        self._apply_tone(self.offset_y_label, "field", "fg")
         self.offset_y_label.setToolTip(self._app.get_text("offset_entry_tip"))
         offset_grid.addWidget(self.offset_y_label, 1, 2)
 
@@ -575,27 +734,28 @@ class InventoryTab(QWidget):
         # 上限切斷回饋循環：QLabel sizeHint 會追著 pixmap 走，反覆 setPreview 會讓 label 無限撐大
         self.inventory_preview_label.setMaximumSize(400, 300)
         self.inventory_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.inventory_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+        self._apply_tone(self.inventory_preview_label, "canvas", MUTED)
         self.inventory_preview_label.clicked.connect(self._on_preview_click)
         self.inventory_preview_label.resized.connect(self._on_preview_resize)
         vbox.addWidget(self.inventory_preview_label, 1)
 
         self.inventory_exclude_hint = QLabel(self._app.get_text("inventory_exclude_hint"))
-        self.inventory_exclude_hint.setStyleSheet(f"color: {MUTED}; font-size: 11px;")
+        self._apply_style(self.inventory_exclude_hint, ("hint",))
         vbox.addWidget(self.inventory_exclude_hint)
 
     # ────────────────────────── 預覽輔助 ──────────────────────────
 
     def set_preview_placeholder(self, text, color=MUTED):
+        """設定預覽佔位文字；`color` 為 qt.theme token 名稱（預設 fg_muted）。"""
         self.inventory_preview_label.setText(text)
-        self.inventory_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {color};")
+        self._apply_tone(self.inventory_preview_label, "canvas", color)
         self._preview_has_image = False
 
     def _update_preview_placeholder_state(self):
         if self._preview_has_image:
             return
         if self.inventory_region:
-            self.set_preview_placeholder(self._app.get_text("inventory_preview_guide"), "orange")
+            self.set_preview_placeholder(self._app.get_text("inventory_preview_guide"), WARNING)
         else:
             self.set_preview_placeholder(self._app.get_text("select_inventory_region_first"))
 
@@ -618,8 +778,9 @@ class InventoryTab(QWidget):
         }
 
     def set_ui_preview_placeholder(self, text, color=MUTED):
+        """設定介面UI預覽佔位文字；`color` 為 qt.theme token 名稱（預設 fg_muted）。"""
         self.ui_preview_label.setText(text)
-        self.ui_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {color};")
+        self._apply_tone(self.ui_preview_label, "canvas", color)
 
     def set_ui_preview_pil(self, pil_img):
         pix = _pil_to_qpixmap(pil_img)
@@ -771,7 +932,7 @@ class InventoryTab(QWidget):
             )
             if hasattr(self._app, "monitor_tab") and hasattr(self._app.monitor_tab, "interface_ui_label"):
                 self._app.monitor_tab.interface_ui_label.setText(get_interface_ui_region_text(self._app.interface_ui_region, self._app.get_text))
-                self._app.monitor_tab.interface_ui_label.setStyleSheet(self._app.monitor_tab._region_label_style(color=SUCCESS))
+                self._app.monitor_tab.interface_ui_label.setStyleSheet(self._app.monitor_tab._region_label_style("success_soft"))
 
     def _finalize_selection_restore_gui(self):
         win = self.window()
@@ -868,7 +1029,7 @@ class InventoryTab(QWidget):
                     self.set_preview_placeholder(self._app.get_text("waiting_inventory_open"))
                     return
             elif self.inventory_ui_region and self.inventory_ui_screenshot is None:
-                self.set_preview_placeholder(self._app.get_text("inventory_ui_not_recorded"), "orange")
+                self.set_preview_placeholder(self._app.get_text("inventory_ui_not_recorded"), WARNING)
                 return
 
             result = capture_window_region_bgr(window_title, region)
@@ -1087,7 +1248,7 @@ class InventoryTab(QWidget):
         if self.interface_ui_screenshot is None:
             label.setPixmap(QPixmap())
             label.setText(self._app.get_text("interface_ui_preview_empty"))
-            label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+            self._apply_tone(label, "canvas", MUTED)
             return
         rgb = cv2.cvtColor(self.interface_ui_screenshot, cv2.COLOR_BGR2RGB)
         pix = _pil_to_qpixmap(Image.fromarray(rgb))
@@ -1935,6 +2096,7 @@ class InventoryTab(QWidget):
         dlg = _PickupSetupDialog(self, None)
         dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         self._setup_dialog = dlg
+        self._register_dialog(dlg)
         dlg.update_display()
         try:
             # 置中於主視窗
@@ -1945,6 +2107,7 @@ class InventoryTab(QWidget):
                 pass
             dlg.exec()
         finally:
+            self._unregister_dialog(dlg)
             self._setup_dialog = None
             # 對話框關閉後再同步置頂旗標，避免 exec 期間重建父 HWND 導致懸空
             try:
@@ -2003,6 +2166,7 @@ class InventoryTab(QWidget):
                         self._app.get_text("setup_coordinate_hint").format(number=i + 1),
                         None,
                     )
+                    self._register_dialog(hint)
                     hint.show()
                     QApplication.processEvents()
 
@@ -2024,6 +2188,8 @@ class InventoryTab(QWidget):
                                 hint.close()
                         except Exception:
                             pass
+                        if hint is not None:
+                            self._unregister_dialog(hint)
                         hint = None
 
                     if cancel_setup:
@@ -2058,6 +2224,8 @@ class InventoryTab(QWidget):
                         hint.close()
                 except Exception:
                     pass
+                if hint is not None:
+                    self._unregister_dialog(hint)
                 try:
                     keyboard.unhook_all()
                     self._app.setup_hotkeys()
@@ -2188,9 +2356,9 @@ class InventoryTab(QWidget):
             valid_coords = sum(1 for x, y in (self.pickup_coordinates or []) if x != 0 or y != 0)
             self.pickup_coords_label.setText(self._app.get_text("coordinates_count").format(count=valid_coords))
             if valid_coords > 0:
-                self.pickup_coords_label.setStyleSheet(f"color: {SUCCESS};")
+                self._apply_tone(self.pickup_coords_label, "text", SUCCESS)
             else:
-                self.pickup_coords_label.setStyleSheet(f"color: {MUTED};")
+                self._apply_tone(self.pickup_coords_label, "text", MUTED)
 
     # ────────────────────────── UI 可見性 ──────────────────────────
 

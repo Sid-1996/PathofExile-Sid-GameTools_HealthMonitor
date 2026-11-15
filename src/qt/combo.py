@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import ComboBox, LineEdit, PrimaryPushButton, PushButton
 
 from qt.skill_timer import SkillTimerModule
+from qt.theme import current_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +44,6 @@ WM_KEYDOWN = 0x0100
 WM_KEYUP = 0x0101
 
 # ── 常數 ──────────────────────────────────────────────────
-SUCCESS = "#50fa7b"
-ERROR = "#ff5555"
-MUTED = "#b8b8c8"
-GROUP_BORDER = "#3b3b3b"
-
 _TRIGGER_KEYS = ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Z", "X", "C", "V", "B", "N", "M", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 _SKILL_KEYS = ["off"] + _TRIGGER_KEYS
 
@@ -56,6 +52,11 @@ class ComboTab(QWidget):
     def __init__(self, app, parent=None):
         super().__init__(parent)
         self._app = app
+
+        # (widget, 樣式規格)：只記 token 名稱與非色彩樣式，refresh_theme() 時才解析成目前主題
+        self._styled: list[tuple[QWidget, tuple]] = []
+        # 連段系統狀態色（未啟動/已停止=error、執行中=success）；與業務狀態同步，不可被主題刷新覆蓋
+        self._status_tone = "error"
 
         # 執行狀態（對應 tk 的 self._state）
         self.combo_sets = []
@@ -72,6 +73,77 @@ class ComboTab(QWidget):
         self._initialize_combo_sets()
         self._build_ui()
         self._apply_combo_ui_from_config()
+
+    # ────────────────────────────────────────────────────
+    #  主題樣式（顏色唯一來源：qt.theme token）
+    # ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _style_qss(spec: tuple) -> str:
+        """(種類, token, 字級, 字重, 透明底色) → QSS。沿用原版字級/字重，只換顏色來源。"""
+        kind, token, px, weight, transparent = spec
+        tok = current_tokens()
+        if kind == "group":
+            # 原本只寫 border + color，QGroupBox 會用 OS palette 的 Window 色補底（light 下是深色殘留）；
+            # 顯式 background: transparent 讓卡片跟著頁面底色。
+            return (
+                f"QGroupBox {{ border: 1px solid {tok['border']}; border-radius: 8px; margin-top: 10px; "
+                f"padding-top: 6px; color: {tok['fg']}; background: transparent; }}"
+                "QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; }"
+            )
+        if kind == "tabs":
+            # 原生 QTabBar 的底色與選取色來自 OS palette（light 下整條是深色），改用 token 自繪。
+            # pane 必須一併清掉原生 frame（否則原生 frame 仍用 OS palette 的 Base 色填滿分頁區）；
+            # 用 2px transparent 保留原生 frame 的 2px 內縮，維持內容位置不位移。
+            return (
+                "QTabWidget::pane { border: 2px solid transparent; background: transparent; }"
+                "QTabBar { background: transparent; }"
+                f"QTabBar::tab {{ background: transparent; color: {tok['fg_muted']}; border: none; padding: 3px 14px; }}"
+                f"QTabBar::tab:selected {{ color: {tok['fg']}; border-bottom: 2px solid {tok['accent']}; }}"
+                f"QTabBar::tab:hover {{ color: {tok['fg']}; }}"
+            )
+        parts = []
+        if px is not None:
+            parts.append(f"font-size: {px}px;")
+        if weight:
+            parts.append(f"font-weight: {weight};")
+        parts.append(f"color: {tok[token]};")
+        if transparent:
+            parts.append("background: transparent;")
+        return " ".join(parts)
+
+    def _apply_style(self, widget: QWidget, spec: tuple) -> None:
+        """套用樣式並登記，供 refresh_theme() 重上。"""
+        self._styled.append((widget, spec))
+        widget.setStyleSheet(self._style_qss(spec))
+
+    def _status_qss(self) -> str:
+        """連段系統狀態文字色（依業務狀態取 token，不受主題刷新影響）。"""
+        return f"color: {current_tokens()[self._status_tone]}; font-size: 13px;"
+
+    def _set_status_tone(self, tone: str) -> None:
+        """更新狀態色（tone 為 token 名稱）；只換色，不動文字與業務狀態。"""
+        self._status_tone = tone
+        self.combo_status_label.setStyleSheet(self._status_qss())
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新：只重上既有元件 QSS，不重建、不改版面/字級/內容/輸入值。
+
+        內嵌的技能計時器由 ComboTab 轉發刷新一次（其 QSS 不在本模組登記表內，不會重複刷新）。
+        """
+        alive: list[tuple[QWidget, tuple]] = []
+        for widget, spec in self._styled:
+            try:
+                widget.setStyleSheet(self._style_qss(spec))
+            except RuntimeError:
+                continue  # 已被刪除的舊元件
+            alive.append((widget, spec))
+        self._styled = alive
+        # 狀態色依業務狀態重上（success/error），不可被主題刷新覆蓋成固定色
+        if getattr(self, "combo_status_label", None) is not None:
+            self.combo_status_label.setStyleSheet(self._status_qss())
+        if getattr(self, "skill_timer", None):
+            self.skill_timer.refresh_theme()
 
     # ── 執行狀態 ─────────────────────────────────────────
 
@@ -124,10 +196,7 @@ class ComboTab(QWidget):
 
     def _styled_group(self, title):
         box = QGroupBox(title)
-        box.setStyleSheet(
-            f"QGroupBox {{ border: 1px solid {GROUP_BORDER}; border-radius: 8px; margin-top: 10px; padding-top: 6px; color: #f8f8f2; }}"
-            f"QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; }}"
-        )
+        self._apply_style(box, ("group", None, None, None, None))
         return box
 
     def _build_ui(self):
@@ -136,7 +205,7 @@ class ComboTab(QWidget):
         root.setSpacing(12)
 
         title = QLabel(self._app.get_text("skill_combo_system_title"))
-        title.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
+        self._apply_style(title, ("label", "fg", 20, 600, False))
         root.addWidget(title)
 
         body = QHBoxLayout()
@@ -147,14 +216,21 @@ class ComboTab(QWidget):
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # 原生 QScrollArea/viewport 底色來自 OS palette（light 下是深色殘留）；改透明，讓頁面跟著主題底色。
+        # 注意：QScrollArea.setWidget() 會把 content 的 autoFillBackground 重設回 True，
+        # 因此 viewport/content 都要在 setWidget() 之後才關閉。
+        left_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         left_content = QWidget()
         left_scroll.setWidget(left_content)
+        left_scroll.viewport().setAutoFillBackground(False)
+        left_content.setAutoFillBackground(False)
         left_layout = QVBoxLayout(left_content)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12)
         body.addWidget(left_scroll, 3)
 
         self.combo_notebook = QTabWidget()
+        self._apply_style(self.combo_notebook, ("tabs", None, None, None, None))
         for i in range(3):
             tab_frame = QWidget()
             self.combo_notebook.addTab(tab_frame, self._app.get_text("combo_set_template").format(number=i + 1))
@@ -183,10 +259,10 @@ class ComboTab(QWidget):
         status_row = QHBoxLayout()
         status_row.setSpacing(8)
         status_title = QLabel(self._app.get_text("system_status"))
-        status_title.setStyleSheet("font-weight: 600; font-size: 13px;")
+        self._apply_style(status_title, ("label", "fg", 13, 600, False))
         status_row.addWidget(status_title)
         self.combo_status_label = QLabel(self._app.get_text("not_started"))
-        self.combo_status_label.setStyleSheet(f"color: {ERROR}; font-size: 13px;")
+        self.combo_status_label.setStyleSheet(self._status_qss())
         status_row.addWidget(self.combo_status_label)
         status_row.addStretch(1)
         control_layout.addLayout(status_row)
@@ -211,7 +287,7 @@ class ComboTab(QWidget):
         help_text = self._app.get_text("skill_combo_usage_title") + "\n\n" + self._app.get_text("skill_combo_usage_content")
         help_label = QLabel(help_text)
         help_label.setWordWrap(True)
-        help_label.setStyleSheet(f"color: {MUTED}; font-size: 12px;")
+        self._apply_style(help_label, ("label", "fg_muted", 12, None, False))
         help_layout.addWidget(help_label)
         right_layout.addWidget(help_box)
         right_layout.addStretch(1)
@@ -227,6 +303,8 @@ class ComboTab(QWidget):
         combo_set = self.combo_sets[set_index]
 
         enabled_check = QCheckBox(self._app.get_text("enable_this_set"))
+        # 原本未上色 → 走 OS palette 字色，light 主題下白字白底；改套 fg token
+        self._apply_style(enabled_check, ("label", "fg", None, None, False))
         enabled_check.setChecked(bool(self.combo_enabled[set_index]))
         enabled_check.setToolTip(self._app.get_text("combo_enabled_tip"))
         enabled_check.toggled.connect(lambda checked, idx=set_index: self._on_enabled_toggled(idx, checked))
@@ -237,7 +315,7 @@ class ComboTab(QWidget):
         trigger_row = QHBoxLayout()
         trigger_row.setSpacing(8)
         trigger_label = QLabel(self._app.get_text("trigger_skill"))
-        trigger_label.setStyleSheet("font-weight: 600;")
+        self._apply_style(trigger_label, ("label", "fg", None, 600, False))
         trigger_row.addWidget(trigger_label)
         trigger_combo = ComboBox()
         trigger_combo.addItems(_TRIGGER_KEYS)
@@ -247,7 +325,7 @@ class ComboTab(QWidget):
         trigger_row.addWidget(trigger_combo)
         trigger_row.addSpacing(16)
         trigger_delay_label = QLabel(self._app.get_text("initial_delay_ms"))
-        trigger_delay_label.setStyleSheet("font-weight: 600;")
+        self._apply_style(trigger_delay_label, ("label", "fg", None, 600, False))
         trigger_row.addWidget(trigger_delay_label)
         trigger_delay_entry = LineEdit()
         trigger_delay_entry.setText(str(combo_set.get("trigger_delay", "")))
@@ -278,7 +356,7 @@ class ComboTab(QWidget):
         for i in range(5):
             row_label = self._app.get_text("skill_template").format(number=i + 1)
             row_lbl = QLabel(row_label)
-            row_lbl.setStyleSheet("font-weight: 600;")
+            self._apply_style(row_lbl, ("label", "fg", None, 600, False))
             skills_grid.addWidget(row_lbl, i, 0)
             row_labels.append(row_lbl)
 
@@ -291,6 +369,8 @@ class ComboTab(QWidget):
             key_combos.append(key_combo)
 
             delay_label = QLabel(self._app.get_text("delay_ms"))
+            # 原本完全未上色 → 走 OS palette 字色，light 主題下白字白底；改套 fg token
+            self._apply_style(delay_label, ("label", "fg", None, None, False))
             skills_grid.addWidget(delay_label, i, 2)
             delay_labels.append(delay_label)
 
@@ -303,6 +383,8 @@ class ComboTab(QWidget):
             delay_entries.append(delay_entry)
 
             stationary_check = QCheckBox(self._app.get_text("stationary_attack"))
+            # 原本未上色 → 走 OS palette 字色，light 主題下白字白底；改套 fg token
+            self._apply_style(stationary_check, ("label", "fg", None, None, False))
             stationary_check.setToolTip(self._app.get_text("stationary_attack_tip"))
             stationary_check.setChecked(bool(combo_set["stationary_attacks"][i]))
             stationary_check.toggled.connect(lambda checked, idx=set_index, s=i: self._on_stationary_toggled(idx, s, checked))
@@ -310,7 +392,7 @@ class ComboTab(QWidget):
             stationary_checks.append(stationary_check)
 
             shift_note = QLabel(self._app.get_text("shift_skill_note"))
-            shift_note.setStyleSheet(f"color: {MUTED}; font-size: 11px;")
+            self._apply_style(shift_note, ("label", "fg_muted", 11, None, False))
             skills_grid.addWidget(shift_note, i, 5)
             shift_notes.append(shift_note)
 
@@ -439,7 +521,7 @@ class ComboTab(QWidget):
         self.combo_start_btn.setEnabled(False)
         self.combo_stop_btn.setEnabled(True)
         self.combo_status_label.setText(self._app.get_text("combo_running"))
-        self.combo_status_label.setStyleSheet(f"color: {SUCCESS}; font-size: 13px;")
+        self._set_status_tone("success")
 
         enabled_count = len(enabled_sets)
         self._app.add_status_message(self._app.get_text("combo_system_started").format(count=enabled_count), "success")
@@ -464,7 +546,7 @@ class ComboTab(QWidget):
         self.combo_start_btn.setEnabled(True)
         self.combo_stop_btn.setEnabled(False)
         self.combo_status_label.setText(self._app.get_text("combo_stopped"))
-        self.combo_status_label.setStyleSheet(f"color: {ERROR}; font-size: 13px;")
+        self._set_status_tone("error")
 
         self._app.add_status_message(self._app.get_text("combo_system_stopped"), "info")
         logger.info("連段系統已完全停止")
@@ -671,3 +753,8 @@ class ComboTab(QWidget):
         self.combo_stop_btn.setToolTip(self._app.get_text("stop_combo_system_tip"))
         if self.skill_timer:
             self.skill_timer.refresh_language()
+
+    # ────────────────────────────────────────────────────
+    #  主題切換（Phase 2C：combo 樣式全面 token 化）
+    #  refresh_theme() 定義於本類別上方（與 skill_timer 的轉發一起處理）。
+    # ────────────────────────────────────────────────────

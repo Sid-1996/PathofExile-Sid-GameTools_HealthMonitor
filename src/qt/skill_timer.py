@@ -37,14 +37,12 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import ComboBox, PushButton
 
+from qt.theme import current_tokens
+
 # ── 常數 ──────────────────────────────────────────────────
 _MIN_MS = 50  # 最低間隔 ms
 _MAX_SLOTS = 8  # 最多技能槽
 _MODIFIERS = ["none", "ctrl", "shift", "alt"]
-_COLOR_ON = "#50fa7b"  # 執行中（綠）
-_COLOR_OFF = "#ff5555"  # 停止（紅）
-_COLOR_HEADER = "#b8b8c8"  # 表頭（灰）
-_COLOR_WARN = "#f1fa8c"  # 警告（黃）
 
 
 # ══════════════════════════════════════════════════════════
@@ -212,6 +210,10 @@ class SkillTimerModule(QWidget):
         self._status_labels: list[QLabel] = []
         self._toggle_btns: list[PushButton] = []
         self._btn_toggle_all: PushButton | None = None
+        self._header_labels: list[QLabel] = []
+        self._slot_labels: list[QLabel] = []
+        self._separators: list[QFrame] = []
+        self._warn_label: QLabel | None = None
 
         self._build_ui()
 
@@ -276,6 +278,9 @@ class SkillTimerModule(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
 
         self.frame = QGroupBox(self._t("skill_timer_title", "⏱ 技能計時器(Beta)"))
+        # 只上 color（原生框線保留，實測 color-only QSS 不會掉框）；
+        # 不上色時標題走 OS palette，light 主題下會白字白底。
+        self.frame.setStyleSheet(f"QGroupBox {{ color: {current_tokens()['fg']}; }}")
         root_layout.addWidget(self.frame)
 
         grid = QGridLayout(self.frame)
@@ -296,13 +301,15 @@ class SkillTimerModule(QWidget):
         for col, h in enumerate(headers):
             lbl = QLabel(h)
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet(f"color: {_COLOR_HEADER}; font-weight: 600;")
+            lbl.setStyleSheet(self._header_qss())
+            self._header_labels.append(lbl)
             grid.addWidget(lbl, 0, col)
 
         # 分隔線
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {_COLOR_HEADER};")
+        sep.setStyleSheet(self._sep_qss())
+        self._separators.append(sep)
         grid.addWidget(sep, 1, 0, 1, len(headers))
 
         # 每個技能槽列
@@ -316,6 +323,9 @@ class SkillTimerModule(QWidget):
 
             slot_label = QLabel(f"Skill {i + 1}")
             slot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            # 不上色時走 OS palette，light 主題下會白字白底
+            slot_label.setStyleSheet(self._slot_label_qss())
+            self._slot_labels.append(slot_label)
             grid.addWidget(slot_label, row, 1)
 
             modifier_combo = ComboBox()
@@ -328,6 +338,7 @@ class SkillTimerModule(QWidget):
             key_edit = QLineEdit()
             key_edit.setMaxLength(2)
             key_edit.setFixedWidth(80)
+            key_edit.setStyleSheet(self._input_qss())
             key_edit.setToolTip(self._t("trigger_key_tip", "按鍵"))
             grid.addWidget(key_edit, row, 3)
 
@@ -336,13 +347,14 @@ class SkillTimerModule(QWidget):
             interval_spin.setSingleStep(50)
             interval_spin.setValue(1000)
             interval_spin.setFixedWidth(90)
+            interval_spin.setStyleSheet(self._input_qss())
             interval_spin.setSuffix(" ms")
             interval_spin.setToolTip(self._t("delay_entry_tip", "間隔時間（毫秒）"))
             grid.addWidget(interval_spin, row, 4)
 
             status_lbl = QLabel(self._t("skill_timer_stopped", "● 停止"))
             status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            status_lbl.setStyleSheet(f"color: {_COLOR_OFF}; font-family: Consolas;")
+            status_lbl.setStyleSheet(self._status_qss(False))
             grid.addWidget(status_lbl, row, 5)
 
             toggle_btn = PushButton("▶")
@@ -363,7 +375,8 @@ class SkillTimerModule(QWidget):
         ctrl_row = self._n + 2
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.Shape.HLine)
-        sep2.setStyleSheet(f"color: {_COLOR_HEADER};")
+        sep2.setStyleSheet(self._sep_qss())
+        self._separators.append(sep2)
         grid.addWidget(sep2, ctrl_row, 0, 1, len(headers))
 
         btn_layout = QHBoxLayout()
@@ -377,11 +390,72 @@ class SkillTimerModule(QWidget):
 
         if not _PYAUTOGUI_OK:
             warn = QLabel(self._t("skill_timer_no_pyautogui", "⚠ 找不到 pyautogui，請執行： pip install pyautogui"))
-            warn.setStyleSheet(f"color: {_COLOR_WARN}; font-family: Consolas; font-size: 11px;")
+            warn.setStyleSheet(self._warn_qss())
+            self._warn_label = warn
             grid.addWidget(warn, ctrl_row + 2, 0, 1, len(headers))
 
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(5, 1)
+
+    # ────────────────────────────────────────────────────
+    #  主題（顏色一律取自 qt.theme token；沿用原語意：ON=success、OFF=error、表頭=fg_muted、警告=warning）
+    # ────────────────────────────────────────────────────
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新（由 ComboTab.refresh_theme 轉發；本模組不自行連主題訊號）。
+
+        只重上顏色：不動計時狀態、槽位設定、按鈕文字、語言文字與任何業務邏輯；
+        重複呼叫不累積 QSS。
+        """
+        self.frame.setStyleSheet(self._frame_qss())
+        for lbl in self._header_labels:
+            lbl.setStyleSheet(self._header_qss())
+        for lbl in self._slot_labels:
+            lbl.setStyleSheet(self._slot_label_qss())
+        for sep in self._separators:
+            sep.setStyleSheet(self._sep_qss())
+        for i, slot in enumerate(self.slots):
+            key_edit = slot._key_edit
+            spin = slot._interval_spin
+            if key_edit is not None:
+                key_edit.setStyleSheet(self._input_qss())
+            if spin is not None:
+                spin.setStyleSheet(self._input_qss())
+            self._status_labels[i].setStyleSheet(self._status_qss(slot.is_running))
+        if self._warn_label is not None:
+            self._warn_label.setStyleSheet(self._warn_qss())
+
+    def _frame_qss(self) -> str:
+        return f"QGroupBox {{ color: {current_tokens()['fg']}; }}"
+
+    @staticmethod
+    def _input_qss() -> str:
+        """輸入框（QLineEdit/QSpinBox）底/字色。
+
+        原生欄位是「透明背景 + OS palette 字色」：dark 下恰好是深色底白字，但 light 下
+        會變成白底白字（完全不可見）。必須顯式指定成 token 底色＋token 字色。
+        不指定邊框/內距/箭頭，其他原生外觀維持不變。
+        """
+        tok = current_tokens()
+        return f"background-color: {tok['surface']}; color: {tok['fg']};"
+
+    def _header_qss(self) -> str:
+        return f"color: {current_tokens()['fg_muted']}; font-weight: 600;"
+
+    @staticmethod
+    def _slot_label_qss() -> str:
+        return f"color: {current_tokens()['fg']};"
+
+    def _sep_qss(self) -> str:
+        return f"color: {current_tokens()['fg_muted']};"
+
+    @staticmethod
+    def _status_qss(running: bool) -> str:
+        tok = current_tokens()
+        return f"color: {tok['success'] if running else tok['error']}; font-family: Consolas;"
+
+    def _warn_qss(self) -> str:
+        return f"color: {current_tokens()['warning']}; font-family: Consolas; font-size: 11px;"
 
     # ────────────────────────────────────────────────────
     #  控制邏輯
@@ -409,11 +483,11 @@ class SkillTimerModule(QWidget):
         btn = self._toggle_btns[idx]
         if running:
             lbl.setText(self._t("skill_timer_running", "● 執行中"))
-            lbl.setStyleSheet(f"color: {_COLOR_ON}; font-family: Consolas;")
+            lbl.setStyleSheet(self._status_qss(True))
             btn.setText("■")
         else:
             lbl.setText(self._t("skill_timer_stopped", "● 停止"))
-            lbl.setStyleSheet(f"color: {_COLOR_OFF}; font-family: Consolas;")
+            lbl.setStyleSheet(self._status_qss(False))
             btn.setText("▶")
 
         if self._on_log:

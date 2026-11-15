@@ -18,10 +18,10 @@ import traceback
 from PySide6.QtCore import QPoint, QTimer
 from PySide6.QtWidgets import QApplication
 
-from qfluentwidgets import Theme, setTheme
-
 from _version import __version__
+from config_manager import get_config_manager
 from logging_setup import configure as configure_logging
+from qt import theme
 from qt.main_window import MainWindow
 from utils import emergency_exit_handler, get_user_data_dir
 
@@ -40,6 +40,37 @@ def _install_exception_hook():
             os._exit(1)
 
     sys.excepthook = hook
+
+
+def _smoke_theme_switch(window: MainWindow) -> None:
+    """smoke：Dark → Light → Dark 即時切換（狀態列 / Toast 走 token，不得累積 QSS）。"""
+    from qfluentwidgets import isDarkTheme
+
+    from qt.theme import apply_theme, current_tokens, qss_color
+
+    dark_bar_qss = window._status_bar.styleSheet()
+    assert isDarkTheme(), "smoke 應以 dark 主題啟動"
+
+    apply_theme("light")
+    QApplication.processEvents()
+    light_bar_qss = window._status_bar.styleSheet()
+    assert not isDarkTheme(), "apply_theme('light') 未生效"
+    assert dark_bar_qss != light_bar_qss, "狀態列 QSS 未隨主題變更"
+    assert current_tokens()["fg_muted"] in light_bar_qss, f"狀態列未套 light token: {light_bar_qss!r}"
+
+    window._show_notice_impl("smoke theme", "success")
+    QApplication.processEvents()
+    notice = window._floating_notice
+    assert notice is not None, "toast 未建立"
+    assert qss_color(current_tokens()["toast_bg"]) in notice._label.styleSheet(), "toast 未套 light token"
+
+    apply_theme("dark")
+    QApplication.processEvents()
+    assert isDarkTheme(), "apply_theme('dark') 未生效"
+    assert window._status_bar.styleSheet() == dark_bar_qss, "Dark 狀態列樣式累積/不一致"
+    assert qss_color(current_tokens()["toast_bg"]) in notice._label.styleSheet(), "顯示中 toast 未跟隨切回 dark"
+    notice.hide_notice()
+    print("SMOKE THEME SWITCH OK (dark → light → dark)")
 
 
 def _smoke_thread_test(window: MainWindow) -> None:
@@ -151,13 +182,20 @@ def main(argv=None) -> int:
     app.setApplicationVersion(__version__)
 
     _install_exception_hook()
-    setTheme(Theme.DARK)
+
+    # 主題：QApplication 之後、MainWindow 之前套用；沿用 ConfigManager（不另建設定讀寫路徑），
+    # 缺檔 / 舊檔 / 非法值一律回退 dark。
+    # Phase 3B：apply_theme 預設同時套用全域 QPalette 與全域 QSS（原生控件統一外觀）。
+    _config_manager = get_config_manager()
+    _config_manager.load_config()
+    theme.apply_theme(_config_manager.get_config_value("theme", theme.DEFAULT_THEME))
 
     window = MainWindow()
     window.show()
     app.processEvents()  # 及早處理首次 paint，避免主視窗晚出
 
     if smoke:
+        _smoke_theme_switch(window)
         _smoke_thread_test(window)
 
         def _verify_signal_path():

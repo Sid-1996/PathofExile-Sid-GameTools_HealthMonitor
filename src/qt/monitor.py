@@ -21,6 +21,7 @@ from PySide6.QtCore import QObject, QRect, Qt, Signal, QTimer
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -48,18 +49,14 @@ from image_utils import (
     resize_and_center_image,
 )
 from qt.monitor_dialogs import AdjustColorsDialog, AdjustInterfaceUiDialog
+from qt.theme import current_tokens
 from utils import get_user_data_dir
 
 logger = logging.getLogger(__name__)
 
-# ── 色票（與 tk 版 ui_theme 對齊）──
-ERROR = "#f38ba8"
-SUCCESS = "#a6e3a1"
-INFO = "#89b4fa"
-WARNING = "#f9e2af"
-MUTED = "#b8b8c8"
-INPUT_BG = "#1e1e2e"
-GROUP_BORDER = "#3d3d5c"
+# ── 顏色：唯一來源是 qt.theme token（Phase 2D 移除本地色票）──
+# 語意色沿用 Catppuccin 次組（success_soft / warning_soft / error_soft / info_soft），
+# 卡片底 surface、群組邊框 border_strong、說明文字 fg_muted。
 
 
 def _validate_key_sequence(key_sequence):
@@ -251,6 +248,13 @@ class MonitorTab(QWidget):
         self.status_update_interval = 100
         self._preview_placeholder_shown = False
 
+        # (widget, 樣式規格)：只記 token 名稱與非色彩樣式，refresh_theme() 時才解析成目前主題
+        self._styled: list[tuple[QWidget, tuple]] = []
+        # 區域標籤（血條/魔力/介面UI）→ 語意 tone；已框選為 success_soft、未框選為 fg_muted
+        self._region_labels: dict[QWidget, str] = {}
+        # 目前開啟中的 Monitor Dialog（由 refresh_theme() 跟著換色，不關閉、不重建）
+        self._dialogs: list[QDialog] = []
+
         self._signals = _MonitorSignals()
         self._signals.status_updated.connect(self._on_status_updated)
         self._signals.health_preview.connect(self._on_health_preview)
@@ -272,7 +276,7 @@ class MonitorTab(QWidget):
         root.setSpacing(12)
 
         self.page_title_label = QLabel(self._app.get_text("monitor_title"))
-        self.page_title_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #f8f8f2;")
+        self._apply_style(self.page_title_label, ("title",))
         root.addWidget(self.page_title_label)
 
         body = QHBoxLayout()
@@ -282,8 +286,13 @@ class MonitorTab(QWidget):
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # 原生捲動區（含 viewport）會用 OS palette 色鋪底（light 主題下是深色殘留）→ 改透明跟頁面底
+        left_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         left_content = QWidget()
         left_scroll.setWidget(left_content)
+        # setWidget() 會把 content 的 autoFillBackground 重設為 True，必須在 setWidget 之後才關閉
+        left_content.setAutoFillBackground(False)
+        left_scroll.viewport().setAutoFillBackground(False)
         left_layout = QVBoxLayout(left_content)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12)
@@ -305,23 +314,119 @@ class MonitorTab(QWidget):
         self._build_interface_ui_group(right_layout)
         right_layout.addStretch(1)
 
+        # 原本完全未上色、走 OS palette 的說明文字：light 主題下會殘留深色主題的亮色字 → 統一用 fg token
+        for lbl in (
+            self.game_window_label,
+            self.health_bar_region_label,
+            self.mana_bar_region_label,
+            self.interface_ui_region_label,
+            self.type_label,
+            self.percentage_label,
+            self.hotkey_label,
+            self.cooldown_label,
+            self.current_health_label,
+            self.current_mana_label,
+            self.main_color_label,
+            self.trigger_status_label,
+            self.color_label,
+            self.trigger_label,
+            self.check_freq_label,
+            self.ms_label,
+            self.language_label,
+            self.gui_settings_label,
+            self.preview_settings_label,
+            self.preview_interval_label,
+            self.preview_ms_label,
+        ):
+            self._apply_style(lbl, ("text", "fg"))
+
+    # ────────────────────────── 主題（顏色一律取自 qt.theme token）──────────────────────────
+
+    @staticmethod
+    def _style_qss(spec: tuple) -> str:
+        """(種類[, token]) → QSS；顏色全部來自 qt.theme token。"""
+        kind = spec[0]
+        tok = current_tokens()
+        if kind == "group":
+            # 群組框原本只寫 border + color，內部由 OS palette 的 Window 色鋪底 → 改用 surface 當卡片底
+            return (
+                f"QGroupBox {{ border: 1px solid {tok['border_strong']}; border-radius: 8px; margin-top: 10px; "
+                f"padding-top: 6px; color: {tok['fg']}; background: {tok['surface']}; }}"
+                "QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; }"
+            )
+        if kind == "title":
+            return f"font-size: 20px; font-weight: 600; color: {tok['fg']};"
+        if kind == "value":
+            return f"font-size: 16px; font-weight: 700; color: {tok[spec[1]]};"
+        if kind == "canvas":
+            return f"background-color: {tok['surface']}; border: 1px solid {tok['border_strong']}; border-radius: 4px; color: {tok['fg_muted']};"
+        if kind == "hint":
+            return f"font-size: 11px; color: {tok['fg_muted']};"
+        if kind == "text":
+            return f"color: {tok[spec[1]]};"
+        if kind == "table":
+            # 原生 QTableWidget 的底/字/框線來自 OS palette（light 主題下整張是深色殘留）→ 用 token 自繪
+            return (
+                f"QTableWidget {{ background-color: {tok['surface']}; color: {tok['fg']}; gridline-color: {tok['border']}; border: 1px solid {tok['border']}; }}"
+                f"QTableWidget::item {{ color: {tok['fg']}; }}"
+                f"QHeaderView::section {{ background-color: {tok['surface']}; color: {tok['fg_muted']}; border: none; border-bottom: 1px solid {tok['border']}; }}"
+            )
+        raise ValueError(f"未知的樣式種類: {kind}")
+
+    def _apply_style(self, widget: QWidget, spec: tuple) -> None:
+        """套用樣式並登記，供 refresh_theme() 重上。"""
+        self._styled.append((widget, spec))
+        widget.setStyleSheet(self._style_qss(spec))
+
+    def refresh_theme(self) -> None:
+        """主題切換刷新：只重上既有元件 QSS。
+
+        不重建 widget、不改內容/輸入值/監控狀態、不動執行緒與計時器；
+        區域標籤依業務狀態（已框選 success_soft）重上；已開啟的 Monitor Dialog 跟著換色
+        （不關閉、不重建）。單一元件或單一 Dialog 失敗不阻斷其他元件。
+        """
+        alive: list[tuple[QWidget, tuple]] = []
+        for widget, spec in self._styled:
+            try:
+                widget.setStyleSheet(self._style_qss(spec))
+            except RuntimeError:
+                continue  # 已被刪除的舊元件
+            alive.append((widget, spec))
+        self._styled = alive
+
+        for label, tone in list(self._region_labels.items()):
+            try:
+                label.setStyleSheet(self._region_label_style(tone))
+            except RuntimeError:
+                self._region_labels.pop(label, None)
+
+        for dialog in list(self._dialogs):
+            try:
+                dialog.refresh_theme()
+            except Exception:
+                logger.exception("Monitor Dialog 主題刷新失敗: %s", type(dialog).__name__)
+
     def _styled_group(self, title):
         box = QGroupBox(title)
-        box.setStyleSheet(
-            f"QGroupBox {{ border: 1px solid {GROUP_BORDER}; border-radius: 8px; margin-top: 10px; padding-top: 6px; color: #f8f8f2; }}"
-            f"QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; }}"
-        )
+        self._apply_style(box, ("group",))
         return box
 
     def _region_label(self):
         label = QLabel("--")
         label.setWordWrap(True)
-        label.setStyleSheet(self._region_label_style(color=MUTED))
+        self._region_labels[label] = "fg_muted"
+        label.setStyleSheet(self._region_label_style("fg_muted"))
         return label
 
-    @staticmethod
-    def _region_label_style(color):
-        return f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; padding: 4px 8px; color: {color};"
+    def _region_label_style(self, tone: str) -> str:
+        """區域標籤樣式；tone 為 token 名稱（未框選 fg_muted / 已框選 success_soft）。"""
+        tok = current_tokens()
+        return f"background-color: {tok['surface']}; border: 1px solid {tok['border_strong']}; border-radius: 4px; padding: 4px 8px; color: {tok[tone]};"
+
+    def _set_region_tone(self, label: QLabel, tone: str) -> None:
+        """更新區域標籤的語意色（業務狀態），並記錄下來供主題刷新重上。"""
+        self._region_labels[label] = tone
+        label.setStyleSheet(self._region_label_style(tone))
 
     def _build_window_group(self, layout):
         self.window_frame = self._styled_group(self._app.get_text("game_window_settings"))
@@ -456,6 +561,7 @@ class MonitorTab(QWidget):
         vbox.addLayout(options_row)
 
         self.settings_tree = QTableWidget(0, 4)
+        self._apply_style(self.settings_tree, ("table",))
         self.settings_tree.setHorizontalHeaderLabels([self._app.get_text("type"), self._app.get_text("percentage"), self._app.get_text("hotkey"), self._app.get_text("cooldown_ms")])
         self.settings_tree.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.settings_tree.verticalHeader().setVisible(False)
@@ -503,7 +609,7 @@ class MonitorTab(QWidget):
 
         self.reminder_label = QLabel(self._app.get_text("reminder_text"))
         self.reminder_label.setWordWrap(True)
-        self.reminder_label.setStyleSheet(f"color: {ERROR};")
+        self._apply_style(self.reminder_label, ("text", "error_soft"))
         vbox.addWidget(self.reminder_label)
 
         lang_row = QHBoxLayout()
@@ -585,13 +691,13 @@ class MonitorTab(QWidget):
         self.current_health_label = QLabel(self._app.get_text("current_health"))
         grid.addWidget(self.current_health_label, 0, 0)
         self.health_label = QLabel("--")
-        self.health_label.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {ERROR};")
+        self._apply_style(self.health_label, ("value", "error_soft"))
         grid.addWidget(self.health_label, 0, 1)
 
         self.current_mana_label = QLabel(self._app.get_text("current_mana"))
         grid.addWidget(self.current_mana_label, 1, 0)
         self.mana_label = QLabel("--")
-        self.mana_label.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {INFO};")
+        self._apply_style(self.mana_label, ("value", "info_soft"))
         grid.addWidget(self.mana_label, 1, 1)
 
         self.main_color_label = QLabel(self._app.get_text("main_color"))
@@ -630,7 +736,7 @@ class MonitorTab(QWidget):
         label.setMinimumSize(260, 170)
         # 上限切斷回饋循環：QLabel sizeHint 會追著 pixmap 走，週期性 setPixmap 會讓 label 無限撐大
         label.setMaximumSize(*self.preview_size)
-        label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+        self._apply_style(label, ("canvas",))
         return label
 
     @staticmethod
@@ -650,11 +756,11 @@ class MonitorTab(QWidget):
         self.interface_ui_preview_label = QLabel("--")
         self.interface_ui_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.interface_ui_preview_label.setFixedSize(160, 100)
-        self.interface_ui_preview_label.setStyleSheet(f"background-color: {INPUT_BG}; border: 1px solid {GROUP_BORDER}; border-radius: 4px; color: {MUTED};")
+        self._apply_style(self.interface_ui_preview_label, ("canvas",))
         vbox.addWidget(self.interface_ui_preview_label, 0, Qt.AlignmentFlag.AlignHCenter)
 
         self.interface_ui_preview_hint = QLabel(self._app.get_text("interface_ui_preview_hint"))
-        self.interface_ui_preview_hint.setStyleSheet(f"font-size: 11px; color: {MUTED};")
+        self._apply_style(self.interface_ui_preview_hint, ("hint",))
         self.interface_ui_preview_hint.setWordWrap(True)
         vbox.addWidget(self.interface_ui_preview_hint)
 
@@ -1058,14 +1164,14 @@ class MonitorTab(QWidget):
             self._app.config["mana_region"] = region
             self._app.config.pop("mana_region_prop", None)
             self.mana_region_label.setText(get_mana_region_text(self._app.config, self._app.get_text))
-            self.mana_region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
+            self._set_region_tone(self.mana_region_label, "success_soft")
             QTimer.singleShot(100, self.capture_mana_preview_async)
         else:
             self.selected_region = region
             self._app.config["region"] = region
             self._app.config.pop("region_prop", None)
             self.region_label.setText(get_region_text(self._app.config, self._app.get_text))
-            self.region_label.setStyleSheet(self._region_label_style(color=SUCCESS))
+            self._set_region_tone(self.region_label, "success_soft")
             QTimer.singleShot(100, self.capture_preview_async)
         self._app.config.pop("config_version", None) if self._app.config.get("config_version") == 2 else None
         self._app.schedule_config_save()
@@ -1096,10 +1202,23 @@ class MonitorTab(QWidget):
         self._app.schedule_config_save()
 
     def open_adjust_colors(self):
-        AdjustColorsDialog(self._app, self).exec()
+        self._exec_dialog(AdjustColorsDialog)
 
     def open_adjust_interface_ui(self):
-        AdjustInterfaceUiDialog(self._app, self).exec()
+        self._exec_dialog(AdjustInterfaceUiDialog)
+
+    def _exec_dialog(self, dialog_cls):
+        """開啟 Monitor Dialog 並登記（主題刷新時跟著換色；關閉後移除登記）。
+
+        Dialog 只重上 QSS，不關閉、不重建，輸入值與操作狀態完全保留。
+        """
+        dialog = dialog_cls(self._app, self)
+        self._dialogs.append(dialog)
+        try:
+            dialog.exec()
+        finally:
+            if dialog in self._dialogs:
+                self._dialogs.remove(dialog)
 
     def _on_select_interface_ui(self):
         # 委派給 InventoryTab 的完整介面UI框選流程（overlay + 截圖 + 更新 label/preview）
