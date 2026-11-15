@@ -32,12 +32,27 @@ def _reset_theme(theme_window):
     theme._applied_theme = None
     theme.apply_theme("dark")
     theme_window.config["theme"] = "dark"
+    theme_window.settings_tab._pending_theme = None
     theme_window._config_save_timer.stop()
     yield
     theme_window._config_save_timer.stop()
     theme._applied_theme = None
     theme.apply_theme("dark")
     theme_window.config["theme"] = "dark"
+    theme_window.settings_tab._pending_theme = None
+
+
+@pytest.fixture(autouse=True)
+def restart_calls(theme_window, monkeypatch):
+    """攔截「重新啟動」請求（測試不得真的重啟）；回傳記錄呼叫次數的 list。
+
+    主題流程已改為「儲存設定 → 重新啟動 → 新程序完整套用新主題」，
+    選單切換會呼叫 MainWindow.restart_with_theme()；此處以 stub 取代，
+    避免測試真的開新程序或跳出模態對話框。
+    """
+    calls: list[int] = []
+    monkeypatch.setattr(theme_window, "restart_with_theme", lambda: calls.append(1))
+    return calls
 
 
 # ── UI ────────────────────────────────────────────────────────────────────
@@ -101,27 +116,39 @@ def test_refresh_theme_does_not_emit_selection_signal(theme_window):
 
 
 # ── 切換 ──────────────────────────────────────────────────────────────────
-def test_switch_dark_to_light_applies_theme_and_updates_config(theme_window):
-    """Dark → Light：立即套用主題並更新設定值。"""
+def test_switch_dark_to_light_saves_and_requests_restart(theme_window, restart_calls):
+    """Dark → Light：不得即時套用（已取消熱切換）；必須寫入設定並要求重新啟動。"""
     from qfluentwidgets import isDarkTheme
 
     tab = theme_window.settings_tab
     _select(theme_window, "light")
-    assert theme.current_theme() == "light"
-    assert isDarkTheme() is False
-    assert theme_window.config["theme"] == "light"
+    assert theme.current_theme() == "dark", "執行期間不得熱切換主題"
+    assert isDarkTheme() is True, "執行期間不得熱切換 qfluentwidgets 主題"
+    assert theme_window.config["theme"] == "light", "新主題必須寫入設定"
+    assert restart_calls == [1], "選擇不同主題必須要求重新啟動"
     assert tab.theme_combo.currentData() == "light"
 
 
-def test_switch_light_to_dark_applies_theme_and_updates_config(theme_window):
-    """Light → Dark：立即套用主題並更新設定值。"""
-    from qfluentwidgets import isDarkTheme
+def test_switch_light_to_dark_saves_and_requests_restart(theme_window, restart_calls):
+    """Light → Dark：同樣只寫設定 + 要求重新啟動，執行期間不套用。"""
+    theme.apply_theme("light")  # 模擬目前已套用 light
 
-    _select(theme_window, "light")
     _select(theme_window, "dark")
-    assert theme.current_theme() == "dark"
-    assert isDarkTheme() is True
+    assert theme.current_theme() == "light", "執行期間不得熱切換主題"
     assert theme_window.config["theme"] == "dark"
+    assert restart_calls == [1], "選擇不同主題必須要求重新啟動"
+
+
+def test_theme_change_does_not_trigger_fanout(theme_window, restart_calls):
+    """選擇主題不得觸發頁面 fan-out（執行期間熱切換已移除）。"""
+    calls: list[int] = []
+    monkeypatch_calls = theme_window._fan_out_tab_themes
+    theme_window._fan_out_tab_themes = lambda: calls.append(1)
+    try:
+        _select(theme_window, "light")
+    finally:
+        theme_window._fan_out_tab_themes = monkeypatch_calls
+    assert calls == [], f"切換主題不得觸發即時 fan-out：{calls}"
 
 
 def test_invalid_theme_option_is_not_applied(theme_window):
@@ -139,18 +166,10 @@ def test_invalid_theme_option_is_not_applied(theme_window):
         tab.theme_combo.removeItem(index)
 
 
-def test_single_user_switch_triggers_exactly_one_fanout(theme_window, monkeypatch):
-    """單次使用者切換只觸發一次頁面 fan-out。"""
-    calls: list[int] = []
-    original = theme_window._fan_out_tab_themes
-
-    def spy():
-        calls.append(1)
-        original()
-
-    monkeypatch.setattr(theme_window, "_fan_out_tab_themes", spy)
+def test_single_user_switch_requests_restart_exactly_once(theme_window, restart_calls):
+    """單次使用者切換只要求一次重新啟動。"""
     _select(theme_window, "light")
-    assert len(calls) == 1, f"fan-out 應恰為 1 次，實得 {len(calls)}"
+    assert len(restart_calls) == 1, f"重新啟動請求應恰為 1 次，實得 {len(restart_calls)}"
 
 
 def test_theme_switch_does_not_reenter_selection_callback(theme_window):
@@ -165,21 +184,17 @@ def test_theme_switch_does_not_reenter_selection_callback(theme_window):
         combo.currentTextChanged.disconnect(seen.append)
 
 
-def test_selecting_same_theme_does_not_reapply(theme_window, monkeypatch):
-    """選取「目前已是的主题」不得重複套用或重複寫設定。"""
-    calls: list[int] = []
-    original = theme_window._fan_out_tab_themes
-
-    def spy():
-        calls.append(1)
-        original()
-
-    monkeypatch.setattr(theme_window, "_fan_out_tab_themes", spy)
-    _select(theme_window, "light")
-    assert len(calls) == 1
+def test_selecting_same_theme_does_not_restart(theme_window, restart_calls):
+    """選取「目前已在使用的主題」不得重新啟動。"""
     combo = theme_window.settings_tab.theme_combo
-    combo.setCurrentIndex(combo.findData("light"))
-    assert len(calls) == 1, "同一主題不得再次觸發 fan-out"
+    combo.setCurrentIndex(combo.findData("dark"))
+    assert restart_calls == [], "同一主題不得重新啟動"
+    # 先切到別的主題（會要求重啟），再切回目前主題 → 不得再要求重啟
+    _select(theme_window, "light")
+    assert len(restart_calls) == 1
+    restart_calls.clear()
+    _select(theme_window, "dark")
+    assert restart_calls == [], "切回目前主題不得重新啟動"
 
 
 # ── 設定持久化 ────────────────────────────────────────────────────────────
@@ -197,7 +212,8 @@ def test_language_refresh_keeps_theme_and_relabels_options(theme_window):
         assert combo.itemText(combo.findData("light")) == g("theme_light")
         assert combo.itemText(combo.findData("dark")) == g("theme_dark")
         assert combo.currentData() == "light"
-        assert theme.current_theme() == "light", "語言刷新不得改變主題"
+        assert theme.current_theme() == "dark", "語言刷新不得改變已套用主題"
+        assert theme_window.config["theme"] == "light", "語言刷新不得改變已儲存主題"
         assert seen == [], f"語言刷新不得觸發選項變更：{seen}"
     finally:
         combo.currentTextChanged.disconnect(seen.append)
@@ -242,6 +258,26 @@ def test_theme_survives_config_roundtrip(theme_window):
     theme._applied_theme = None
     theme.apply_theme(cm.get_config_value("theme"))
     assert theme.current_theme() == "light"
+
+
+def test_theme_change_keeps_other_settings(theme_window):
+    """切換主題不得遺失或覆寫其他使用者設定（重啟後仍在）。"""
+    theme_window.config["always_on_top"] = True
+    theme_window.config["health_threshold"] = 0.42
+    theme_window.config["hotkeys"] = {"f3": "f4"}
+    _select(theme_window, "light")
+    assert theme_window.config["always_on_top"] is True
+    assert theme_window.config["health_threshold"] == 0.42
+    assert theme_window.config["hotkeys"].get("f3") == "f4"
+
+    from config_manager import ConfigManager
+
+    cm = ConfigManager(config_path=os.path.dirname(theme_window.config_manager.config_file))
+    cm.load_config()
+    assert cm.get_config_value("theme") == "light"
+    assert cm.get_config_value("always_on_top") is True
+    assert cm.get_config_value("health_threshold") == 0.42
+    assert cm.get_config_value("hotkeys").get("f3") == "f4"
 
 
 def test_page_refresh_does_not_schedule_config_save(theme_window):

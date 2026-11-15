@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
 
-from qt.theme import VALID_THEMES, apply_theme, current_theme, current_tokens, normalize_theme, token_pair
+from qt.theme import VALID_THEMES, current_theme, current_tokens, normalize_theme, token_pair
 
 
 def _style_body_label(label: BodyLabel, *, px: int | None = None, weight: QFont.Weight | None = None, token: str = "fg") -> BodyLabel:
@@ -115,6 +115,8 @@ class SettingsTab(ScrollArea):
         self._theme_label = BodyLabel(g("theme"), self.appearance_card)
         _style_body_label(self._theme_label)
         self._theme_label.setMinimumWidth(140)
+        # 已寫入設定、但尚未套用（等待重新啟動）的主題；None = 沒有待套用的變更
+        self._pending_theme: str | None = None
         self.theme_combo = ComboBox(self.appearance_card)
         # userData 帶內部主題名（dark / light）；顯示文字走 i18n，不直接顯示內部值
         self.theme_combo.addItem(g("theme_dark"), None, "dark")
@@ -270,12 +272,13 @@ class SettingsTab(ScrollArea):
         return {"dark": g("theme_dark"), "light": g("theme_light")}
 
     def _sync_theme_combo(self) -> None:
-        """把主題選項同步為「目前實際套用的主題」。
+        """把主題選項同步為「目前實際套用的主題」（若有已儲存待套用的主題則以它為準）。
 
         程式主動更新控件時暫時阻擋訊號，避免回呼 _on_theme_changed 造成重入；
         阻擋狀態用 blockSignals() 的回傳值保存並原樣還原（不永久關閉訊號）。
         """
-        index = self.theme_combo.findData(current_theme())
+        target = self._pending_theme or current_theme()
+        index = self.theme_combo.findData(target)
         if index < 0 or self.theme_combo.currentIndex() == index:
             return
         blocked = self.theme_combo.blockSignals(True)
@@ -297,11 +300,13 @@ class SettingsTab(ScrollArea):
         self._sync_theme_combo()
 
     def _on_theme_changed(self, text: str) -> None:
-        """使用者切換主題：套用 → 寫設定 → 排程儲存。
+        """使用者切換主題：寫入設定 → 重新啟動（重啟後由新程序完整套用新主題）。
 
-        重入防護：apply_theme() 會同步 emit themeChangedFinished → 全頁 fan-out →
-        SettingsTab.refresh_theme() → _sync_theme_combo()。後者以 blockSignals 保護，
-        故單次使用者切換 = 單次 apply_theme = 單次 fan-out，且不會重複寫入設定。
+        執行期間不再做熱切換：熱切換無法完整刷新所有頁面／對話框／控制項，
+        與其顯示半套主題，不如讓新程序在啟動階段一次性載入完整主題。
+
+        1. 立即把新主題寫進設定檔（重啟後由新程序讀取；debounce 不夠保證寫入完成）；
+        2. 詢問使用者是否立即重新啟動；不重啟則保留設定，下次啟動生效。
         """
         raw = self.theme_combo.currentData()
         if not isinstance(raw, str) or raw.strip().lower() not in VALID_THEMES:
@@ -310,16 +315,26 @@ class SettingsTab(ScrollArea):
             return
         name = normalize_theme(raw)
         if name == current_theme():
-            # 同一主題：不重複套用（apply_theme 本身即為 no-op）
+            # 同一主題：不重啟（僅補齊設定值）
             if self._app.config.get("theme") != name:
                 self._app.config["theme"] = name
                 self._app.schedule_config_save()
+            self._pending_theme = None
             self._sync_theme_combo()
             return
-        apply_theme(name)
+        # 不同主題：先確實寫入設定（寫入失敗就維持現狀，不得留下半套狀態）
         self._app.config["theme"] = name
-        self._app.schedule_config_save()
-        self._sync_theme_combo()
+        try:
+            saved = self._app.config_manager.save_config(self._app.config)
+        except Exception:
+            saved = False
+        if not saved:
+            self._app.config["theme"] = current_theme()
+            self._sync_theme_combo()
+            self._app.add_status_message(self._app.get_text("save_failed").format(error="theme"), "error")
+            return
+        self._pending_theme = name
+        self._app.restart_with_theme()
 
     def refresh_theme(self) -> None:
         """主題切換刷新：原生 QSS 需重上；BodyLabel 由 setTextColor(light, dark) 自動跟隨。"""

@@ -120,6 +120,27 @@ def _wait_exit_pid_arg(timeout_s: float = 20.0) -> None:
         pass
 
 
+def _startup_ready_marker() -> None:
+    """啟動參數含 --startup-ready-file=PATH 時，寫出「本程序已成功啟動」的就緒標記。
+
+    重新啟動流程需要正向確認新程序真的起來（不是「還沒死」），舊程序才允許結束自己。
+    標記必須在等待舊程序退出（--wait-exit-pid）之前寫出，否則舊程序會永遠等不到。
+    """
+    path = None
+    for a in sys.argv[1:]:
+        if a.startswith("--startup-ready-file="):
+            path = a.split("=", 1)[1]
+            break
+    if not path:
+        return
+    try:
+        from pathlib import Path
+
+        Path(path).write_text(str(os.getpid()), encoding="utf-8")
+    except OSError as e:
+        logger.warning("寫入啟動就緒標記失敗: %s (%s)", path, e)
+
+
 def _relaunch_detached(launch_args: list[str], cwd: str | None) -> bool:
     """分離程序重啟自己；新程序等本程序退出後才初始化"""
     import subprocess
@@ -141,11 +162,14 @@ def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv
     smoke = "--smoke" in argv
 
-    # 內建 relaunch：帶 --wait-exit-pid=N 時先等舊程序退出（必須在 velopack 之前）
-    _wait_exit_pid_arg(timeout_s=20.0)
-
     # 統一 logging 設定需在最先（任何 console 輸出前）執行；--debug / GTOOLS_LOG_LEVEL
     configure_logging()
+
+    # 就緒標記：必須在等待舊程序退出之前寫出（否則舊程序等不到就會放棄重啟）
+    _startup_ready_marker()
+
+    # 內建 relaunch：帶 --wait-exit-pid=N 時先等舊程序退出（必須在 velopack 之前）
+    _wait_exit_pid_arg(timeout_s=20.0)
 
     # 啟動前決定語系（在 QApplication 之前，與 ocr-trigger 一致：config 優先，缺省用系統語系）
     try:

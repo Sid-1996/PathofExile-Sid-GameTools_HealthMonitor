@@ -762,18 +762,133 @@ class MainWindow(FluentWindow):
             logger.warning("檢查遊戲視窗狀態失敗: %s", e)
             return False
 
-    def _relaunch_detached(self, launch_args: list[str], cwd: str | None) -> bool:
-        """分離程序重啟自己；新程序等本程序退出後才初始化（與 app._relaunch_detached 一致）"""
-        cmd = [sys.executable, *launch_args, f"--wait-exit-pid={os.getpid()}"]
+    def _relaunch_detached(self, launch_args: list[str], cwd: str | None, extra_args: list[str] | None = None) -> subprocess.Popen | None:
+        """分離程序重啟自己；新程序等本程序退出後才初始化（與 app._relaunch_detached 一致）。
+
+        回傳 Popen 讓呼叫端能確認新程序是否真的起來；啟動失敗回傳 None。
+        """
+        cmd = [sys.executable, *launch_args, f"--wait-exit-pid={os.getpid()}", *(extra_args or [])]
         flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
         breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0x01000000)
         for extra in (breakaway, 0):
             try:
-                subprocess.Popen(cmd, creationflags=flags | extra, close_fds=True, cwd=cwd)  # noqa: S603
-                return True
+                return subprocess.Popen(cmd, creationflags=flags | extra, close_fds=True, cwd=cwd)  # noqa: S603
             except OSError:
                 continue
-        return False
+
+    # ── 重新啟動（主題變更後由新程序完整套用新主題）──
+
+    def _launch_args_and_cwd(self) -> tuple[list[str], str]:
+        """組出「重新啟動自己」的啟動參數與工作目錄。
+
+        - PyInstaller 打包（frozen）：sys.executable 即本程式（EXE），直接重跑，不帶參數。
+        - 開發模式：用同一個 Python 執行 src/app.py，工作目錄為 repo 根目錄。
+        """
+        if getattr(sys, "frozen", False):
+            return [], str(Path(sys.executable).parent)
+        launch_args = ["src/app.py"]
+        if "--debug" in sys.argv:
+            launch_args.append("--debug")
+        return launch_args, str(Path(__file__).resolve().parent.parent.parent)
+
+    def _report_restart_failed(self, reason: str) -> None:
+        """重新啟動失敗：顯示明確錯誤；本程式維持可操作狀態。"""
+        logger.error("重新啟動失敗: %s", reason)
+        try:
+            text = self.get_text("theme_restart_failed").format(error=reason)
+        except Exception:
+            text = f"無法重新啟動程式：{reason}"
+        self.add_status_message(text, "error")
+        try:
+            QMessageBox.warning(self, self.get_text("theme_restart_title"), text)
+        except Exception:
+            pass
+
+    def restart_app(self, timeout_s: float = 20.0) -> bool:
+        """安全重新啟動：確認新程序已成功啟動後，才結束本程序。
+
+        1. 以既有 relaunch 機制啟動新程序（帶 --wait-exit-pid，新程序等本程序退出才初始化，
+           避免兩個實例同時搶全域熱鍵／截圖）；
+        2. 新程序於 main() 開頭寫出就緒標記（--startup-ready-file）作為「已起來」的正向確認；
+        3. 確認成功才正常結束本程序；失敗則保留本程序、收掉半啟動的新程序並顯示明確錯誤。
+        """
+        import tempfile
+
+        marker = Path(tempfile.gettempdir()) / f"GameTools_HealthMonitor_restart_ready_{os.getpid()}.marker"
+        try:
+            marker.unlink(missing_ok=True)
+        except OSError:
+            pass
+        launch_args, cwd = self._launch_args_and_cwd()
+        proc = self._relaunch_detached(launch_args, cwd, extra_args=[f"--startup-ready-file={marker}"])
+        if proc is None:
+            self._report_restart_failed("Popen failed")
+            return False
+        deadline = time.monotonic() + timeout_s
+        ready = False
+        while time.monotonic() < deadline:
+            if marker.exists():
+                ready = True
+                break
+            if proc.poll() is not None:
+                break  # 新程序已結束 → 啟動失敗
+            time.sleep(0.1)
+        try:
+            marker.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if not ready:
+            # 失敗：新程序沒起來 → 收掉它，避免與本程序並存（重複／殘留程序）
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            self._report_restart_failed("新程序未回報就緒")
+            return False
+        self._shutdown_for_restart()
+        return True
+
+    def _arm_exit_watchdog(self, seconds: float = 5.0) -> None:
+        """逾時仍未退出則結束本程序。
+
+        背景執行緒／全域掛勾可能讓事件迴圈無法自行結束；新程序已確認就绪，
+        故此處以成功碼結束是安全的，也避免新程序久等 --wait-exit-pid 而遲遲不接手。
+        """
+        threading.Thread(target=lambda: (time.sleep(seconds), os._exit(0)), daemon=True).start()
+
+    def _shutdown_for_restart(self) -> None:
+        """正常結束本程序，讓已就緒的新程序接手（不以強制終止處理正常重新啟動）。"""
+        try:
+            self.close_app()
+        except Exception:
+            logger.exception("重新啟動時關閉例外")
+        self._arm_exit_watchdog()
+
+    def restart_with_theme(self) -> None:
+        """主題已變更（設定已寫入）：詢問是否立即重新啟動。
+
+        重啟後由新程序在啟動階段完整套用新主題 —— 執行期間不再做熱切換。
+        """
+        title = self.get_text("theme_restart_title")
+        if title.startswith("["):
+            title = "主題已變更"
+        msg = self.get_text("theme_restart_message")
+        if msg.startswith("["):
+            msg = "主題已變更，是否立即重新啟動程式？"
+        try:
+            answer = QMessageBox.question(self, title, msg, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        except Exception:
+            answer = QMessageBox.StandardButton.No
+        if answer != QMessageBox.StandardButton.Yes:
+            hint = self.get_text("theme_restart_hint")
+            if not hint.startswith("["):
+                self.add_status_message(hint, "info")
+            return
+        self.restart_app()
 
     def change_language_display(self, display_name: str) -> None:
         from language_system import normalize_language_code
