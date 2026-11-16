@@ -3,8 +3,10 @@
 處理應用程式的設定載入、保存、註冊表操作等功能
 """
 
+import copy
 import json
 import logging
+import math
 import os
 import sys
 from datetime import datetime
@@ -25,27 +27,84 @@ class ConfigManager:
         base_dir = config_path if config_path else get_user_data_dir()
         self.config_file = os.path.join(base_dir, config_filename)
         self.config = {}
+        # 最近一次載入 / 儲存結果（供 GUI 提示與診斷；不寫入磁碟、不影響既有格式）
+        self.load_status = None  # 'restored_from_backup' | 'reset_to_defaults' | None
+        self.load_error = None
+        self.save_error = None
 
     def load_config(self):
-        """載入設定檔案"""
+        """載入設定檔案；正式檔無法解析時改用 .backup 並以還原內容修復正式檔。"""
+        self.load_status = None
+        self.load_error = None
+        if not os.path.exists(self.config_file):
+            if self._adopt_backup("正式設定檔不存在"):
+                return True
+            self.config = {}
+            self._ensure_hotkeys()
+            self._ensure_theme()
+            return True
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, "r", encoding="utf-8") as f:
-                    self.config = json.load(f)
-                self._ensure_hotkeys()
-                self._ensure_theme()
-                return True
-            else:
-                self.config = {}
-                self._ensure_hotkeys()
-                self._ensure_theme()
-                return True
+            self.config = self._read_json(self.config_file)
         except Exception as e:
+            self.load_error = str(e)
             logger.error("載入設定檔案失敗: %s", e)
+            if self._adopt_backup("設定檔無法解析"):
+                return True
+            # 正式檔與備份皆無效：改用預設值，損壞檔保留原處供診斷
+            logger.error("備份亦不可用，改用預設設定（損壞檔保留於 %s）", self.config_file)
+            self.load_status = "reset_to_defaults"
             self.config = {}
             self._ensure_hotkeys()
             self._ensure_theme()
             return False
+        self._ensure_hotkeys()
+        self._ensure_theme()
+        return True
+
+    @staticmethod
+    def _read_json(path):
+        """讀取並驗證設定檔（內容必須是 JSON 物件）。"""
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("設定檔內容必須是 JSON 物件")
+        return data
+
+    @staticmethod
+    def _read_text(path):
+        """讀取原始文字（不存在回 None）。"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return None
+
+    def _adopt_backup(self, reason):
+        """備份通過解析/正規化才採用；成功時回寫正式檔（備份本身不動）。"""
+        backup_file = self.config_file + ".backup"
+        if not os.path.exists(backup_file):
+            return False
+        try:
+            data = self._read_json(backup_file)
+        except Exception as e:
+            logger.error("%s，且備份檔無法解析: %s", reason, e)
+            self.load_error = f"{self.load_error or ''} | backup: {e}".strip(" |")
+            return False
+        self.config = data
+        self._ensure_hotkeys()
+        self._ensure_theme()
+        try:
+            text = json.dumps(self.config, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error("%s，備份內容無法序列化: %s", reason, e)
+            return False
+        self.load_status = "restored_from_backup"
+        logger.warning("%s，已從備份還原設定", reason)
+        try:
+            self._write_text_atomic(self.config_file, text)
+        except Exception as e:
+            logger.error("已從備份還原設定，但回寫正式檔失敗: %s", e)
+        return True
 
     # ponytail: 白名單與 settings.py 同步（F1-F11 / ins/home/pgup/pgdn/end 各含 Ctrl/Alt，F12 保留）
     _NAV_KEYS = ("ins", "home", "pgup", "pgdn", "end")
@@ -104,43 +163,125 @@ class ConfigManager:
         self.config["theme"] = theme_name
 
     def save_config(self, config_data=None):
-        """儲存設定檔案（帶備份和異常恢復機制）"""
+        """儲存設定檔案：同目錄暫存檔 + fsync + os.replace 原子替換。
+
+        備份只由「已確認可解析的舊正式檔」產生，損壞內容不會覆蓋有效備份。
+        """
+        if config_data is not None:
+            self.config = config_data
         try:
-            if config_data is not None:
-                self.config = config_data
-
-            # 在保存前創建備份，防止配置文件被破壞
-            backup_file = self.config_file + ".backup"
-            if os.path.exists(self.config_file):
-                try:
-                    import shutil
-
-                    shutil.copy2(self.config_file, backup_file)
-                except Exception as backup_error:
-                    logger.warning("創建備份失敗: %s", backup_error)
-
-            # 保存配置文件
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=2, ensure_ascii=False)
-
-            return True
+            text = json.dumps(self.config, indent=2, ensure_ascii=False)
         except Exception as e:
+            self.save_error = str(e)
             logger.error("儲存設定檔案失敗: %s", e)
-
-            # 嘗試從備份恢復
-            backup_file = self.config_file + ".backup"
-            if os.path.exists(backup_file):
-                try:
-                    import shutil
-
-                    shutil.copy2(backup_file, self.config_file)
-                    logger.warning("已從備份恢復配置文件")
-                    return False
-                except Exception as restore_error:
-                    logger.error("從備份恢復失敗: %s", restore_error)
-                    return False
-
             return False
+        try:
+            if self._read_text(self.config_file) == text:
+                # 內容未變：不重寫、不輪替備份（避免無謂備份與暫存檔）
+                self.save_error = None
+                return True
+            self._rotate_backup()
+            self._write_text_atomic(self.config_file, text)
+        except Exception as e:
+            self.save_error = str(e)
+            logger.error("儲存設定檔案失敗: %s", e)
+            return False
+        self.save_error = None
+        return True
+
+    # 舊檔要能當備份：欄位型別須符合目前讀取端的期待（缺 key 不影響，由載入端補預設）
+    _BACKUP_FIELD_TYPES = {
+        "health_threshold": (int, float),
+        "red_h_range": (int, float),
+        "green_h_range": (int, float),
+        "red_saturation_min": (int, float),
+        "red_value_min": (int, float),
+        "green_saturation_min": (int, float),
+        "green_value_min": (int, float),
+        "interface_ui_mse_threshold": (int, float),
+        "interface_ui_ssim_threshold": (int, float),
+        "interface_ui_hist_threshold": (int, float),
+        "interface_ui_color_threshold": (int, float),
+        "interface_ui_region": (dict, list),  # legacy 版以 list 儲存
+        "monitor_interval": (int, float),
+        "preview_interval": (int, float),
+        "preview_enabled": (bool,),
+        "always_on_top": (bool,),
+        "multi_trigger": (bool,),
+        "multiple_triggers": (bool,),
+        "window_title": (str,),
+        "language": (str,),
+        "theme": (str,),
+        "hotkeys": (dict,),
+        "settings": (list,),
+    }
+
+    def _rotate_backup(self):
+        """僅在舊正式檔通過完整驗證時更新 .backup；備份失敗不影響主檔儲存。"""
+        old_text = self._read_text(self.config_file)
+        if old_text is None:
+            return
+        if not self._is_valid_old_config(old_text):
+            return  # 無效原因已於 _is_valid_old_config 記錄
+        try:
+            self._write_text_atomic(self.config_file + ".backup", old_text, validate=False)
+        except Exception as e:
+            logger.warning("更新備份檔失敗: %s", e)
+
+    @staticmethod
+    def _type_ok(value, types):
+        """欄位型別檢查：bool 不得當成數值，數值必須有限（拒絕 NaN/Infinity）。"""
+        if isinstance(value, bool):
+            return bool in types
+        if isinstance(value, (int, float)):
+            return (int in types or float in types) and math.isfinite(value)
+        return isinstance(value, types)
+
+    def _is_valid_old_config(self, text):
+        """舊正式檔是否適合作為備份：可解析、根為物件、欄位型別正確、正規化不需修補。"""
+        try:
+            data = json.loads(text)
+        except Exception as e:
+            logger.warning("目前設定檔無法解析（%s），保留既有備份不覆蓋", e)
+            return False
+        if not isinstance(data, dict):
+            logger.warning("目前設定檔根型別為 %s，保留既有備份不覆蓋", type(data).__name__)
+            return False
+        for key, types in self._BACKUP_FIELD_TYPES.items():
+            if key in data and not self._type_ok(data[key], types):
+                logger.warning("目前設定檔欄位型別錯誤（%s），保留既有備份不覆蓋", key)
+                return False
+        # 用與 load_config 相同的正規化流程檢查既有欄位是否會被改寫（熱鍵/主題/語言）
+        saved = self.config
+        try:
+            self.config = copy.deepcopy(data)
+            self._ensure_hotkeys()
+            self._ensure_theme()
+            normalized = self.config
+        finally:
+            self.config = saved
+        if any(normalized.get(k) != v for k, v in data.items()):
+            logger.warning("目前設定檔需正規化修補，保留既有備份不覆蓋")
+            return False
+        return True
+
+    def _write_text_atomic(self, path, text, validate=True):
+        """同目錄寫暫存檔 → flush/fsync → 驗證 → os.replace（同磁碟原子替換）。"""
+        tmp = f"{path}.tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                os.fsync(f.fileno())
+            if validate:
+                self._read_json(tmp)  # 寫出的內容必須可解析才替換正式檔
+            os.replace(tmp, path)
+        finally:
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError as e:
+                    logger.warning("清理暫存檔失敗: %s", e)
 
     def get_config_value(self, key, default=None):
         """獲取設定值"""
@@ -287,12 +428,41 @@ if __name__ == "__main__":
 
     tmp = tempfile.mkdtemp()
     cm = ConfigManager(config_path=tmp)
-    ok = cm.load_config()
-    assert ok, "load_config on empty dir should succeed"
+    assert cm.load_config(), "load_config on empty dir should succeed"
     cm.set_config_value("language", "en")
-    ok = cm.save_config()
-    assert ok, "save_config should succeed"
+    assert cm.save_config(), "save_config should succeed"
+    cm.set_config_value("language", "zh-cn")
+    assert cm.save_config(), "second save should succeed"
     cm2 = ConfigManager(config_path=tmp)
-    ok = cm2.load_config()
-    assert ok and cm2.get_config_value("language") == "en", "round-trip language=en failed"
+    assert cm2.load_config() and cm2.get_config_value("language") == "zh-cn", "round-trip language=zh-cn failed"
+    backup = cm.config_file + ".backup"
+    assert os.path.exists(backup), "second save should rotate .backup"
+
+    # 損壞正式檔 → 由備份還原（且備份內容不被損壞文字覆蓋）
+    with open(cm.config_file, "w", encoding="utf-8") as f:
+        f.write('{"hotkeys": ')
+    cm3 = ConfigManager(config_path=tmp)
+    assert cm3.load_config(), "corrupt config should be recovered from backup"
+    assert cm3.load_status == "restored_from_backup"
+    assert cm3.get_config_value("language") == "en", "restored content should be the last good save"
+    with open(backup, encoding="utf-8") as f:
+        assert json.load(f)["language"] == "en", "valid backup must not be overwritten by corrupt data"
+
+    # 原子寫入失敗 → 原正式檔完整、暫存檔清理
+    with open(cm3.config_file, encoding="utf-8") as f:
+        original = f.read()
+    real_replace = os.replace
+
+    def _boom(*args, **kwargs):
+        raise OSError("disk full")
+
+    os.replace = _boom
+    try:
+        cm3.set_config_value("language", "zh-tw")
+        assert cm3.save_config() is False, "failed save should report False"
+    finally:
+        os.replace = real_replace
+    with open(cm3.config_file, encoding="utf-8") as f:
+        assert f.read() == original, "failed save must not damage the config file"
+    assert not os.path.exists(cm3.config_file + ".tmp"), "temp file should be cleaned up"
     print("config_manager self-check OK")

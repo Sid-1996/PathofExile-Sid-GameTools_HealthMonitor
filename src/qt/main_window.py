@@ -201,6 +201,7 @@ class MainWindow(FluentWindow):
         self.config_manager = self.config_manager_factory()  # 取得 singleton
         self.config_manager.load_config()
         self.config = self.config_manager.config
+        self._config_save_error = False  # 儲存失敗提示去重（避免 debounce 連續彈窗）
         self.language_manager = self.language_manager_factory()
         self.current_language = self.config.get("language", "zh-tw")
         self.language_manager.change_language(self.current_language)
@@ -248,6 +249,8 @@ class MainWindow(FluentWindow):
 
         self._refresh_theme_all()  # 初始上色（改用 token 後與啟動主題一致）
         self._initialized = True
+        # 載入異常（從備份還原／回預設）延後到事件迴圈再提示，避免建構期間彈窗
+        QTimer.singleShot(0, self._notify_config_load_status)
 
     def _load_monitor_config(self) -> None:
         cfg = self.config
@@ -333,9 +336,41 @@ class MainWindow(FluentWindow):
             if self.interface_ui_region:
                 self.config["interface_ui_region"] = self.interface_ui_region
             self.config["language"] = self.current_language
-            self.config_manager.save_config(self.config)
+            ok = self.config_manager.save_config(self.config)
         except Exception as e:
-            self.add_status_message(self.get_text("save_failed").format(error=str(e)), "error")
+            self._on_config_save_result(False, str(e))
+        else:
+            self._on_config_save_result(ok)
+
+    def _on_config_save_result(self, ok: bool, error: str = "") -> None:
+        """儲存結果回饋：失敗只提示一次（debounce 不連彈），成功後恢復正常狀態。"""
+        if ok:
+            if self._config_save_error:
+                self._config_save_error = False
+                logger.info("設定儲存已恢復正常")
+            return
+        detail = error or getattr(self.config_manager, "save_error", "") or "unknown"
+        logger.error("設定儲存失敗: %s", detail)
+        if self._config_save_error:
+            return  # 同一波失敗已提示過，只留 log
+        self._config_save_error = True
+        if self._is_closing:
+            return  # 關閉期間不彈 GUI；log 已保留診斷資訊
+        msg = self.get_text("config_save_failed").format(error=detail)
+        self.add_status_message(msg, "error")
+        self.show_floating_notice(msg, "error")
+
+    def _notify_config_load_status(self) -> None:
+        """設定載入異常提示（只提示一次；狀態列 + 自動消失的 toast）。"""
+        status = getattr(self.config_manager, "load_status", None)
+        if status == "restored_from_backup":
+            msg = self.get_text("config_restored_from_backup")
+            self.add_status_message(msg, "warning")
+            self.show_floating_notice(msg, "warning")
+        elif status == "reset_to_defaults":
+            msg = self.get_text("config_reset_to_defaults")
+            self.add_status_message(msg, "error")
+            self.show_floating_notice(msg, "warning")
 
     # ── 血魔監控迴圈（Phase 4d：worker thread，UI 更新一律走 MonitorTab 的 signal）──
 
