@@ -13,33 +13,24 @@ import os
 import sys
 import threading
 import time
-import traceback
 
-from PySide6.QtCore import QPoint, QTimer
-from PySide6.QtWidgets import QApplication
+# 啟動診斷必須早於任何可能失敗的 import：PyInstaller --noconsole 下 stdout/stderr 為 None，
+# import 失敗（缺模組 / DLL）原本會無聲結束、零痕跡。
+import startup_diagnostics
 
-from _version import __version__
-from config_manager import get_config_manager
-from logging_setup import configure as configure_logging
-from qt import theme
-from qt.main_window import MainWindow
-from utils import emergency_exit_handler, get_user_data_dir
+startup_diagnostics.bootstrap()
+
+# 以下 import 刻意晚於 bootstrap()：ruff E402 在此為預期行為
+from PySide6.QtCore import QPoint, QTimer  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
+
+from _version import __version__  # noqa: E402
+from config_manager import get_config_manager  # noqa: E402
+from qt import theme  # noqa: E402
+from qt.main_window import MainWindow  # noqa: E402
+from utils import get_user_data_dir  # noqa: E402
 
 logger = logging.getLogger(__name__)
-
-
-def _install_exception_hook():
-    def hook(exc_type, exc_value, exc_tb):
-        logger.error("未捕獲的異常: %s: %s", exc_type.__name__, exc_value)
-        traceback.print_exception(exc_type, exc_value, exc_tb)
-        try:
-            from utils import emergency_exit_handler
-
-            emergency_exit_handler()
-        except Exception:
-            os._exit(1)
-
-    sys.excepthook = hook
 
 
 def _smoke_theme_switch(window: MainWindow) -> None:
@@ -162,8 +153,9 @@ def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv
     smoke = "--smoke" in argv
 
-    # 統一 logging 設定需在最先（任何 console 輸出前）執行；--debug / GTOOLS_LOG_LEVEL
-    configure_logging()
+    # logging / 例外攔截已於模組載入時由 startup_diagnostics.bootstrap() 完成
+    # （必須早於所有 import），此處不再重複設定。
+    logger.debug("APP START %s (smoke=%s)", __version__, smoke)
 
     # 就緒標記：必須在等待舊程序退出之前寫出（否則舊程序等不到就會放棄重啟）
     _startup_ready_marker()
@@ -205,7 +197,7 @@ def main(argv=None) -> int:
     app.setApplicationName("GameTools Health Monitor")
     app.setApplicationVersion(__version__)
 
-    _install_exception_hook()
+    # 例外攔截已於 bootstrap() 安裝（sys.excepthook 亦涵蓋 Qt slot 例外）。
 
     # 主題：QApplication 之後、MainWindow 之前套用；沿用 ConfigManager（不另建設定讀寫路徑），
     # 缺檔 / 舊檔 / 非法值一律回退 dark。
