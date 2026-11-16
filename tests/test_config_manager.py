@@ -270,3 +270,17 @@ def test_unrepairable_callers_can_still_load_after_double_corruption(tmp_config_
     assert reloaded.load_config() is True, "儲存後應能正常載入（不再走預設值）"
     assert reloaded.load_status is None
     assert reloaded.get_config_value("window_title") == "My Game Window"
+
+
+def test_double_corruption_notice_is_accurate_in_all_languages():
+    """三語言的 defaults 提示都必須說明：損壞檔保留供診斷，但設定檔會在下次儲存時被覆寫。"""
+    packs = json.loads((Path(__file__).resolve().parent.parent / "src" / "language_packs.json").read_text(encoding="utf-8"))
+    langs = ("zh-tw", "en", "zh-cn")
+    for lang in langs:
+        text = packs[lang]["config_reset_to_defaults"]
+        assert ("diagnos" in text) or ("診斷" in text) or ("诊断" in text), f"{lang} 提示未說明損壞檔保留供診斷"
+        assert ("overwritten" in text) or ("覆寫" in text) or ("覆写" in text), f"{lang} 提示未說明設定檔將被覆寫"
+        assert packs[lang]["config_restored_from_backup"], f"{lang} 缺少備份還原提示"
+
+    keys = {lang: {k for k in packs[lang] if k.startswith("config_")} for lang in langs}
+    assert keys["zh-tw"] == keys["en"] == keys["zh-cn"], "三語言的 config 提示鍵必須一致"

@@ -5,6 +5,9 @@ Phase 2/3：Skeleton + StatusTab 已完成，其餘 tab 陸續移植。
 
 smoke 模式（`python src/app.py --smoke`）：背景 thread 連發 5 條訊息驗證 worker→signal→UI，
 1s 後檢查 log 並關閉視窗，供 CI/打包驗證。
+
+打包版（--noconsole）的 stdout 為 None，print() 輸出會完全消失；
+smoke 的進度與成功/失敗改寫入使用者資料目錄的 smoke_result.txt（每次執行前覆寫）。
 """
 
 import json
@@ -61,7 +64,7 @@ def _smoke_theme_switch(window: MainWindow) -> None:
     assert window._status_bar.styleSheet() == dark_bar_qss, "Dark 狀態列樣式累積/不一致"
     assert qss_color(current_tokens()["toast_bg"]) in notice._label.styleSheet(), "顯示中 toast 未跟隨切回 dark"
     notice.hide_notice()
-    print("SMOKE THEME SWITCH OK (dark → light → dark)")
+    startup_diagnostics.write_smoke("SMOKE THEME SWITCH OK (dark → light → dark)")
 
 
 def _smoke_thread_test(window: MainWindow) -> None:
@@ -157,6 +160,11 @@ def main(argv=None) -> int:
     # （必須早於所有 import），此處不再重複設定。
     logger.debug("APP START %s (smoke=%s)", __version__, smoke)
 
+    # smoke 結果檔：每次執行前清空，成功/失敗都留下可讀證據（frozen 版 stdout 不可用）
+    if smoke:
+        startup_diagnostics.reset_smoke_result()
+        startup_diagnostics.write_smoke(f"SMOKE START pid={os.getpid()} frozen={bool(getattr(sys, 'frozen', False))}")
+
     # 就緒標記：必須在等待舊程序退出之前寫出（否則舊程序等不到就會放棄重啟）
     _startup_ready_marker()
 
@@ -217,10 +225,10 @@ def main(argv=None) -> int:
         def _verify_signal_path():
             n = len(window.status_tab.status_log)
             assert n >= 5, f"expected >=5 log entries, got {n}"
-            print(f"SMOKE STATUS THREAD OK ({n} entries)")
+            startup_diagnostics.write_smoke(f"SMOKE STATUS THREAD OK ({n} entries)")
             assert hasattr(window, "monitor_tab"), "monitor_tab missing"
             assert window.monitor_tab.health_label.text() == "100%", f"monitor signal path broken: {window.monitor_tab.health_label.text()!r}"
-            print(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
+            startup_diagnostics.write_smoke(f"SMOKE MONITOR TAB OK ({window.monitor_tab.settings_tree.rowCount()} triggers loaded)")
 
             # 預覽 label 回饋循環防護：連續兩次 setPixmap 後尺寸必須穩定（不得逐漸放大）
             from PIL import Image as _PILImage
@@ -232,7 +240,7 @@ def main(argv=None) -> int:
             _pv._set_preview_pixmap(_pv.preview_label, _PILImage.new("RGB", (100, 50), (255, 0, 0)))
             QApplication.processEvents()
             assert _pv.preview_label.size() == s1, f"preview label feedback loop: {s1} -> {_pv.preview_label.size()}"
-            print(f"SMOKE PREVIEW STABLE OK (label {s1.width()}x{s1.height()})")
+            startup_diagnostics.write_smoke(f"SMOKE PREVIEW STABLE OK (label {s1.width()}x{s1.height()})")
 
             # 遊戲視窗下拉：無重新整理按鈕，開啟前自動重掃；refresh 需訊號安全
             mt = window.monitor_tab
@@ -242,7 +250,7 @@ def main(argv=None) -> int:
             mt.window_title = "__SMOKE_KEEP_WINDOW_TITLE__"
             mt.refresh_windows()
             assert mt.window_title == "__SMOKE_KEEP_WINDOW_TITLE__", "refresh_windows clobbered window_title"
-            print("SMOKE WINDOW COMBO OK")
+            startup_diagnostics.write_smoke("SMOKE WINDOW COMBO OK")
 
             # InventoryTab：grid offset 調整 → 標籤 + 格子位置重算
             assert hasattr(window, "inventory_tab"), "inventory_tab missing"
@@ -253,7 +261,7 @@ def main(argv=None) -> int:
             assert it.offset_x_label.text() == str(start_x + 3) and it.offset_y_label.text() == str(start_y - 2), "offset label failed"
             it.reset_grid_offset()
             assert (it.grid_offset_x, it.grid_offset_y) == (0, 0), "reset offset failed"
-            print(f"SMOKE INVENTORY TAB OK (region={'set' if it.inventory_region else 'none'}, slots={len(it.inventory_grid_positions)})")
+            startup_diagnostics.write_smoke(f"SMOKE INVENTORY TAB OK (region={'set' if it.inventory_region else 'none'}, slots={len(it.inventory_grid_positions)})")
 
             # InventoryTab：合成影像預覽渲染 + exclusion 點擊 toggle
             import numpy as np
@@ -276,8 +284,8 @@ def main(argv=None) -> int:
             it.update_inventory_preview_with_items(img, [0, 59])
             QApplication.processEvents()
             assert it.inventory_preview_label.size() == s_before, f"inventory preview label feedback loop: {s_before} -> {it.inventory_preview_label.size()}"
-            print(f"SMOKE INVENTORY PREVIEW STABLE OK (label {s_before.width()}x{s_before.height()})")
-            print(f"SMOKE INVENTORY PREVIEW OK (meta cell={meta['cell_w']}x{meta['cell_h']})")
+            startup_diagnostics.write_smoke(f"SMOKE INVENTORY PREVIEW STABLE OK (label {s_before.width()}x{s_before.height()})")
+            startup_diagnostics.write_smoke(f"SMOKE INVENTORY PREVIEW OK (meta cell={meta['cell_w']}x{meta['cell_h']})")
 
             # InventoryTab Phase 5c：清包進度預覽渲染 + F3/F6 入口與 hotkey 註冊
             it.update_inventory_preview_with_progress(img, [0, 59], "smoke progress")
@@ -287,7 +295,7 @@ def main(argv=None) -> int:
             assert callable(window.setup_hotkeys), "setup_hotkeys missing"
             assert callable(window.should_keep_topmost), "should_keep_topmost missing"
             assert window.inventory_clear_interrupt is False, "inventory_clear_interrupt init failed"
-            print("SMOKE INVENTORY 5C OK")
+            startup_diagnostics.write_smoke("SMOKE INVENTORY 5C OK")
 
             # ComboTab Phase 6：3 套組 UI 接線 + 技能計時器
             assert hasattr(window, "combo_tab"), "combo_tab missing"
@@ -312,7 +320,7 @@ def main(argv=None) -> int:
             # 清空槽位再測：smoke 跑在開發機真實 config 上，槽 0 可能已設鍵
             st.slots[0].key = ""
             assert st.slots[0].start() is False, "empty key start should fail"
-            print("SMOKE COMBO TAB OK")
+            startup_diagnostics.write_smoke("SMOKE COMBO TAB OK")
 
             # Phase 7：Help/About/Version tabs
             assert hasattr(window, "help_tab") and hasattr(window, "about_tab") and hasattr(window, "version_tab"), "phase7 tabs missing"
@@ -324,7 +332,7 @@ def main(argv=None) -> int:
             assert callable(vt.check_for_updates) and callable(vt.silent_version_check) and callable(vt.test_github_connection), "version entries missing"
             assert vt.latest_version_label is not None and vt.release_notes_text is not None, "version ui missing"
             assert vt.format_release_notes("## header\n- item\n**bold**") == "◆ header\n• item\nbold", "format_release_notes failed"
-            print("SMOKE PHASE7 TABS OK")
+            startup_diagnostics.write_smoke("SMOKE PHASE7 TABS OK")
 
             # Phase 9：刪 tk 後的熱鍵與自動點擊接線
             mw = window
@@ -337,7 +345,7 @@ def main(argv=None) -> int:
             assert mw.is_global_pause() is True, "global pause toggle on failed"
             mw.toggle_global_pause()
             assert mw.is_global_pause() is False, "global pause toggle off failed"
-            print("SMOKE PHASE9 HOTKEYS OK")
+            startup_diagnostics.write_smoke("SMOKE PHASE9 HOTKEYS OK")
 
             # 最上方勾選框跨頁同步：撥監控頁 → 背包頁跟隨（測後還原原值）
             orig_top = mw.always_on_top
@@ -346,7 +354,7 @@ def main(argv=None) -> int:
             assert it.always_on_top_check.isChecked() == (not orig_top), "always-on-top cross-tab sync failed"
             mt.always_on_top_check.setChecked(orig_top)
             assert it.always_on_top_check.isChecked() == orig_top, "always-on-top restore failed"
-            print("SMOKE ALWAYS_ON_TOP SYNC OK")
+            startup_diagnostics.write_smoke("SMOKE ALWAYS_ON_TOP SYNC OK")
 
             # 即時儲存：改設定 → 等 debounce → config 檔已寫入新值（無需任何儲存按鈕）
             mw.health_threshold = 0.77
@@ -366,13 +374,13 @@ def main(argv=None) -> int:
                 if persisted:
                     break
             assert persisted, "autosave did not persist config"
-            print("SMOKE AUTOSAVE OK")
+            startup_diagnostics.write_smoke("SMOKE AUTOSAVE OK")
 
             # 介面UI框選按鈕須已接上 InventoryTab 流程，不得再有「後續階段」阻攔 stub
             assert hasattr(window.monitor_tab, "_on_select_interface_ui"), "select_interface_ui button not wired"
             assert "_not_portable_yet" not in dir(window.monitor_tab), "migration stub still present"
             assert callable(window.inventory_tab.start_interface_ui_selection), "interface_ui selection missing"
-            print("SMOKE INTERFACE_UI BUTTON OK")
+            startup_diagnostics.write_smoke("SMOKE INTERFACE_UI BUTTON OK")
 
             # 用不存在的視窗標題啟動監控，驗證迴圈啟動→執行→停止
             # （先 seed config，讓 start_monitoring 的 region/settings guard 通過，
@@ -386,14 +394,15 @@ def main(argv=None) -> int:
 
         def _verify_loop():
             assert window.monitor_tab.health_label.text() == "--", f"loop status update failed: {window.monitor_tab.health_label.text()!r}"
-            print("SMOKE MONITOR LOOP OK")
+            startup_diagnostics.write_smoke("SMOKE MONITOR LOOP OK")
             # F10 marshal 路徑：模擬 keyboard 監聽執行緒 emit signal，由主執行緒 queued 處理
             assert window.is_monitoring(), "monitor should be running before F10 stop"
             threading.Thread(target=window.f10_request.emit, daemon=True).start()
 
             def _after_f10():
                 assert not window.is_monitoring(), "f10_request did not stop monitoring on main thread"
-                print("SMOKE F10 MARSHAL OK")
+                startup_diagnostics.write_smoke("SMOKE F10 MARSHAL OK")
+                startup_diagnostics.mark_smoke_ok()
                 window.close()
 
             QTimer.singleShot(200, _after_f10)

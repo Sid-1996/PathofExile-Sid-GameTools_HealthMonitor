@@ -51,7 +51,7 @@ class ConfigManager:
             if self._adopt_backup("設定檔無法解析"):
                 return True
             # 正式檔與備份皆無效：改用預設值，損壞檔保留原處供診斷
-            logger.error("備份亦不可用，改用預設設定（損壞檔保留於 %s）", self.config_file)
+            logger.error("備份亦不可用，改用預設設定（損壞的設定檔與備份保留原處；設定檔將在下次儲存時被覆寫）: %s", self.config_file)
             self.load_status = "reset_to_defaults"
             self.config = {}
             self._ensure_hotkeys()

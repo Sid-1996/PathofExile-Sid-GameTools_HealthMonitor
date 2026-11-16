@@ -17,6 +17,9 @@
   （`%LOCALAPPDATA%\\GameTools_HealthMonitor` → frozen 時 exe 同層 → TEMP 逐級降級）
 - `bootstrap()`：一律掛 rotating file handler + 安裝 excepthook / threading.excepthook
 - 未捕捉例外 → 完整 traceback 寫入 `startup_crash.log`、一次性錯誤提示（含日誌位置）後結束
+- `write_smoke()` / `mark_smoke_ok()` / `mark_smoke_failed()`：frozen（--noconsole）版的
+  `sys.stdout` 為 None，`print()` 的輸出會完全消失；smoke 的成功與失敗改以
+  `smoke_result.txt`（與 gtools.log 同目錄、每次執行前覆寫）留下可讀證據。
 """
 
 import logging
@@ -34,6 +37,7 @@ _CRASH_LOG_NAME = "startup_crash.log"
 _FORMAT = "%(asctime)s %(levelname)-7s [%(module)s:%(lineno)d] %(message)s"
 _MAX_LOG_BYTES = 1_000_000
 _MAX_CRASH_BYTES = 256 * 1024
+_SMOKE_RESULT_NAME = "smoke_result.txt"
 _DIALOG_TITLE = "GameTools Health Monitor"
 # 標記本模組掛上的 handler，reset_for_tests() 才能只移除自己的
 _HANDLER_TAG = "_gtools_diagnostics"
@@ -43,7 +47,7 @@ logger = logging.getLogger(__name__)
 # 測試可替換：讓「結束行程」在測試中不真的發生
 _exit = os._exit
 
-_state = {"configured": False, "guards": False, "prompted": False, "handlers": []}
+_state = {"configured": False, "guards": False, "prompted": False, "handlers": [], "smoke_failed": False}
 
 
 def bootstrap() -> None:
@@ -165,6 +169,54 @@ def write_crash(kind: str, text: str) -> str | None:
         return None
 
 
+def smoke_result_path() -> str:
+    """smoke 結果檔路徑：與 gtools.log 同目錄（使用者資料目錄），不依賴 cwd。"""
+    return os.path.join(log_dir(), _SMOKE_RESULT_NAME)
+
+
+def reset_smoke_result() -> None:
+    """清空 smoke 結果檔：每次 smoke 執行前呼叫，只保留最新一次結果。"""
+    try:
+        with open(smoke_result_path(), "w", encoding="utf-8"):
+            pass
+    except Exception:  # ponytail: 診斷路徑不得因寫檔失敗而中斷啟動
+        pass
+
+
+def write_smoke(text: str) -> None:
+    """smoke 輸出：echo 到 stdout（開發模式）+ 追加到結果檔（frozen 模式 stdout 為 None）。
+
+    結果檔是 frozen --smoke 唯一的可觀測出口；寫入失敗不得影響流程。
+    """
+    line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {str(text).rstrip()}"
+    try:
+        if sys.stdout is not None:
+            print(line)
+    except Exception:
+        pass
+    try:
+        with open(smoke_result_path(), "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+            fh.flush()
+    except Exception:  # ponytail: 診斷路徑不得因寫檔失敗而中斷啟動
+        pass
+
+
+def mark_smoke_ok() -> None:
+    """標記 smoke 成功（已失敗則不再標記成功）。"""
+    if _state["smoke_failed"]:
+        return
+    write_smoke("SMOKE RESULT: OK")
+
+
+def mark_smoke_failed(reason: str) -> None:
+    """標記 smoke 失敗（同一行程只寫一次，避免重複輸出）。"""
+    if _state["smoke_failed"]:
+        return
+    _state["smoke_failed"] = True
+    write_smoke(f"SMOKE FAILED: {reason}")
+
+
 def _prompt_text(summary: str, log_file: str | None) -> str:
     lines = [
         "發生未預期的錯誤，程式已停止。",
@@ -243,6 +295,12 @@ def report_uncaught(exc_type, exc_value, exc_tb, context: str = "未捕捉的例
     except BaseException:  # ponytail: 寫檔失敗不得吃掉提示與結束流程
         crash_path = None
     try:
+        # smoke 模式下 stdout 不可用，失敗結果必須寫入結果檔才看得到
+        if "--smoke" in sys.argv:
+            mark_smoke_failed(f"{exc_type.__name__}: {exc_value}")
+    except BaseException:
+        pass
+    try:
         prompt_once(f"{exc_type.__name__}: {exc_value}", crash_path)
     except BaseException:
         pass
@@ -294,7 +352,7 @@ def reset_for_tests() -> None:
         except Exception:
             pass
     _state["handlers"].clear()
-    _state.update(configured=False, guards=False, prompted=False)
+    _state.update(configured=False, guards=False, prompted=False, smoke_failed=False)
 
 
 if __name__ == "__main__":
