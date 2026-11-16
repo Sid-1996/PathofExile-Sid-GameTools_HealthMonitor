@@ -21,7 +21,6 @@ from PySide6.QtCore import QObject, QRect, Qt, Signal, QTimer
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -50,6 +49,7 @@ from image_utils import (
 )
 from qt.monitor_dialogs import AdjustColorsDialog, AdjustInterfaceUiDialog
 from qt.theme import current_tokens
+from qt.theme_widgets import ThemedDialog
 from utils import get_user_data_dir
 
 logger = logging.getLogger(__name__)
@@ -253,7 +253,7 @@ class MonitorTab(QWidget):
         # 區域標籤（血條/魔力/介面UI）→ 語意 tone；已框選為 success_soft、未框選為 fg_muted
         self._region_labels: dict[QWidget, str] = {}
         # 目前開啟中的 Monitor Dialog（由 refresh_theme() 跟著換色，不關閉、不重建）
-        self._dialogs: list[QDialog] = []
+        self._dialogs: list[ThemedDialog] = []
 
         self._signals = _MonitorSignals()
         self._signals.status_updated.connect(self._on_status_updated)

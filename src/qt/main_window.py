@@ -909,14 +909,15 @@ class MainWindow(FluentWindow):
         self.schedule_config_save()
 
         # 詢問是否立即重啟（與 ocr-trigger 一致：Yes 重啟，No 下次生效）
+        # get_text() 內部自帶 try/except（永遠回傳字串），先取值保證 title/msg 必已綁定
+        title = self.get_text("language_restart_title")
+        msg = self.get_text("language_restart_message")
+        # fallback 若 key 缺失
+        if title.startswith("["):
+            title = "語言已變更" if new_language == "zh-tw" else "Language Changed"
+        if msg.startswith("["):
+            msg = "語言已變更，是否立即重啟程式？" if new_language == "zh-tw" else "Language has changed. Restart now?"
         try:
-            title = self.get_text("language_restart_title")
-            msg = self.get_text("language_restart_message")
-            # fallback 若 key 缺失
-            if title.startswith("["):
-                title = "語言已變更" if new_language == "zh-tw" else "Language Changed"
-            if msg.startswith("["):
-                msg = "語言已變更，是否立即重啟程式？" if new_language == "zh-tw" else "Language has changed. Restart now?"
             answer = QMessageBox.question(
                 self,
                 title,

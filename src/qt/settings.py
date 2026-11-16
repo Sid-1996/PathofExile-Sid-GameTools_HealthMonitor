@@ -5,7 +5,7 @@
 """
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QFont
+from PySide6.QtGui import QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from qfluentwidgets import BodyLabel, CardWidget, ComboBox, FluentIcon, PushButton, ScrollArea, SettingCardGroup, SwitchButton
@@ -21,7 +21,7 @@ def _style_body_label(label: BodyLabel, *, px: int | None = None, weight: QFont.
     `updateStyleSheet()` 整段覆蓋（顏色與字級都消失）。
     """
     light, dark = token_pair(token)
-    label.setTextColor(light, dark)
+    label.setTextColor(QColor(light), QColor(dark))
     if px is not None or weight is not None:
         font = label.font()
         if px is not None:
@@ -119,8 +119,8 @@ class SettingsTab(ScrollArea):
         self._pending_theme: str | None = None
         self.theme_combo = ComboBox(self.appearance_card)
         # userData 帶內部主題名（dark / light）；顯示文字走 i18n，不直接顯示內部值
-        self.theme_combo.addItem(g("theme_dark"), None, "dark")
-        self.theme_combo.addItem(g("theme_light"), None, "light")
+        self.theme_combo.addItem(g("theme_dark"), userData="dark")
+        self.theme_combo.addItem(g("theme_light"), userData="light")
         self.theme_combo.setMinimumWidth(160)
         self.theme_combo.currentTextChanged.connect(self._on_theme_changed)
         theme_row.addWidget(self._theme_label)

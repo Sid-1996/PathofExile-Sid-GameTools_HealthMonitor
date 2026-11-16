@@ -18,7 +18,6 @@ from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -276,7 +275,7 @@ class InventoryTab(QWidget):
         # 語意色元件（顏色依業務狀態決定）→ (樣式種類, token 名稱)
         self._tones: dict[QWidget, tuple[str, str]] = {}
         # 目前開啟中的 Inventory Dialog（由 refresh_theme() 跟著換色，不關閉、不重建）
-        self._dialogs: list[QDialog] = []
+        self._dialogs: list[ThemedDialog] = []
 
         self._signals = _InventorySignals(self)
         self._signals.progress_update.connect(self.update_inventory_preview_with_progress)
@@ -2528,8 +2527,8 @@ class InventoryTab(QWidget):
         try:
             get_hk = getattr(self._app, "get_hotkey", None)
             short_fn = getattr(self._app, "hotkey_short", None)
-            f3 = get_hk("f3", "f3") if callable(get_hk) else "f3"
-            f6 = get_hk("f6", "f6") if callable(get_hk) else "f6"
+            f3 = str(get_hk("f3", "f3") if callable(get_hk) else "f3")
+            f6 = str(get_hk("f6", "f6") if callable(get_hk) else "f6")
             f3_full = f3.upper()
             f6_full = f6.upper()
             f3_short = short_fn(f3) if callable(short_fn) else f3_full

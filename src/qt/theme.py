@@ -245,7 +245,7 @@ def _indicator_metrics() -> tuple[int, int, int]:
     from PySide6.QtWidgets import QApplication, QStyle
 
     app = QApplication.instance()
-    if app is None:
+    if not isinstance(app, QApplication):
         return (16, 16, 8)
     style = app.style()
     return (
@@ -321,7 +321,7 @@ def _apply_app_palette(theme_name: str) -> None:
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance()
-    if app is not None:
+    if isinstance(app, QApplication):
         app.setPalette(build_palette(theme_name))
 
 
@@ -330,5 +330,5 @@ def _apply_global_qss(theme_name: str) -> None:
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance()
-    if app is not None:
+    if isinstance(app, QApplication):
         app.setStyleSheet(build_global_qss(theme_name))

@@ -56,9 +56,23 @@ def window(qapp, tmp_path_factory, monkeypatch_module):
     theme.apply_theme("dark")
     w = mw.MainWindow()
     yield w
+    # 真正刪除 C++ 物件（含其 qconfig.themeChangedFinished 連線），避免下一個測試模組
+    # 建立 MainWindow 時多一個實例一起回應主題訊號（與 conftest.theme_window 對齊）。
     try:
+        from PySide6.QtCore import QCoreApplication, QEvent
+
+        from qfluentwidgets import qconfig
+
+        # 明確斷開 qconfig 連線：實測 close + deleteLater + DeferredDelete flush 後，
+        # connection 仍可能殘留（qconfig.receivers == 1），導致洩漏到下一個測試模組。
+        try:
+            qconfig.themeChangedFinished.disconnect(w._refresh_theme_all)
+        except (RuntimeError, TypeError):
+            pass  # 本就未連線
         w._is_closing = True
+        w.close()
         w.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     except Exception:
         pass
 
