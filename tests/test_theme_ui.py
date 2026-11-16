@@ -50,6 +50,9 @@ def window(qapp, tmp_path_factory, monkeypatch_module):
 
     monkeypatch_module.setattr(mw.MainWindow, "_refresh_theme_all", _counted)
 
+    # sys.argv 是全域狀態：加入 --smoke 前先備份，fixture 結束時還原，
+    # 否則殘留會讓後續測試誤判為 smoke 模式（與 conftest.theme_window 對齊）。
+    argv_backup = list(sys.argv)
     if "--smoke" not in sys.argv:
         sys.argv.append("--smoke")
 
@@ -75,6 +78,7 @@ def window(qapp, tmp_path_factory, monkeypatch_module):
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     except Exception:
         pass
+    sys.argv[:] = argv_backup
 
 
 class _NoopAutoClick:

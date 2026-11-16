@@ -32,7 +32,10 @@ def diag(tmp_path, monkeypatch):
         yield sd
     finally:
         sd.reset_for_tests()
-        root.handlers[:] = orig_handlers
+        # 還原時不得撈回 startup_diagnostics 掛上的 handler：那些 handler 可能來自更早的
+        # import app（bootstrap 會掛 root logger），留在 root logger 會污染後續測試對
+        # handler 數量的斷言，且與本 fixture 的隔離意圖相反。
+        root.handlers[:] = [h for h in orig_handlers if not getattr(h, "_gtools_diagnostics", False)]
         root.setLevel(orig_level)
         sys.excepthook = orig_excepthook
         threading.excepthook = orig_thread_hook

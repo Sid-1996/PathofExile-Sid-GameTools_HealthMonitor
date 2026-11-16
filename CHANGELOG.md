@@ -5,6 +5,19 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
+## [Unreleased]
+
+### Feat
+- Frozen EXE 的 `--smoke` 診斷結果持久化至 smoke_result.txt，無 stdout/stderr 環境仍可取得成功與失敗證據
+
+### Fix
+- 設定檔與備份同時損壞時的提示更準確：說明損壞檔保留供診斷、設定檔將於下次儲存時被覆寫
+- 修正測試 fixture 的 sys.argv 洩漏，避免後續測試誤判為 smoke 模式
+
+### Chore
+- scripts\build_exe.bat 改用專案鎖定的 .venv，缺少環境或 PyInstaller 時明確失敗而非退回系統 Python
+- pytest 於 session 期間使用隔離的 LOCALAPPDATA，不再寫入開發者正式使用者資料目錄
+
 ## [1.4.0] - 2026-11-06
 
 ### Feat
