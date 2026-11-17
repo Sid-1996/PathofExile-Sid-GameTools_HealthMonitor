@@ -143,6 +143,8 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 
 發版額外需求：`.NET SDK 8+` 與 `dotnet tool install -g vpk`（Velopack CLI），僅開發機需要。
 
+> `release.ps1` 與 `scripts/build_exe.bat` 一律使用專案鎖定的 `.venv\Scripts\python.exe`（build 與 delta 必須是同一個 interpreter）；缺 `.venv` 或缺 PyInstaller 時明確失敗並以非零 exit code 結束（`requests` 僅一般正式發布需要，`-Preview`／`-TestRepo` 不執行 delta），不得退回 PATH 上的系統 Python。
+
 ---
 
 ## 版本管理與發行流程

@@ -82,6 +82,105 @@ function Invoke-Git {
     }
 }
 
+function Resolve-VenvPython {
+    <#
+      .SYNOPSIS
+      取得專案鎖定的 .venv Python 路徑；.venv 不存在時明確失敗（絕不退回系統 Python）。
+    #>
+    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+    $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+    if (-not (Test-Path $venvPython)) {
+        Write-Host "[ERROR] 找不到專案虛擬環境 Python：$venvPython" -ForegroundColor Red
+        Write-Host "        請先建立環境：uv sync --locked（或 scripts\install_dependencies.bat）" -ForegroundColor Red
+        exit 1
+    }
+    return $venvPython
+}
+
+function Test-VenvPythonModule {
+    <#
+      .SYNOPSIS
+      檢查指定 Python 能否 import 某個模組（只回傳布林值，不中止流程）。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Python,
+        [Parameter(Mandatory = $true)][string]$Module
+    )
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    $code = 1
+    try {
+        & $Python -c "import $Module" 2>&1 | Out-Null
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    return ($code -eq 0)
+}
+
+function Assert-VenvPythonModules {
+    <#
+      .SYNOPSIS
+      確認指定 Python 可 import 所有必要模組；缺少時列出清單並以非零 exit code 中止。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Python,
+        [string[]]$RequiredModules = @()
+    )
+    $missing = @()
+    foreach ($m in $RequiredModules) {
+        if (-not (Test-VenvPythonModule -Python $Python -Module $m)) { $missing += $m }
+    }
+    if ($missing.Count -gt 0) {
+        Write-Host "[ERROR] 專案 .venv 缺少必要套件：$($missing -join ', ')" -ForegroundColor Red
+        Write-Host "        請執行：uv sync --locked（或 scripts\install_dependencies.bat）後再試" -ForegroundColor Red
+        exit 1
+    }
+}
+
+function Resolve-BuildPython {
+    <#
+      .SYNOPSIS
+      取得正式建置要使用的 .venv Python：路徑存在且必要套件可 import，缺一即明確失敗。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoRoot,
+        [string[]]$RequiredModules = @("PyInstaller", "requests")
+    )
+    $python = Resolve-VenvPython -RepoRoot $RepoRoot
+    Assert-VenvPythonModules -Python $python -RequiredModules $RequiredModules
+    Write-Host "  Build interpreter: $python"
+    return $python
+}
+
+function Invoke-VenvPython {
+    <#
+      .SYNOPSIS
+      以指定的 .venv Python 執行腳本；非零 exit code 明確中止發布流程。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Python,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$Stage
+    )
+    Write-Host "  > $Python $($Arguments -join ' ')"
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    $code = 1
+    try {
+        & $Python @Arguments 2>&1 | Out-Host
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    if ($code -ne 0) {
+        Write-Host "[ERROR] [$Stage] $Python 執行失敗（exit $code）→ 已中止發布流程。" -ForegroundColor Red
+        exit 1
+    }
+}
+
 function Get-RepoDirtyPaths {
     <#
       .SYNOPSIS
@@ -695,6 +794,19 @@ try {
         }
     }
 
+    # ── 專案 .venv 檢查（正式建置必須使用鎖定的環境）──
+    # 缺 .venv 或缺必要套件時明確中止；絕不退回 PATH 上的系統 Python。
+    # 檢查點在「任何版本檔寫入」之前：環境未就緒時不得留下未發布的版本變更。
+    # -StageOnly 是唯讀自我檢查（不建置）→ 不需要 .venv。
+    # requests 只有 delta（tools/make_delta.py → updater_core）需要；
+    # -Preview / -TestRepo 不執行 delta，故只要求 PyInstaller。
+    $venvPython = ""
+    if (-not $StageOnly) {
+        $buildModules = @("PyInstaller")
+        if (-not $Preview -and -not $TestRepo) { $buildModules += "requests" }
+        $venvPython = Resolve-BuildPython -RepoRoot $PSScriptRoot -RequiredModules $buildModules
+    }
+
     if ($versionSyncRequested) {
         Write-Host "[1/7] Updating version: $currentVersion → $Version"
         # ── 位元組級備份（失敗時必須能完整還原；原本不存在也要記錄）──
@@ -825,12 +937,9 @@ if (-not $TestRepo) {
 }
 
 Write-Host "`n[4/7] Building EXE + updater.exe..."
+# 正式建置一律使用專案鎖定的 .venv Python（$venvPython 已於發布前檢查）
 $buildScript = Join-Path $PSScriptRoot "tools\build.py"
-python $buildScript
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Build failed" -ForegroundColor Red
-    exit 1
-}
+Invoke-VenvPython -Python $venvPython -Arguments @($buildScript) -Stage "build"
 
 $packageDir = Join-Path $PSScriptRoot "dist\GameTools_Package"
 $vpkOut = Join-Path $PSScriptRoot "dist\vpk"
@@ -850,11 +959,8 @@ if (-not $TestRepo) {
     } else {
         $makeDelta = Join-Path $PSScriptRoot "tools\make_delta.py"
         $packageDirForDelta = Join-Path $PSScriptRoot "dist\GameTools_Package"
-        python $makeDelta $currentVersion $baseVersion $packageDirForDelta (Join-Path $PSScriptRoot "dist")
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "[ERROR] make_delta failed" -ForegroundColor Red
-            exit 1
-        }
+        # delta 必須與 build 使用同一個 .venv Python
+        Invoke-VenvPython -Python $venvPython -Arguments @($makeDelta, $currentVersion, $baseVersion, $packageDirForDelta, (Join-Path $PSScriptRoot "dist")) -Stage "make_delta"
     }
 }
 

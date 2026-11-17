@@ -59,6 +59,11 @@ PS_FUNCTIONS = [
     "Test-FileBackupRestored",
     "Write-ReleaseFailureReport",
     "Invoke-VersionSyncRollback",
+    "Resolve-VenvPython",
+    "Test-VenvPythonModule",
+    "Assert-VenvPythonModules",
+    "Resolve-BuildPython",
+    "Invoke-VenvPython",
 ]
 
 EXTRACT_SCRIPT = r"""
@@ -516,15 +521,25 @@ RELEASE_REQUIRED_STUBS = (
 )
 
 
-def make_release_sandbox(root):
-    """建立可執行 release.ps1 的 sandbox git repo（所有必要路徑皆存在且已提交）。"""
+def make_release_sandbox(root, venv="real"):
+    """建立可執行 release.ps1 的 sandbox git repo（所有必要路徑皆存在且已提交）。
+
+    venv：'real'（預設，junction 指向專案真實 .venv）／'fake'（只有 PyInstaller 桩模組 → 缺 requests）／
+          'empty'（沒有 site-packages → 缺 PyInstaller 與 requests）／'none'（完全沒有 .venv）。
+    """
     write_sandbox(root)
     for rel in RELEASE_REQUIRED_STUBS:
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("# stub\n", encoding="utf-8")
     shutil.copy(RELEASE_PS1, root / "release.ps1")
+    # .venv/ 與 dist/ 必須被忽略：否則 staging 的 dirty-path 前置檢查會把它們
+    # 當成「未提交的開發修改」而中止整個發布流程。
+    (root / ".gitignore").write_text(".venv/\ndist/\nbuild/\n", encoding="utf-8")
     subprocess.run([REAL_GIT, "init", "-q"], cwd=str(root), check=True, capture_output=True)
+    # 正式發布流程會自行 git commit → sandbox 必須有可用的 commit 身分
+    subprocess.run([REAL_GIT, "config", "user.email", "test@example.com"], cwd=str(root), check=True, capture_output=True)
+    subprocess.run([REAL_GIT, "config", "user.name", "test"], cwd=str(root), check=True, capture_output=True)
     subprocess.run([REAL_GIT, "add", "-A"], cwd=str(root), check=True, capture_output=True)
     subprocess.run(
         [REAL_GIT, "-c", "user.email=test@example.com", "-c", "user.name=test", "commit", "-q", "-m", "init"],
@@ -532,6 +547,7 @@ def make_release_sandbox(root):
         check=True,
         capture_output=True,
     )
+    make_sandbox_venv(root, venv)
     return root
 
 
@@ -731,6 +747,19 @@ UV_SHIM = (
 GH_SHIM = "@echo off\r\n" + 'echo %* >> "%GH_SHIM_LOG%"\r\n' + "exit /b %GH_SHIM_EXIT%\r\n"
 
 VPK_SHIM = "@echo off\r\n" + 'echo %* >> "%VPK_SHIM_LOG%"\r\n' + "exit /b %VPK_SHIM_EXIT%\r\n"
+
+# vpk shim：額外產生正式流程要蒐集的 Velopack 資產（正式發布會先清空 dist\vpk）
+VPK_ASSET_SHIM = (
+    "@echo off\r\n"
+    + 'echo %* >> "%VPK_SHIM_LOG%"\r\n'
+    + "if not exist dist\\vpk mkdir dist\\vpk\r\n"
+    + "echo x > dist\\vpk\\Sid.GameToolsHealthMonitor-full.nupkg\r\n"
+    + "echo x > dist\\vpk\\Sid.GameToolsHealthMonitor-Setup.exe\r\n"
+    + "echo {} > dist\\vpk\\releases.win.json\r\n"
+    + "type nul > dist\\vpk\\RELEASES\r\n"
+    + "echo {} > dist\\vpk\\assets.win.json\r\n"
+    + "exit /b %VPK_SHIM_EXIT%\r\n"
+)
 
 
 def write_cmd_shim(shim_dir, name, body):
@@ -980,7 +1009,275 @@ def test_release_without_version_does_not_touch_uv_lock(tmp_path):
     assert (version_file.stat().st_mtime_ns, pyproject.stat().st_mtime_ns, uv_lock.stat().st_mtime_ns) == before
 
 
-# ── 14. TestRepo 自動還原 ───────────────────────────────────────
+# ── 14. 正式發布流程必須使用專案鎖定的 .venv（Phase 4D-6 P2-2 / 4D-6-R1）───
+
+
+def test_release_script_never_calls_bare_python():
+    """release.ps1 不得再以 PATH 上的 `python` 執行建置／delta。"""
+    text = RELEASE_PS1.read_text(encoding="utf-8-sig")
+    assert not re.search(r"(?m)^\s*python\b", text), "release.ps1 仍有裸 python 呼叫"
+    assert "python $buildScript" not in text
+    assert "python $makeDelta" not in text
+
+
+def test_build_and_delta_use_same_venv_interpreter():
+    """build 與 delta 必須使用同一個 .venv Python（不得各自挑選 interpreter）。"""
+    text = RELEASE_PS1.read_text(encoding="utf-8-sig")
+    assert "Resolve-BuildPython -RepoRoot $PSScriptRoot" in text
+    assert re.search(r"Invoke-VenvPython -Python \$venvPython -Arguments @\(\$buildScript\)", text)
+    assert re.search(r"Invoke-VenvPython -Python \$venvPython -Arguments @\(\$makeDelta", text)
+
+
+def test_release_and_build_bat_share_same_venv_strategy():
+    """release.ps1 與 scripts/build_exe.bat 必須指向同一個 .venv Python。"""
+    ps_text = RELEASE_PS1.read_text(encoding="utf-8-sig")
+    bat_text = (REPO_ROOT / "scripts" / "build_exe.bat").read_text(encoding="utf-8", errors="replace")
+    assert ".venv\\Scripts\\python.exe" in ps_text
+    assert ".venv\\Scripts\\python.exe" in bat_text
+
+
+@requires_pwsh
+def test_resolve_build_python_selects_repo_venv(tmp_path, ps_funcs):
+    """正常環境：解析出的 interpreter 必須是專案 .venv 的 python.exe。"""
+    body = "\n".join(
+        [
+            "$py = Resolve-BuildPython -RepoRoot $env:PS_REPO",
+            '"interpreter=" + $py',
+        ]
+    )
+    code, out, err = run_ps(body, tmp_path, env={"PS_FUNCS": str(ps_funcs), "PS_REPO": str(REPO_ROOT)})
+    assert code == 0, out + err
+    expected = str(REPO_ROOT / ".venv" / "Scripts" / "python.exe")
+    assert "interpreter=" + expected in out, out
+
+
+@requires_pwsh
+def test_resolve_build_python_fails_when_venv_missing(tmp_path, ps_funcs):
+    """缺少 .venv 時必須明確失敗（非零 exit code），不得退回系統 Python。"""
+    body = "\n".join(
+        [
+            "$py = Resolve-BuildPython -RepoRoot $env:PS_REPO",
+            '"interpreter=" + $py',
+        ]
+    )
+    code, out, err = run_ps(body, tmp_path, env={"PS_FUNCS": str(ps_funcs), "PS_REPO": str(tmp_path)})
+    assert code != 0, out + err
+    assert "[ERROR]" in out
+    assert ".venv" in out
+    assert "interpreter=" not in out, "缺少 .venv 時不得回傳任何 interpreter"
+
+
+@requires_pwsh
+def test_missing_build_module_fails_explicitly(tmp_path, ps_funcs):
+    """缺少必要套件（模擬 PyInstaller 未安裝）時必須明確失敗並指出套件名稱。"""
+    body = "\n".join(
+        [
+            "$py = Resolve-VenvPython -RepoRoot $env:PS_REPO",
+            'Assert-VenvPythonModules -Python $py -RequiredModules @("no_such_module_4d6")',
+            '"unexpected_reached"',
+        ]
+    )
+    code, out, err = run_ps(body, tmp_path, env={"PS_FUNCS": str(ps_funcs), "PS_REPO": str(REPO_ROOT)})
+    assert code != 0, out + err
+    assert "[ERROR]" in out
+    assert "no_such_module_4d6" in out
+    assert "unexpected_reached" not in out
+
+
+@requires_pwsh
+def test_path_python_is_never_used(tmp_path, ps_funcs):
+    """PATH 上另有 python 時仍必須使用 .venv 的 interpreter，且 PATH python 不得被執行。"""
+    shim_dir = tmp_path / "shim"
+    shim_dir.mkdir()
+    marker = tmp_path / "path_python_used.txt"
+    (shim_dir / "python.cmd").write_text('@echo off\r\necho %* >> "%PY_MARKER%"\r\nexit /b 0\r\n', encoding="ascii")
+    probe_out = tmp_path / "probe_out.txt"
+    probe = tmp_path / "probe.py"
+    probe.write_text(
+        "import os, sys, pathlib\npathlib.Path(os.environ['PROBE_OUT']).write_text(sys.executable, encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    body = "\n".join(
+        [
+            # 控制組：確認 PATH 上的 python 確實會被 PowerShell 找到並執行（shim 有效）
+            '& python -c "pass"',
+            '"control_used=" + (Test-Path $env:PY_MARKER)',
+            "if (Test-Path $env:PY_MARKER) { [System.IO.File]::Delete($env:PY_MARKER) }",
+            "$py = Resolve-BuildPython -RepoRoot $env:PS_REPO",
+            'Invoke-VenvPython -Python $py -Arguments @($env:PS_PROBE) -Stage "probe"',
+            '"used_after=" + (Test-Path $env:PY_MARKER)',
+        ]
+    )
+    env = {
+        "PS_FUNCS": str(ps_funcs),
+        "PS_REPO": str(REPO_ROOT),
+        "PS_PROBE": str(probe),
+        "PROBE_OUT": str(probe_out),
+        "PY_MARKER": str(marker),
+        "PATH": str(shim_dir) + os.pathsep + os.environ["PATH"],
+    }
+    code, out, err = run_ps(body, tmp_path, env=env)
+    assert code == 0, out + err
+    assert "control_used=True" in out, "控制組失效（PATH shim 未生效）：" + out
+    assert "used_after=False" in out, "PATH 上的 python 被誤用：" + out
+    recorded = probe_out.read_text(encoding="utf-8")
+    assert recorded.lower().endswith(".venv\\scripts\\python.exe"), recorded
+
+
+# ── 發布環境檢查：時機與依賴（Phase 4D-6-R1）────────────────────────────
+
+VERSION_FILES = ("src/_version.py", "pyproject.toml", "uv.lock", "latest_version.txt")
+
+
+def _version_bytes(root):
+    """版本相關檔案的當前位元組（不存在記為 None），用來驗證「未被寫入」。"""
+    return {p: ((root / p).read_bytes() if (root / p).exists() else None) for p in VERSION_FILES}
+
+
+@requires_pwsh
+@requires_git
+def test_missing_venv_fails_before_any_version_write(tmp_path):
+    """缺 .venv → 在任何版本檔寫入之前失敗（版本來源與 latest_version.txt 完全不動）。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="none")
+    before = _version_bytes(root)
+    log = tmp_path / "shim.log"
+    proc = run_release(root, ["-Version", "1.5.0"], shim_dir=write_git_shim(tmp_path / "shim"), log_path=log)
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "找不到專案虛擬環境 Python" in proc.stdout
+    assert _version_bytes(root) == before, "環境檢查必須發生在任何版本檔寫入之前"
+    assert not any(v in ("add", "commit", "tag", "push") for v in shim_verbs(log))
+
+
+@requires_pwsh
+@requires_git
+def test_missing_pyinstaller_fails_before_any_version_write(tmp_path):
+    """缺 PyInstaller → 明確失敗並指出套件名稱，且版本檔未被寫入。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="empty")
+    before = _version_bytes(root)
+    proc = run_release(root, ["-Version", "1.5.0"], shim_dir=write_git_shim(tmp_path / "shim"), log_path=tmp_path / "shim.log")
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "PyInstaller" in proc.stdout
+    assert _version_bytes(root) == before, "環境檢查必須發生在任何版本檔寫入之前"
+
+
+@requires_pwsh
+@requires_git
+def test_general_release_requires_requests(tmp_path):
+    """一般正式發布會執行 delta → 缺 requests 必須明確失敗（且版本檔未被寫入）。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="fake")
+    before = _version_bytes(root)
+    shim_dir = write_git_shim(tmp_path / "shim")
+    write_cmd_shim(shim_dir, "uv.cmd", UV_SHIM)
+    proc = run_release(
+        root,
+        ["-Version", "1.5.0"],
+        shim_dir=shim_dir,
+        log_path=tmp_path / "shim.log",
+        extra_env=release_env(tmp_path, UV_SHIM_LOG=tmp_path / "uv.log", UV_SHIM_EXIT=0, UV_SHIM_MODE=""),
+    )
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "requests" in proc.stdout
+    assert _version_bytes(root) == before, "依賴檢查必須發生在任何版本檔寫入之前"
+
+
+@requires_pwsh
+@requires_git
+def test_preview_does_not_require_requests(tmp_path):
+    """-Preview 不執行 delta → 缺 requests 不得阻擋環境檢查。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="fake")
+    shim_dir = write_git_shim(tmp_path / "shim")
+    write_cmd_shim(shim_dir, "uv.cmd", UV_SHIM)
+    proc = run_release(
+        root,
+        ["-Version", "1.5.0", "-Preview"],
+        shim_dir=shim_dir,
+        log_path=tmp_path / "shim.log",
+        extra_env=release_env(tmp_path, UV_SHIM_LOG=tmp_path / "uv.log", UV_SHIM_EXIT=0, UV_SHIM_MODE=""),
+    )
+    assert "Build interpreter:" in proc.stdout, proc.stdout + proc.stderr
+    assert "缺少必要套件" not in proc.stdout, "Preview 不該要求 requests：" + proc.stdout
+
+
+@requires_pwsh
+@requires_git
+def test_testrepo_does_not_require_requests(tmp_path):
+    """-TestRepo 不執行 delta → 缺 requests 不得阻擋環境檢查。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="fake")
+    prepare_testrepo_assets(root)
+    proc = run_testrepo(root, tmp_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "Build interpreter:" in proc.stdout
+    assert "缺少必要套件" not in proc.stdout, "TestRepo 不該要求 requests：" + proc.stdout
+
+
+@requires_pwsh
+@requires_git
+def test_stageonly_does_not_require_venv(tmp_path):
+    """-StageOnly 是唯讀自我檢查（不建置）→ 沒有 .venv 也必須照常完成 staging。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="none")
+    log = tmp_path / "shim.log"
+    proc = run_release(root, ["-StageOnly"], shim_dir=write_git_shim(tmp_path / "shim"), log_path=log)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "staging 檢查完成" in proc.stdout
+    assert "add" in shim_verbs(log)
+
+
+@requires_pwsh
+@requires_git
+def test_build_and_delta_run_with_same_venv_interpreter(tmp_path):
+    """完整發布流程（隔離 sandbox）：build 與 delta 必須由同一個 .venv interpreter 執行。"""
+    root = make_release_sandbox(tmp_path / "rel", venv="real")
+    probe = tmp_path / "interpreter.txt"
+    (root / "tools" / "build.py").write_text(
+        "import os, sys, pathlib\n"
+        "pathlib.Path(os.environ['GTOOLS_PROBE']).write_text('build=' + sys.executable + '\\n', encoding='utf-8')\n"
+        "pkg = pathlib.Path('dist/GameTools_Package')\n"
+        "pkg.mkdir(parents=True, exist_ok=True)\n"
+        "(pkg / 'dummy.txt').write_text('x', encoding='utf-8')\n"
+        "sys.exit(0)\n",
+        encoding="utf-8",
+    )
+    (root / "tools" / "make_delta.py").write_text(
+        "import os, sys, pathlib\npathlib.Path(os.environ['GTOOLS_PROBE']).open('a', encoding='utf-8').write('delta=' + sys.executable + '\\n')\nsys.exit(0)\n",
+        encoding="utf-8",
+    )
+    # 正式發布會 push 到 origin → sandbox 以本地 bare repo 當遠端（不碰任何真實 remote）
+    remote = tmp_path / "remote.git"
+    subprocess.run([REAL_GIT, "init", "--bare", "-q", str(remote)], check=True, capture_output=True)
+    subprocess.run([REAL_GIT, "remote", "add", "origin", str(remote)], cwd=str(root), check=True, capture_output=True)
+
+    shim_dir = write_git_shim(tmp_path / "shim")
+    write_cmd_shim(shim_dir, "gh.cmd", GH_SHIM)
+    write_cmd_shim(shim_dir, "vpk.cmd", VPK_ASSET_SHIM)
+    write_cmd_shim(shim_dir, "uv.cmd", UV_SHIM)
+    lock_src = tmp_path / "lock_150.txt"
+    lock_src.write_text('[[package]]\nname = "gametools-health-monitor"\nversion = "1.5.0"\nsource = { virtual = "." }\n', encoding="utf-8")
+    proc = run_release(
+        root,
+        ["-Version", "1.5.0"],
+        shim_dir=shim_dir,
+        log_path=tmp_path / "shim.log",
+        extra_env=release_env(
+            tmp_path,
+            GTOOLS_PROBE=str(probe),
+            GH_SHIM_LOG=tmp_path / "gh.log",
+            GH_SHIM_EXIT=0,
+            VPK_SHIM_LOG=tmp_path / "vpk.log",
+            VPK_SHIM_EXIT=0,
+            UV_SHIM_LOG=tmp_path / "uv.log",
+            UV_SHIM_EXIT=0,
+            UV_SHIM_MODE="ok_lock",
+            UV_SHIM_LOCK_SRC=lock_src,
+        ),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    recorded = probe.read_text(encoding="utf-8")
+    lines = {line.split("=", 1)[0]: line.split("=", 1)[1].strip().lower() for line in recorded.splitlines() if "=" in line}
+    assert lines.get("build") == lines.get("delta"), "build 與 delta 必須使用同一個 interpreter：" + recorded
+    assert lines.get("build", "").endswith(".venv\\scripts\\python.exe"), "必須是專案 .venv interpreter：" + recorded
+
+
+# ── 15. TestRepo 自動還原 ───────────────────────────────────────
 
 
 def prepare_testrepo_assets(root):
@@ -993,6 +1290,49 @@ def prepare_testrepo_assets(root):
     (vpk_dir / "RELEASES").write_text("", encoding="utf-8")
     (vpk_dir / "assets.win.json").write_text("{}", encoding="utf-8")
     return vpk_dir
+
+
+def make_sandbox_venv(root, kind):
+    """在 sandbox 建立 .venv（測試用；建立於 git commit 之後，不進版本庫）。
+
+    kind：
+      'real'  → junction 指向專案真實 .venv（含 PyInstaller 與 requests）
+      'fake'  → 假的 .venv：只有 PyInstaller 桩模組 → 模擬「缺 requests」
+      'empty' → 假的 .venv：沒有 site-packages → 模擬「缺 PyInstaller 與 requests」
+      'none'  → 完全不建立 .venv
+    """
+    if kind == "none":
+        return
+    venv_dir = root / ".venv"
+    if kind in ("fake", "empty"):
+        # 假的 .venv：沿用真實 venv 的 python.exe + pyvenv.cfg，但 site-packages 只放
+        # 指定的桩模組 → 可精準控制「哪個套件存在」
+        (venv_dir / "Scripts").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO_ROOT / ".venv" / "Scripts" / "python.exe", venv_dir / "Scripts" / "python.exe")
+        shutil.copy2(REPO_ROOT / ".venv" / "pyvenv.cfg", venv_dir / "pyvenv.cfg")
+        if kind == "fake":
+            pkg = venv_dir / "Lib" / "site-packages" / "PyInstaller"
+            pkg.mkdir(parents=True, exist_ok=True)
+            (pkg / "__init__.py").write_text("", encoding="utf-8")
+        return
+    # 'real'：junction 指向專案真實 .venv（免安裝即等同正式環境）
+    target = REPO_ROOT / ".venv"
+    if not target.is_dir():
+        pytest.skip("專案 .venv 不存在，無法建立 sandbox venv")
+    script = root.parent / "mk_venv_junction.ps1"
+    script.write_text(
+        "param($link, $target)\nNew-Item -ItemType Junction -Path $link -Target $target | Out-Null\n",
+        encoding="utf-8-sig",
+    )
+    proc = subprocess.run(
+        [PWSH, "-NoProfile", "-NonInteractive", "-File", str(script), str(venv_dir), str(target)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert proc.returncode == 0, "建立 sandbox .venv junction 失敗：" + proc.stdout + proc.stderr
+    assert (venv_dir / "Scripts" / "python.exe").is_file()
 
 
 def run_testrepo(root, tmp_path, *, build_exit=0, gh_exit=0, vpk_exit=0, read_only_after_build=False):
@@ -1095,7 +1435,7 @@ def test_testrepo_restore_failure_ends_with_error(tmp_path):
     assert report and Path(report).is_file()
 
 
-# ── 15. staging safety 仍有效 ───────────────────────────────────
+# ── 16. staging safety 仍有效 ───────────────────────────────────
 
 
 def _allowlist_paths(text):
@@ -1139,7 +1479,7 @@ def test_dirty_path_guard_still_blocks_release(tmp_path):
     assert not any(v in ("add", "commit", "tag", "push") for v in shim_verbs(log))
 
 
-# ── 16. PowerShell 5.1 / 7 的關鍵流程行為一致 ────────────────────
+# ── 17. PowerShell 5.1 / 7 的關鍵流程行為一致 ────────────────────
 
 
 @requires_pwsh
