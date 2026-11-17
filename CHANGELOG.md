@@ -5,7 +5,7 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
 並且本項目遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
-## [Unreleased]
+## [1.4.1] - 2026-11-17
 
 ### Feat
 - Frozen EXE 的 `--smoke` 診斷結果持久化至 smoke_result.txt，無 stdout/stderr 環境仍可取得成功與失敗證據

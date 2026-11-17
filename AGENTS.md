@@ -157,7 +157,7 @@ commit 訊息格式：`feat` / `fix` / `refactor` / `docs` / `chore` + 冒號 + 
 
 ## 版本管理與發行流程
 
-* 版本唯一事實來源：`src/_version.py` 的 `__version__`（runtime 顯示、PyInstaller 產物名、Velopack `--packVersion`、Release tag 全部取自它）。目前 **v1.4.0**。
+* 版本唯一事實來源：`src/_version.py` 的 `__version__`（runtime 顯示、PyInstaller 產物名、Velopack `--packVersion`、Release tag 全部取自它）。目前 **v1.4.1**。
 * **正式版本更新入口：`\.\release.ps1 -Version <x.y.z>`**。
 * **不得手動只修改其中一個版本欄位**：衍生欄位（`pyproject.toml` 的 `[project].version`、`[tool.commitizen].version`、`uv.lock` 專案條目）一律由 `release.ps1` 同步；手改會被發布前一致性閘門擋下，並使 `uv sync --locked` 失效。
 * **`uv.lock` 受 Git 追蹤**：`uv sync --locked` 是主要且唯一保證可重現的安裝方式；`scripts/requirements.txt` 只是**未鎖定的備援清單**（`>=`），不得宣稱與 lockfile 等價。改動 `pyproject.toml` 依賴後必須重新 `uv lock` 並把 lockfile 一起提交，否則 CI 的 `uv sync --locked` 會直接失敗。
