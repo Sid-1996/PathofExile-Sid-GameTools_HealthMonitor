@@ -6,8 +6,8 @@
   <meta name="google-site-verification" content="4lWoqckzqXNbwUlyytkGLkFIFjTNKmb8Tr4jADOWXOY" />
   <title>Path of Exile Sid 輔助工具 — GameTools Health Monitor</title>
   <meta name="title" content="Path of Exile Sid 輔助工具 — GameTools Health Monitor">
-  <meta name="description" content="以影像辨識與輸入模擬為核心的 PoE Windows 自動化工具。支援血量/魔力監控、技能連段、背包自動化、自動連點、技能計時器。基於 Python + OpenCV + AutoHotkey 開發。">
-  <meta name="keywords" content="Path of Exile, PoE, PoE2, 輔助工具, automation, health monitor, 血量監控, 技能連段, 背包自動化, 自動連點, OpenCV, AutoHotkey, Python, GGG, Windows tool">
+  <meta name="description" content="以影像辨識與輸入模擬為核心的 PoE Windows 自動化工具。支援血量/魔力監控、技能連段、背包自動化、自動連點、技能計時器、深色/淺色主題與診斷日誌。基於 Python + OpenCV + PySide6 開發。">
+  <meta name="keywords" content="Path of Exile, PoE, PoE2, 輔助工具, automation, health monitor, 血量監控, 技能連段, 背包自動化, 自動連點, OpenCV, PySide6, AutoHotkey, Python, GGG, Windows tool">
   <meta name="robots" content="index, follow">
   <meta name="author" content="Sid-1996">
   <meta name="language" content="zh-TW, en">
@@ -298,7 +298,7 @@
       自動連點及技能計時器等功能。所有操作均為外部圖像辨識，不修改遊戲檔案、不注入程式碼、不讀取遊戲記憶體。
     </p>
     <p>
-      Built with <strong>Python</strong> + <strong>OpenCV</strong> + <strong>AutoHotkey</strong>.
+      Built with <strong>Python</strong> + <strong>OpenCV</strong> + <strong>PySide6 / qfluentwidgets</strong>.
       This is an external automation research toolkit for Path of Exile.
       It uses image recognition and input simulation — no code injection, no memory reading.
     </p>
@@ -415,19 +415,37 @@
       <div class="card">
         <div class="card-icon">🌐</div>
         <h3>多語言支援 <span>Multi-language</span></h3>
-        <p>內建繁體中文與英文語言包，可擴充翻譯。</p>
+        <p>內建繁體中文、简体中文、English 三種介面，首次啟動依 Windows 系統語系自動選擇。</p>
       </div>
 
       <div class="card">
         <div class="card-icon">🛡️</div>
-        <h3>視窗焦點感知 <span>Activation-Aware</span></h3>
-        <p>遊戲視窗失去焦點時自動暫停監控，避免錯誤觸發。</p>
+        <h3>前景才操作 <span>Foreground-only Input</span></h3>
+        <p>遊戲不在前景時仍會背景截圖分析（WGC），但不會送出按鍵；視窗最小化時暫停並提示，還原後自動恢復。</p>
       </div>
 
       <div class="card">
-        <div class="card-icon">🌐</div>
+        <div class="card-icon">🔄</div>
         <h3>即時語言切換 <span>Live Language Switch</span></h3>
-        <p>繁體中文 / 英文即時切換，無需重啟工具，所有介面文字同步更新。</p>
+        <p>繁體中文 / 简体中文 / English 即時切換，無需重啟工具，介面文字同步更新。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3>深色 / 淺色主題 <span>Themes</span></h3>
+        <p>內建深色與淺色兩套主題，於工具設置切換後重新啟動即完整套用（含對話框），選擇會保存。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">💾</div>
+        <h3>設定備份與還原 <span>Config Backup</span></h3>
+        <p>設定內容變更並成功儲存時，程式會保留上一份有效設定作為 <code>.backup</code>；正式設定檔損壞或遺失時自動還原並提示。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🧾</div>
+        <h3>診斷日誌 <span>Diagnostic Logs</span></h3>
+        <p>啟動與執行期事件寫入 <code>gtools.log</code>，未預期錯誤另存 <code>startup_crash.log</code>，回報問題時可直接附上。</p>
       </div>
 
       <div class="card">
@@ -468,14 +486,14 @@
   <div class="container">
     <h2>🧠 技術使用 <span class="en">Tech Stack</span></h2>
     <div class="card-grid">
-      <div class="card"><h3>🐍 Python</h3><p>主程式語言，事件驅動架構</p></div>
-      <div class="card"><h3>👁️ OpenCV</h3><p>影像辨識與模板匹配</p></div>
-      <div class="card"><h3>🖱️ PyAutoGUI</h3><p>跨平台滑鼠鍵盤模擬</p></div>
-      <div class="card"><h3>⌨️ keyboard</h3><p>全域熱鍵監聽</p></div>
-      <div class="card"><h3>🪟 PyGetWindow</h3><p>Windows 視窗管理</p></div>
-      <div class="card"><h3>⚙️ AutoHotkey</h3><p>自動連點腳本引擎</p></div>
-      <div class="card"><h3>📦 PyInstaller</h3><p>打包為單一 EXE 執行檔</p></div>
-      <div class="card"><h3>🎨 tkinter / ttk</h3><p>圖形使用者介面</p></div>
+      <div class="card"><h3>🐍 Python</h3><p>主程式語言（Python 3.13），事件驅動架構</p></div>
+      <div class="card"><h3>👁️ OpenCV</h3><p>影像辨識與顏色分析（血量/魔力、背包格判定）</p></div>
+      <div class="card"><h3>🖼️ PySide6 + qfluentwidgets</h3><p>桌面 GUI（Fluent 風格，深色 / 淺色主題）</p></div>
+      <div class="card"><h3>🪟 Windows.Graphics.Capture</h3><p>視窗背景截圖：被遮擋或失焦仍可擷取；不可用時降級 mss（僅前景正確）</p></div>
+      <div class="card"><h3>📦 Velopack</h3><p>安裝與自動更新（差異下載、重啟套用）</p></div>
+      <div class="card"><h3>🧰 PyInstaller（onedir）</h3><p>打包為資料夾式程式（exe + <code>_internal\</code>，非單一 EXE）</p></div>
+      <div class="card"><h3>⚙️ AutoHotkey</h3><p>自動連點腳本引擎（<code>auto_click.exe</code> 旁置元件）</p></div>
+      <div class="card"><h3>⌨️ keyboard / pywin32</h3><p>全域熱鍵監聽與視窗焦點 / 按鍵控制</p></div>
     </div>
   </div>
 </section>
@@ -486,21 +504,20 @@
     <h2>📦 下載 <span class="en">Download</span></h2>
     <div class="download-box">
       <div class="disclaimer" style="margin-bottom:16px;text-align:left">
-        ⚠️ <strong>斷鏈更新 / Breaking Change</strong> — <code>v1.2.1 → v1.3.2</code> 無法自動更新，必須手動重裝。<br>
-        請下載 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 覆蓋安裝（設定保留在 <code>%LOCALAPPDATA%\GameTools_HealthMonitor</code>），之後自動更新。<br>
-        <span style="color:#8b949e">Users on v1.2.1 or earlier must install manually: download <code>Setup.exe</code> from Releases and install once.</span>
+        ⚠️ <strong>舊版升級注意</strong> — 若你目前使用 <code>v1.2.1</code>（含更早）版本，請先手動下載 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 並重新安裝一次：舊版更新機制與新版程式封裝方式不相容，無法直接完成升級。原有設定會保留（<code>%LOCALAPPDATA%\GameTools_HealthMonitor</code>），完成這次重新安裝後即可使用新版自動更新。<br>
+        <span style="color:#8b949e">On v1.2.1 or earlier? The old updater is incompatible with the new packaging and cannot complete the upgrade — download <code>Setup.exe</code> from Releases and reinstall once. Settings are preserved, and in-app updates work from then on. New users can ignore this note.</span>
       </div>
       <p style="margin-bottom:16px;color:var(--text-muted)">
-        最新版本 <strong>v1.3.2</strong> — 一般用戶請下載 <code>Setup.exe</code> 安裝（自動更新，推薦）
+        最新版本 <strong id="latest-release"><a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases">請見 Releases</a></strong> — 一般用戶請下載 <code>Setup.exe</code> 安裝（含自動更新，推薦）
       </p>
       <p style="margin-bottom:20px;font-size:0.85rem;color:var(--text-muted)">
-        Windows 10 / 11 適用 · 安裝後執行工具，免解壓 · 免安裝版（舊版 ZIP 可於歷史 Release 下載，如需可攜）
+        Windows 10 / 11 適用 · 安裝後執行工具，免解壓 · 需要可攜版可於 Releases 下載 ZIP · 版本號由 GitHub Releases 即時取得
       </p>
       <p style="margin-bottom:16px;font-size:0.9rem;color:#d29922">
         ⚠️ 使用前請將 Path of Exile 設為「視窗全螢幕」或「視窗模式」，工具才能正確背景截圖與顯示提示浮層。
       </p>
-      <a class="btn btn-download" href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases/latest" target="_blank">
-        ⬇️ 下載 Setup.exe
+      <a class="btn btn-download" href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases/latest/download/Sid.GameToolsHealthMonitor-win-Setup.exe" target="_blank" rel="noopener">
+        ⬇️ 下載 Setup.exe（最新版）
       </a>
       <p style="margin-top:16px;font-size:0.8rem;color:var(--text-muted)">
         <a href="https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor" target="_blank">🔗 GitHub 原始碼</a>
@@ -518,11 +535,19 @@
     <div class="card-grid">
       <div class="card">
         <h3>設定在哪 / Where is config?</h3>
-        <p><code>%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json</code>（同目錄 <code>*.backup</code> 與 <code>screenshots\</code>）<br>工具內 <code>工具設置 > 資料與重設</code> 可一鍵開啟資料夾 / 複製路徑。</p>
+        <p><code>%LOCALAPPDATA%\GameTools_HealthMonitor\</code>：<code>health_monitor_config.json</code>、<code>health_monitor_config.json.backup</code>、<code>screenshots\</code>。<br>工具內 <code>工具設置 > 資料與重設</code> 可一鍵開啟資料夾 / 複製路徑。</p>
+      </div>
+      <div class="card">
+        <h3>自動備份與還原 / Backup</h3>
+        <p>設定內容變更並成功儲存時，程式會把上一份有效設定保留為 <code>.backup</code>。正式設定檔損壞或不存在時，程式自動改用備份並以此修復正式檔（會提示）；兩者都讀不到時才改用預設值，損壞檔保留供診斷。</p>
       </div>
       <div class="card">
         <h3>如何重設 / Reset</h3>
-        <p><code>工具設置 > 資料與重設 > 重設為預設</code>，預設保留截圖；勾選「同時刪除截圖」才清 <code>screenshots\</code>。</p>
+        <p><code>工具設置 > 資料與重設 > 重設為預設</code> 會刪除設定檔與備份並恢復預設，截圖預設保留；勾選「同時刪除截圖」才清 <code>screenshots\</code>。<strong>只刪設定檔不等於重設</strong>——程式可能直接從備份還原回來。</p>
+      </div>
+      <div class="card">
+        <h3>診斷日誌 / Logs</h3>
+        <p><code>gtools.log</code>（啟動與執行期事件）、<code>startup_crash.log</code>（未預期錯誤的完整 traceback）預設與設定檔同資料夾；該位置不可寫入時，程式會改用 exe 同層或 TEMP。回報 Issue 時可一併附上。</p>
       </div>
       <div class="card">
         <h3>如何移除 / Uninstall</h3>
@@ -601,6 +626,22 @@
     <p style="margin-top:8px">Built with ❤️ by Sid-1996 &nbsp;·&nbsp; 未經授權禁止商業使用</p>
   </div>
 </footer>
+
+<script>
+  // 版本號一律向 GitHub Releases 取得，避免網站版本文字再次過期；取不到時保留連往 Releases 的提示。
+  (function () {
+    var el = document.getElementById("latest-release");
+    if (!el || typeof fetch !== "function") return;
+    fetch("https://api.github.com/repos/Sid-1996/PathofExile-Sid-GameTools_HealthMonitor/releases/latest", {
+      headers: { Accept: "application/vnd.github+json" }
+    })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (data && typeof data.tag_name === "string" && data.tag_name) el.textContent = data.tag_name;
+      })
+      .catch(function () { /* 離線或 API 限流：維持「請見 Releases」 */ });
+  })();
+</script>
 
 </body>
 </html>

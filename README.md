@@ -57,6 +57,14 @@
     <td><b>⏱️ Skill Timers</b><br>Millisecond precision · Supports key combinations</td>
     <td><b>⏸️ Global Control</b><br>F9 Pause · F12 Exit</td>
   </tr>
+  <tr>
+    <td><b>🎨 Dark / Light Theme</b><br>Full theme after restart · Saved in config</td>
+    <td><b>💾 Config Backup</b><br>Backup on config change · Auto-restore if damaged</td>
+  </tr>
+  <tr>
+    <td><b>🧾 Diagnostic Logs</b><br><code>gtools.log</code> · <code>startup_crash.log</code></td>
+    <td><b>🪟 Background Capture</b><br>Keeps analyzing while occluded · Input only when the game is foreground</td>
+  </tr>
 </table>
 
 ---
@@ -112,7 +120,7 @@
 </p>
 
 <p align="center">
-  <sub>⚠️ <b>Users on v1.2.1 or earlier must reinstall manually</b>: auto-update will fail during download. Please download <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> and install over the old version (settings are preserved) · Windows 10 / 11<br>New users: download <code>Setup.exe</code> (recommended)</sub>
+  <sub>⚠️ <b>Users on v1.2.1 or earlier must reinstall manually</b>: the old updater is incompatible with the new packaging and cannot complete the upgrade. Download <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> and reinstall once (settings are preserved); in-app updates work from then on · Windows 10 / 11<br>New users: download <code>Setup.exe</code> (recommended)</sub>
 </p>
 
 ---
@@ -150,8 +158,9 @@ Go to [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMon
 
 ### Data & Reset
 
-- Config file: `%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json` (`*.backup` auto-backup, `screenshots\` captures)
-- In-app `Settings > Data & Reset` can `Open Folder / Copy Path / Reset to Default` (screenshots are kept unless you also check the delete option)
+- Config: `%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json` (`health_monitor_config.json.backup` auto-backup, `screenshots\` captures, `gtools.log` / `startup_crash.log` diagnostics)
+- When the config changes and is saved successfully, the previous valid config is kept as `.backup`. If the main config is missing or damaged, the app restores it from that backup and tells you; only when both are unreadable does it fall back to defaults (damaged files are kept for diagnosis)
+- In-app `Settings > Data & Reset` can `Open Folder / Copy Path / Reset to Default`. Reset deletes both the config and its backup, then restarts the app; screenshots are kept unless you also check the delete option. **Deleting the config file alone is not a reset** — the backup would simply be restored
 
 ### Uninstall
 
@@ -168,12 +177,13 @@ Go to [Releases](https://github.com/Sid-1996/PathofExile-Sid-GameTools_HealthMon
 ```
 src/
   app.py                     # Qt (PySide6) entry point
-  qt/                        # Qt GUI layer (main_window + 7 tabs)
+  qt/                        # Qt GUI layer (main_window + 7 tabs, qfluentwidgets, dark/light theme)
   monitor_analyzer.py        # Health/mana HSV analysis + triggers
-  capture_utils.py           # Screenshot + mss singleton
+  capture_utils.py           # Window capture (Windows.Graphics.Capture + mss fallback)
   image_utils.py             # Image drawing/resize/preview
   inventory_utils.py         # Inventory slot analysis
-  config_manager.py          # Config load/save + backup
+  config_manager.py          # Config load/save + backup rotation & restore
+  startup_diagnostics.py     # Logging, crash log, global exception guards
   language_system.py         # Translation system (zh-tw / zh-cn / en)
   utils.py                   # Runtime utilities + get_user_data_dir + F12 emergency close
   auto_click_manager.py      # Auto-click (AHK) manager
@@ -205,7 +215,7 @@ release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
   <img src="https://img.shields.io/badge/Windows.Graphics.Capture-0078D4?style=flat&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/AutoHotkey-334455?style=flat&logo=autohotkey&logoColor=white" />
   <img src="https://img.shields.io/badge/PyInstaller-FDAD04?style=flat&logo=pyinstaller&logoColor=black" />
-  <img src="https://img.shields.io/badge/tkinter-0-9CA3AF?style=flat&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/qfluentwidgets-0078D4?style=flat&logo=qt&logoColor=white" />
 </p>
 
 ---

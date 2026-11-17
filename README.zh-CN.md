@@ -59,6 +59,14 @@
     <td><b>⏱️ 技能计时器</b><br>毫秒级精度 · 支援组合键</td>
     <td><b>⏸️ 全域控制</b><br>F9 暂停 · F12 离开</td>
   </tr>
+  <tr>
+    <td><b>🎨 深色 / 浅色主题</b><br>重新启动完整套用 · 选择会保存</td>
+    <td><b>💾 设定备份与还原</b><br>设定变更时备份 · 损坏时自动还原</td>
+  </tr>
+  <tr>
+    <td><b>🧾 诊断日志</b><br><code>gtools.log</code> · <code>startup_crash.log</code></td>
+    <td><b>🪟 背景截图</b><br>被遮挡仍持续分析 · 仅在前景送出按键</td>
+  </tr>
 </table>
 
 ---
@@ -114,7 +122,7 @@
 </p>
 
 <p align="center">
-  <sub>⚠️ <b>v1.2.1（含更早）请务必手动重装</b>：自动更新会在下载阶段失败，请下载 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 覆盖安装（设定保留）· Windows 10 / 11<br>新用户亦请下载 <code>Setup.exe</code>（推荐） — Users on v1.2.1 or earlier must reinstall manually with <code>Setup.exe</code></sub>
+  <sub>⚠️ <b>v1.2.1（含更早）请务必手动重装</b>：旧版更新机制与新版封装方式不相容，无法直接完成升级。请下载 <code>Sid.GameToolsHealthMonitor-win-Setup.exe</code> 重新安装一次（设定保留），之后即可使用自动更新 · Windows 10 / 11<br>新用户请下载 <code>Setup.exe</code>（推荐） — Users on v1.2.1 or earlier must reinstall manually with <code>Setup.exe</code></sub>
 </p>
 
 ---
@@ -152,8 +160,9 @@ Run.bat
 
 ### 资料与重设 / Data
 
-- 设定档：`%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json`（`*.backup` 自动备份、`screenshots\` 截图）
-- 工具内 `工具设置 > 资料与重设` 可 `开启资料夹 / 复制路径 / 重设为预设`（截图预设保留，勾选才一并删除）
+- 设定档：`%LOCALAPPDATA%\GameTools_HealthMonitor\health_monitor_config.json`（`health_monitor_config.json.backup` 自动备份、`screenshots\` 截图、`gtools.log` / `startup_crash.log` 诊断日志）
+- 设定内容变更并成功储存时，上一份有效设定会保留为 `.backup`。正式设定档损坏或不存在时，程式会从备份还原并提示；两者都读不到才改用预设值（损坏档保留供诊断）
+- 工具内 `工具设置 > 资料与重设` 可 `开启资料夹 / 复制路径 / 重设为预设`。重设会删除设定档与备份后重新启动；截图预设保留，勾选才一并删除。**单独删除设定档不算重设**——备份会直接被还原回来
 
 ### 移除 / Uninstall
 
@@ -170,12 +179,13 @@ Run.bat
 ```
 src/
   app.py                     # Qt (PySide6) entry point
-  qt/                        # Qt GUI layer (main_window + 7 tabs)
+  qt/                        # Qt GUI 层（main_window + 7 分页，qfluentwidgets，深色/浅色主题）
   monitor_analyzer.py        # Health/mana HSV analysis + triggers
-  capture_utils.py           # Screenshot + mss singleton
+  capture_utils.py           # 视窗截图（Windows.Graphics.Capture + mss 降级）
   image_utils.py             # Image drawing/resize/preview
   inventory_utils.py         # Inventory slot analysis
-  config_manager.py          # Config load/save + backup
+  config_manager.py          # 设定载入/储存 + 备份轮替与还原
+  startup_diagnostics.py     # 日志、crash log、全域例外拦截
   language_system.py         # Translation system
   utils.py                   # Runtime utilities + get_user_data_dir + F12 emergency close
   auto_click_manager.py      # Auto-click (AHK) manager
@@ -207,7 +217,7 @@ release.ps1                  # One-click publish (stable / -Preview / -TestRepo)
   <img src="https://img.shields.io/badge/Windows.Graphics.Capture-0078D4?style=flat&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/AutoHotkey-334455?style=flat&logo=autohotkey&logoColor=white" />
   <img src="https://img.shields.io/badge/PyInstaller-FDAD04?style=flat&logo=pyinstaller&logoColor=black" />
-  <img src="https://img.shields.io/badge/tkinter-0-9CA3AF?style=flat&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/qfluentwidgets-0078D4?style=flat&logo=qt&logoColor=white" />
 </p>
 
 ---
