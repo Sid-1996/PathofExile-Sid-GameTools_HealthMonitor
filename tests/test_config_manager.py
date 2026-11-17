@@ -284,3 +284,102 @@ def test_double_corruption_notice_is_accurate_in_all_languages():
 
     keys = {lang: {k for k in packs[lang] if k.startswith("config_")} for lang in langs}
     assert keys["zh-tw"] == keys["en"] == keys["zh-cn"], "三語言的 config 提示鍵必須一致"
+
+
+def _make_corrupt_with_valid_backup(cm):
+    """建立「正式檔損壞、備份有效」狀態：回傳（正式檔路徑, 備份路徑）。"""
+    cm.set_config_value("health_threshold", 0.55)
+    cm.set_config_value("language", "en")
+    assert cm.save_config() is True
+    cm.set_config_value("language", "zh-cn")
+    assert cm.save_config() is True  # 產生有效 .backup（內容為 0.55 / en）
+    _write_raw(cm.config_file, '{"hotkeys": {"f3":')
+    return cm.config_file, _backup_path(cm)
+
+
+def test_reload_after_backup_restore_keeps_pending_status(tmp_config_manager):
+    """第二次載入（模擬 GUI 建立時的重複載入）不得清除尚未通知的還原事件。"""
+    cm = tmp_config_manager
+    config_file, backup_file = _make_corrupt_with_valid_backup(cm)
+
+    fresh = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert fresh.load_config() is True
+    assert fresh.load_status == "restored_from_backup"
+
+    # 正式檔已被修復，第二次載入本身成功，但待通知事件必須保留給 GUI
+    assert fresh.load_config() is True
+    assert fresh.load_status == "restored_from_backup", "第二次載入不得清除待通知的還原事件"
+    assert fresh.get_config_value("health_threshold") == 0.55
+    assert _read_json(config_file)["health_threshold"] == 0.55, "正式檔內容不得被第二次載入破壞"
+    assert _read_json(backup_file)["health_threshold"] == 0.55, "備份不得被覆蓋"
+
+
+def test_consume_load_status_is_one_shot(tmp_config_manager):
+    """GUI 消費事件後即清除：同一事件只會被提示一次。"""
+    cm = tmp_config_manager
+    _make_corrupt_with_valid_backup(cm)
+
+    fresh = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert fresh.load_config() is True
+    assert fresh.consume_load_status() == "restored_from_backup"
+    assert fresh.consume_load_status() is None
+    assert fresh.load_status is None
+
+
+def test_next_launch_does_not_inherit_pending_status(tmp_config_manager):
+    """狀態只存在於記憶體：下一次啟動（新 manager）不得沿用舊的還原事件。"""
+    cm = tmp_config_manager
+    _make_corrupt_with_valid_backup(cm)
+
+    fresh = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert fresh.load_config() is True
+    assert fresh.load_status == "restored_from_backup"
+
+    relaunch = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert relaunch.load_config() is True
+    assert relaunch.load_status is None, "新的啟動不得沿用上一輪的待通知事件"
+    assert relaunch.consume_load_status() is None
+
+
+def test_double_corruption_status_survives_reload(tmp_config_manager):
+    """雙檔皆損壞：重複載入仍維持 defaults 提示，且記憶體設定仍可用。"""
+    cm = tmp_config_manager
+    _write_raw(cm.config_file, "{broken")
+    _write_raw(_backup_path(cm), "not json either")
+
+    fresh = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert fresh.load_config() is False
+    assert fresh.load_status == "reset_to_defaults"
+    assert fresh.load_config() is False
+    assert fresh.load_status == "reset_to_defaults", "defaults 提示不得被第二次載入清除"
+    assert fresh.get_ui_settings()["language"] == "zh-tw"
+
+
+def test_normal_load_produces_no_pending_status(tmp_config_manager):
+    """正常載入不產生任何待通知事件（GUI 不該收到錯誤通知）。"""
+    cm = tmp_config_manager
+    cm.set_config_value("language", "en")
+    assert cm.save_config() is True
+
+    fresh = ConfigManager(config_path=os.path.dirname(cm.config_file))
+    assert fresh.load_config() is True
+    assert fresh.load_status is None
+    assert fresh.consume_load_status() is None
+
+
+def test_repeated_load_does_not_touch_files(tmp_config_manager):
+    """重複載入不得產生暫存檔，也不得改動正式檔與備份內容。"""
+    cm = tmp_config_manager
+    base_dir = os.path.dirname(cm.config_file)
+    _make_corrupt_with_valid_backup(cm)
+
+    fresh = ConfigManager(config_path=base_dir)
+    assert fresh.load_config() is True
+    main_before = Path(cm.config_file).read_text(encoding="utf-8")
+    backup_before = Path(_backup_path(cm)).read_text(encoding="utf-8")
+
+    assert fresh.load_config() is True
+    assert fresh.load_config() is True
+    assert Path(cm.config_file).read_text(encoding="utf-8") == main_before
+    assert Path(_backup_path(cm)).read_text(encoding="utf-8") == backup_before
+    assert sorted(os.listdir(base_dir)) == [CONFIG_NAME, CONFIG_NAME + ".backup"]

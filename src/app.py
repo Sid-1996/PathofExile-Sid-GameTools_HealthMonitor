@@ -211,6 +211,8 @@ def main(argv=None) -> int:
     # 缺檔 / 舊檔 / 非法值一律回退 dark。
     # Phase 3B：apply_theme 預設同時套用全域 QPalette 與全域 QSS（原生控件統一外觀）。
     _config_manager = get_config_manager()
+    # 設定在此先載入一次（供主題套用）；MainWindow 內的再次載入屬冪等重讀，
+    # 不得清除尚未通知的載入異常（見 ConfigManager.load_status 生命週期）。
     _config_manager.load_config()
     theme.apply_theme(_config_manager.get_config_value("theme", theme.DEFAULT_THEME))
 

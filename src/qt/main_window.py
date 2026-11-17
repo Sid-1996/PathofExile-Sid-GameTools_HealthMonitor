@@ -13,7 +13,7 @@ import time
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 import pygetwindow as gw
 
@@ -360,9 +360,23 @@ class MainWindow(FluentWindow):
         self.add_status_message(msg, "error")
         self.show_floating_notice(msg, "error")
 
+    def _consume_config_load_status(self) -> Optional[str]:
+        """取出本次啟動尚未通知的載入異常狀態並清除（同一事件只提示一次）。"""
+        consume = getattr(self.config_manager, "consume_load_status", None)
+        if callable(consume):
+            return cast(Optional[str], consume())
+        # 相容未提供 consume_load_status 的替身（測試 stub / 舊版設定管理器）
+        status = cast(Optional[str], getattr(self.config_manager, "load_status", None))
+        if status is not None:
+            try:
+                self.config_manager.load_status = None
+            except Exception:
+                pass
+        return status
+
     def _notify_config_load_status(self) -> None:
         """設定載入異常提示（只提示一次；狀態列 + 自動消失的 toast）。"""
-        status = getattr(self.config_manager, "load_status", None)
+        status = self._consume_config_load_status()
         if status == "restored_from_backup":
             msg = self.get_text("config_restored_from_backup")
             self.add_status_message(msg, "warning")

@@ -27,14 +27,19 @@ class ConfigManager:
         base_dir = config_path if config_path else get_user_data_dir()
         self.config_file = os.path.join(base_dir, config_filename)
         self.config = {}
-        # 最近一次載入 / 儲存結果（供 GUI 提示與診斷；不寫入磁碟、不影響既有格式）
-        self.load_status = None  # 'restored_from_backup' | 'reset_to_defaults' | None
+        # 本次啟動期間發生過、尚未被 GUI 消費的載入異常事件（不寫入磁碟、不影響既有格式）
+        # 語意：'restored_from_backup' | 'reset_to_defaults' | None（None = 沒有待通知事件）
+        self.load_status = None
         self.load_error = None
         self.save_error = None
 
     def load_config(self):
-        """載入設定檔案；正式檔無法解析時改用 .backup 並以還原內容修復正式檔。"""
-        self.load_status = None
+        """載入設定檔案；正式檔無法解析時改用 .backup 並以還原內容修復正式檔。
+
+        load_status 的語意是「本次啟動期間發生過、尚未被 GUI 消費的載入異常事件」，
+        不是「最近一次載入結果」：正常載入不會清除尚未通知的事件（否則後續的第二次
+        載入會把「已從備份還原」提示吃掉）；新的異常事件則覆蓋舊事件，以最新者為準。
+        """
         self.load_error = None
         if not os.path.exists(self.config_file):
             if self._adopt_backup("正式設定檔不存在"):
@@ -60,6 +65,12 @@ class ConfigManager:
         self._ensure_hotkeys()
         self._ensure_theme()
         return True
+
+    def consume_load_status(self):
+        """取出並清除尚未通知的載入異常事件（GUI 提示用；同一事件只會提示一次）。"""
+        status = self.load_status
+        self.load_status = None
+        return status
 
     @staticmethod
     def _read_json(path):
@@ -447,6 +458,12 @@ if __name__ == "__main__":
     assert cm3.get_config_value("language") == "en", "restored content should be the last good save"
     with open(backup, encoding="utf-8") as f:
         assert json.load(f)["language"] == "en", "valid backup must not be overwritten by corrupt data"
+
+    # 第二次載入不得清除尚未通知的還原事件；事件被消費後才清除
+    assert cm3.load_config(), "second load of a repaired config should succeed"
+    assert cm3.load_status == "restored_from_backup", "second load must keep the pending restore event"
+    assert cm3.consume_load_status() == "restored_from_backup"
+    assert cm3.consume_load_status() is None, "load status must be consumed only once"
 
     # 原子寫入失敗 → 原正式檔完整、暫存檔清理
     with open(cm3.config_file, encoding="utf-8") as f:
